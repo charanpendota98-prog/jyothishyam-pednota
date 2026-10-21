@@ -1,0 +1,1101 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>AstroSphere — Build Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* ===== DESIGN SYSTEM =====
+   Layout: Sticky nav tabs, full-width sections per tab
+   Color: Deep cosmic dark with celestial gold + amethyst accents
+   Type: Cormorant Garamond display + Inter body + JetBrains Mono for code
+*/
+
+:root {
+  --bg:            #090C18;
+  --bg-2:          #0F1326;
+  --bg-card:       rgba(255,255,255,0.04);
+  --bg-card-hover: rgba(255,255,255,0.07);
+  --border:        rgba(255,255,255,0.08);
+  --border-accent: rgba(201,169,110,0.30);
+  --fg:            #EDE8E0;
+  --fg-muted:      rgba(237,232,224,0.55);
+  --fg-dim:        rgba(237,232,224,0.30);
+  --gold:          #C9A96E;
+  --gold-glow:     rgba(201,169,110,0.12);
+  --amethyst:      #9B8FD4;
+  --amethyst-soft: rgba(155,143,212,0.13);
+  --teal:          #5BBFB5;
+  --rose:          #D47B7B;
+  --font-disp: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+  min-height: 100%;
+}
+
+/* Starfield */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.55) 0%, transparent 100%),
+    radial-gradient(1px 1px at 43% 9%,  rgba(255,255,255,.40) 0%, transparent 100%),
+    radial-gradient(1px 1px at 74% 32%, rgba(255,255,255,.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 27% 62%, rgba(255,255,255,.30) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 52%, rgba(255,255,255,.40) 0%, transparent 100%),
+    radial-gradient(1px 1px at 58% 78%, rgba(255,255,255,.30) 0%, transparent 100%),
+    radial-gradient(1px 1px at 8%  88%, rgba(255,255,255,.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 91% 14%, rgba(255,255,255,.50) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 34% 44%, rgba(201,169,110,.30) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 67% 67%, rgba(155,143,212,.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 52% 3%,  rgba(255,255,255,.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 6%  45%, rgba(255,255,255,.20) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── HERO ── */
+.hero {
+  text-align: center;
+  padding: 68px 0 44px;
+}
+
+.hero-glyph {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 18px;
+  filter: drop-shadow(0 0 28px rgba(201,169,110,.50));
+}
+
+.hero h1 {
+  font-family: var(--font-disp);
+  font-size: clamp(2.2rem, 5.5vw, 4rem);
+  font-weight: 300;
+  letter-spacing: .04em;
+  color: var(--fg);
+  margin: 0 0 4px;
+  text-wrap: balance;
+  line-height: 1.1;
+}
+
+.hero h1 em {
+  color: var(--gold);
+  font-style: italic;
+}
+
+.hero-sub {
+  font-size: 1rem;
+  color: var(--fg-muted);
+  font-weight: 300;
+  margin: 10px 0 0;
+  letter-spacing: .01em;
+}
+
+.hero-tags {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+.tag-gold     { color: var(--gold);     border-color: var(--border-accent);       background: var(--gold-glow); }
+.tag-amethyst { color: var(--amethyst); border-color: rgba(155,143,212,.28);      background: var(--amethyst-soft); }
+.tag-teal     { color: var(--teal);     border-color: rgba(91,191,181,.28);       background: rgba(91,191,181,.10); }
+
+/* ── STICKY NAV ── */
+.nav {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: rgba(9,12,24,.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-inner::-webkit-scrollbar { display: none; }
+
+.nav-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s;
+  white-space: nowrap;
+  letter-spacing: .02em;
+}
+.nav-btn:hover  { color: var(--fg); }
+.nav-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* ── SECTIONS ── */
+.section         { display: none; padding: 52px 0 80px; }
+.section.active  { display: block; }
+
+.section-title {
+  font-family: var(--font-disp);
+  font-size: 2.1rem;
+  font-weight: 300;
+  color: var(--fg);
+  margin: 0 0 8px;
+  line-height: 1.15;
+}
+.section-title em { color: var(--gold); font-style: italic; }
+
+.section-intro {
+  color: var(--fg-muted);
+  font-size: .96rem;
+  max-width: 680px;
+  margin: 0 0 36px;
+  line-height: 1.72;
+}
+
+/* ── ARCHITECTURE DIAGRAM ── */
+.arch-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 36px;
+  overflow-x: auto;
+}
+
+.arch-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  min-width: 380px;
+}
+
+.arch-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 0;
+  width: 100%;
+  position: relative;
+}
+
+.arch-label {
+  position: absolute;
+  right: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+  white-space: nowrap;
+}
+
+.arch-arrow {
+  color: var(--fg-dim);
+  font-size: 20px;
+  text-align: center;
+  line-height: 1;
+  padding: 0;
+}
+
+.abox {
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.abox-fe { background: rgba(201,169,110,.10); border-color: rgba(201,169,110,.30); color: var(--gold); }
+.abox-be { background: rgba(155,143,212,.10); border-color: rgba(155,143,212,.25); color: var(--amethyst); }
+.abox-en { background: rgba(91,191,181,.10);  border-color: rgba(91,191,181,.25);  color: var(--teal); }
+.abox-db { background: rgba(212,123,123,.10); border-color: rgba(212,123,123,.25); color: var(--rose); }
+
+/* ── OVERVIEW CARDS ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  transition: background .20s, border-color .20s;
+}
+.card:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,.13); }
+
+.card-icon { font-size: 26px; margin-bottom: 13px; line-height: 1; }
+
+.card h3 {
+  font-size: .93rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 0 0 7px;
+  letter-spacing: .01em;
+}
+
+.card p {
+  font-size: .855rem;
+  color: var(--fg-muted);
+  margin: 0;
+  line-height: 1.62;
+}
+
+/* ── REPO CARDS ── */
+.repo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 18px;
+}
+
+.repo-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  transition: background .20s, border-color .20s;
+}
+.repo-card:hover { background: var(--bg-card-hover); border-color: var(--border-accent); }
+
+.repo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 11px;
+}
+
+.repo-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--gold);
+  margin: 0;
+}
+
+.repo-lang {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--fg-dim);
+  background: rgba(255,255,255,.06);
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.repo-desc {
+  font-size: .865rem;
+  color: var(--fg-muted);
+  margin: 0 0 15px;
+  line-height: 1.62;
+}
+
+.repo-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+.pill-gold     { color: var(--gold);     background: var(--gold-glow);       border-color: var(--border-accent); }
+.pill-amethyst { color: var(--amethyst); background: var(--amethyst-soft);   border-color: rgba(155,143,212,.20); }
+.pill-teal     { color: var(--teal);     background: rgba(91,191,181,.10);   border-color: rgba(91,191,181,.22); }
+.pill-dim      { color: var(--fg-dim);   background: rgba(255,255,255,.04);  border-color: var(--border); }
+
+/* ── STACK ── */
+.stack-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stack-layer {
+  display: grid;
+  grid-template-columns: 128px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+@media (max-width: 520px) {
+  .stack-layer { grid-template-columns: 1fr; gap: 8px; }
+}
+
+.stack-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.stack-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+  background: rgba(255,255,255,.055);
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: 8px;
+}
+
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-gold     { background: var(--gold); }
+.dot-amethyst { background: var(--amethyst); }
+.dot-teal     { background: var(--teal); }
+.dot-rose     { background: var(--rose); }
+.dot-white    { background: rgba(255,255,255,.45); }
+
+/* ── FEATURES ── */
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+  gap: 16px;
+}
+
+.feat-cat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.feat-cat-hdr {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 15px;
+}
+
+.feat-cat-hdr span:first-child { font-size: 20px; line-height: 1; }
+
+.feat-cat-title {
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: .02em;
+}
+
+.feat-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feat-list li {
+  font-size: .825rem;
+  color: var(--fg-muted);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 1.42;
+}
+
+.feat-list li::before {
+  content: '–';
+  color: var(--gold);
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+/* ── ROADMAP ── */
+.roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: 0;
+}
+
+.roadmap::before {
+  content: '';
+  position: absolute;
+  left: 21px;
+  top: 22px;
+  bottom: 22px;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--gold), var(--amethyst), rgba(155,143,212,0));
+  opacity: .30;
+}
+
+.phase {
+  display: flex;
+  gap: 22px;
+  padding-bottom: 32px;
+}
+
+.phase-dot {
+  width: 43px; height: 43px;
+  border-radius: 50%;
+  background: var(--bg-2);
+  border: 2px solid var(--border-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-disp);
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--gold);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.phase-content {
+  flex: 1;
+  min-width: 0;
+  padding-top: 7px;
+}
+
+.phase-num {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 4px;
+  opacity: .80;
+}
+
+.phase-title {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 0 0 10px;
+}
+
+.phase-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.phase-item {
+  font-size: 12px;
+  color: var(--fg-muted);
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+/* ── CTA ── */
+.cta {
+  background: linear-gradient(135deg, rgba(201,169,110,.08), rgba(155,143,212,.08));
+  border: 1px solid var(--border-accent);
+  border-radius: 16px;
+  padding: 36px 32px;
+  text-align: center;
+  margin-top: 48px;
+}
+
+.cta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--teal);
+  background: rgba(91,191,181,.10);
+  border: 1px solid rgba(91,191,181,.22);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+  letter-spacing: .04em;
+}
+
+.cta h3 {
+  font-family: var(--font-disp);
+  font-size: 1.75rem;
+  font-weight: 300;
+  color: var(--fg);
+  margin: 0 0 8px;
+}
+
+.cta p {
+  color: var(--fg-muted);
+  font-size: .90rem;
+  margin: 0 0 22px;
+  line-height: 1.65;
+}
+
+.cta-btn {
+  display: inline-block;
+  background: var(--gold);
+  color: #090C18;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 12px 28px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.cta-btn:hover { opacity: .82; }
+</style>
+
+<!-- ═══════════ MARKUP ═══════════ -->
+
+<div class="container">
+  <div class="hero">
+    <div class="hero-glyph">♈</div>
+    <h1>Build an <em>Advanced</em> Astrology Platform</h1>
+    <p class="hero-sub">Architecture plan · Open source repos · Full feature set · Build roadmap</p>
+    <div class="hero-tags">
+      <span class="tag tag-gold">Vedic + Western</span>
+      <span class="tag tag-amethyst">AI Interpretations</span>
+      <span class="tag tag-teal">Swiss Ephemeris</span>
+      <span class="tag tag-gold">React + FastAPI</span>
+      <span class="tag tag-amethyst">Open Source</span>
+    </div>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <button class="nav-btn active" onclick="switchTab('overview')">Overview</button>
+      <button class="nav-btn" onclick="switchTab('repos')">Open Source Repos</button>
+      <button class="nav-btn" onclick="switchTab('stack')">Tech Stack</button>
+      <button class="nav-btn" onclick="switchTab('features')">Features</button>
+      <button class="nav-btn" onclick="switchTab('roadmap')">Build Roadmap</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── OVERVIEW ── -->
+<div id="tab-overview" class="section active">
+  <div class="container">
+    <h2 class="section-title">The <em>Vision</em></h2>
+    <p class="section-intro">A full-stack, professional-grade astrology platform combining Western and Vedic traditions — birth charts, synastry, AI interpretations, Panchanga, and Dasha timelines — all powered by battle-tested open source engines.</p>
+
+    <div class="arch-wrap">
+      <div class="arch-diagram">
+        <div class="arch-row" style="padding-right:90px; gap:8px;">
+          <div class="abox abox-fe">React + TypeScript</div>
+          <div class="abox abox-fe">SVG Chart Viewer</div>
+          <div class="abox abox-fe">User Dashboard</div>
+          <span class="arch-label">Frontend</span>
+        </div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-row" style="padding-right:90px; gap:8px;">
+          <div class="abox abox-be">FastAPI (Python)</div>
+          <div class="abox abox-be">Auth &amp; Users</div>
+          <div class="abox abox-be">AI Layer</div>
+          <span class="arch-label">Backend</span>
+        </div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-row" style="padding-right:90px; gap:8px;">
+          <div class="abox abox-en">Kerykeion (Western)</div>
+          <div class="abox abox-en">VedAstro (Vedic)</div>
+          <div class="abox abox-en">Swiss Ephemeris</div>
+          <span class="arch-label">Calc Engine</span>
+        </div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-row" style="padding-right:90px; gap:8px;">
+          <div class="abox abox-db">PostgreSQL</div>
+          <div class="abox abox-db">Redis Cache</div>
+          <div class="abox abox-db">File Storage (PDFs)</div>
+          <span class="arch-label">Data Layer</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🔭</div>
+        <h3>Precise Calculations</h3>
+        <p>Swiss Ephemeris under the hood — the industry gold standard, accurate to sub-arc-second precision across 5,000+ years and all major bodies.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚖️</div>
+        <h3>Western + Vedic</h3>
+        <p>Tropical and sidereal zodiacs, 47+ Ayanamsa systems, multiple house systems — Placidus, Koch, Whole Sign, Lagna and more.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤖</div>
+        <h3>AI Interpretations</h3>
+        <p>RAG-powered AI reads from classical texts — BPHS, Phaladeepika — to generate cited, grounded natal and predictive interpretations.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <h3>Advanced Chart Types</h3>
+        <p>Natal, synastry, composite, transit, solar return, progressions, Navamsa, Dasha timeline — fully interactive SVG output.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">👤</div>
+        <h3>Astrologer Workspace</h3>
+        <p>Professional client management: save profiles, generate PDF reports, write consultation notes, track Dasha periods per client.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📅</div>
+        <h3>Panchanga &amp; Muhurta</h3>
+        <p>Daily Vedic almanac — Tithi, Nakshatra, Yoga, Karana, Vara — plus auspicious timing (Muhurta) for any date and location.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── REPOS ── -->
+<div id="tab-repos" class="section">
+  <div class="container">
+    <h2 class="section-title">Open Source <em>Repos</em></h2>
+    <p class="section-intro">We build on proven, actively maintained foundations — not from scratch. Each library handles a distinct layer of the platform. These are the six to clone.</p>
+
+    <div class="repo-grid">
+      <div class="repo-card">
+        <div class="repo-header">
+          <h3 class="repo-name">Kerykeion</h3>
+          <span class="repo-lang">Python</span>
+        </div>
+        <p class="repo-desc">The primary Western astrology engine. Generates natal, synastry, transit, composite and solar return charts as polished SVGs. Modern and Classic styles, dark theme, multilingual. Built on Swiss Ephemeris.</p>
+        <div class="repo-pills">
+          <span class="pill pill-gold">Birth Charts</span>
+          <span class="pill pill-gold">Synastry</span>
+          <span class="pill pill-gold">SVG Output</span>
+          <span class="pill pill-dim">Placidus / Koch</span>
+          <span class="pill pill-dim">Dark Theme</span>
+          <span class="pill pill-dim">AGPL-3.0</span>
+        </div>
+      </div>
+
+      <div class="repo-card">
+        <div class="repo-header">
+          <h3 class="repo-name">VedAstro</h3>
+          <span class="repo-lang">Python / C#</span>
+        </div>
+        <p class="repo-desc">The most comprehensive Vedic astrology open source project. 596+ calculation methods, 47 Ayanamsa systems, AI chatbot, Panchanga, Dasha periods, Kundali charts and classical text RAG search.</p>
+        <div class="repo-pills">
+          <span class="pill pill-teal">Vedic / Kundali</span>
+          <span class="pill pill-teal">596+ Calcs</span>
+          <span class="pill pill-teal">AI Chatbot</span>
+          <span class="pill pill-dim">Panchanga</span>
+          <span class="pill pill-dim">Dasha</span>
+          <span class="pill pill-dim">MIT</span>
+        </div>
+      </div>
+
+      <div class="repo-card">
+        <div class="repo-header">
+          <h3 class="repo-name">AstrologerStudio</h3>
+          <span class="repo-lang">Python + React</span>
+        </div>
+        <p class="repo-desc">Professional open-source astrology workspace built on Kerykeion. Client management, AI chart interpretations, clean UI — the best full-stack reference architecture to build on top of.</p>
+        <div class="repo-pills">
+          <span class="pill pill-gold">Full-Stack Ref</span>
+          <span class="pill pill-gold">Client Mgmt</span>
+          <span class="pill pill-gold">AI Reports</span>
+          <span class="pill pill-dim">Professional UI</span>
+          <span class="pill pill-dim">AGPL-3.0</span>
+        </div>
+      </div>
+
+      <div class="repo-card">
+        <div class="repo-header">
+          <h3 class="repo-name">Swiss Ephemeris</h3>
+          <span class="repo-lang">C / pyswisseph</span>
+        </div>
+        <p class="repo-desc">The industry-standard astronomical engine used by every serious astrology platform. 8,000+ year coverage, all major bodies, asteroids, nodes. <code style="font-family:var(--font-mono);font-size:11px;color:var(--fg-dim)">pip install pyswisseph</code> wraps it for Python.</p>
+        <div class="repo-pills">
+          <span class="pill pill-amethyst">±5000 Years</span>
+          <span class="pill pill-amethyst">All Planets</span>
+          <span class="pill pill-amethyst">Asteroids</span>
+          <span class="pill pill-dim">GPL-2.0</span>
+        </div>
+      </div>
+
+      <div class="repo-card">
+        <div class="repo-header">
+          <h3 class="repo-name">astro-chart (TS)</h3>
+          <span class="repo-lang">TypeScript</span>
+        </div>
+        <p class="repo-desc">Open-source TypeScript library for generating SVG astrology charts in the browser. Handles the zodiac wheel rendering layer on the frontend for real-time, client-side chart display without a server round-trip.</p>
+        <div class="repo-pills">
+          <span class="pill pill-teal">SVG Charts</span>
+          <span class="pill pill-teal">Browser-Side</span>
+          <span class="pill pill-teal">TypeScript</span>
+          <span class="pill pill-dim">MIT</span>
+        </div>
+      </div>
+
+      <div class="repo-card">
+        <div class="repo-header">
+          <h3 class="repo-name">Astrolog 8.0</h3>
+          <span class="repo-lang">C++</span>
+        </div>
+        <p class="repo-desc">The veteran open source astrology application (since 1991, latest v8.0 in 2026). Reference for advanced techniques: midpoints, harmonics, Arabic Parts, solar arc directions, parallel aspects.</p>
+        <div class="repo-pills">
+          <span class="pill pill-dim">Midpoints</span>
+          <span class="pill pill-dim">Harmonics</span>
+          <span class="pill pill-dim">Arabic Parts</span>
+          <span class="pill pill-dim">GPL-3.0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STACK ── -->
+<div id="tab-stack" class="section">
+  <div class="container">
+    <h2 class="section-title">Tech <em>Stack</em></h2>
+    <p class="section-intro">A modern Python + TypeScript monorepo. The backend handles all calculations and serves a REST API; the frontend is a reactive SPA with real-time chart rendering and a dark cosmic UI.</p>
+
+    <div class="stack-layers">
+      <div class="stack-layer">
+        <div class="stack-label">Frontend</div>
+        <div class="stack-chips">
+          <div class="chip"><span class="dot dot-gold"></span>React 18 + TypeScript</div>
+          <div class="chip"><span class="dot dot-gold"></span>Vite</div>
+          <div class="chip"><span class="dot dot-gold"></span>Tailwind CSS</div>
+          <div class="chip"><span class="dot dot-gold"></span>Zustand (state)</div>
+          <div class="chip"><span class="dot dot-gold"></span>React Query</div>
+          <div class="chip"><span class="dot dot-gold"></span>D3.js + SVG</div>
+        </div>
+      </div>
+      <div class="stack-layer">
+        <div class="stack-label">Backend</div>
+        <div class="stack-chips">
+          <div class="chip"><span class="dot dot-amethyst"></span>Python 3.12+</div>
+          <div class="chip"><span class="dot dot-amethyst"></span>FastAPI</div>
+          <div class="chip"><span class="dot dot-amethyst"></span>Pydantic v2</div>
+          <div class="chip"><span class="dot dot-amethyst"></span>SQLAlchemy</div>
+          <div class="chip"><span class="dot dot-amethyst"></span>Alembic</div>
+          <div class="chip"><span class="dot dot-amethyst"></span>JWT Auth</div>
+        </div>
+      </div>
+      <div class="stack-layer">
+        <div class="stack-label">Astro Engine</div>
+        <div class="stack-chips">
+          <div class="chip"><span class="dot dot-teal"></span>Kerykeion 6.x</div>
+          <div class="chip"><span class="dot dot-teal"></span>VedAstro Python</div>
+          <div class="chip"><span class="dot dot-teal"></span>pyswisseph</div>
+          <div class="chip"><span class="dot dot-teal"></span>GeoNames API</div>
+          <div class="chip"><span class="dot dot-teal"></span>TimezoneFinder</div>
+        </div>
+      </div>
+      <div class="stack-layer">
+        <div class="stack-label">AI Layer</div>
+        <div class="stack-chips">
+          <div class="chip"><span class="dot dot-rose"></span>Claude / GPT-4o</div>
+          <div class="chip"><span class="dot dot-rose"></span>LangChain RAG</div>
+          <div class="chip"><span class="dot dot-rose"></span>BPHS Text Index</div>
+          <div class="chip"><span class="dot dot-rose"></span>pgvector</div>
+        </div>
+      </div>
+      <div class="stack-layer">
+        <div class="stack-label">Data</div>
+        <div class="stack-chips">
+          <div class="chip"><span class="dot dot-white"></span>PostgreSQL 16</div>
+          <div class="chip"><span class="dot dot-white"></span>Redis (cache)</div>
+          <div class="chip"><span class="dot dot-white"></span>S3 / R2 (PDFs)</div>
+          <div class="chip"><span class="dot dot-white"></span>Celery (tasks)</div>
+        </div>
+      </div>
+      <div class="stack-layer">
+        <div class="stack-label">Infra</div>
+        <div class="stack-chips">
+          <div class="chip"><span class="dot dot-gold"></span>Docker Compose</div>
+          <div class="chip"><span class="dot dot-gold"></span>GitHub Actions CI</div>
+          <div class="chip"><span class="dot dot-gold"></span>Nginx</div>
+          <div class="chip"><span class="dot dot-gold"></span>Railway / Render</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FEATURES ── -->
+<div id="tab-features" class="section">
+  <div class="container">
+    <h2 class="section-title">Full <em>Feature Set</em></h2>
+    <p class="section-intro">A complete professional platform covering every major feature of advanced Western and Vedic astrology software — from basic natal charts to Ashtakavarga grids and AI-generated reports.</p>
+
+    <div class="feat-grid">
+      <div class="feat-cat">
+        <div class="feat-cat-hdr">
+          <span>🌟</span>
+          <span class="feat-cat-title">Western Charts</span>
+        </div>
+        <ul class="feat-list">
+          <li>Natal (birth) chart — full planet &amp; point list</li>
+          <li>House systems: Placidus, Koch, Equal, Whole Sign, Campanus, Regiomontanus</li>
+          <li>Synastry (2-person compatibility)</li>
+          <li>Composite &amp; Davison charts</li>
+          <li>Transit chart overlay</li>
+          <li>Solar Return chart</li>
+          <li>Secondary Progressions</li>
+          <li>Solar Arc Directions</li>
+          <li>Interactive aspect grid</li>
+        </ul>
+      </div>
+
+      <div class="feat-cat">
+        <div class="feat-cat-hdr">
+          <span>🕉️</span>
+          <span class="feat-cat-title">Vedic / Jyotish</span>
+        </div>
+        <ul class="feat-list">
+          <li>Kundali (Rasi) — North &amp; South Indian styles</li>
+          <li>Navamsa D9, Drekkana D3, Dashamsha D10</li>
+          <li>Vimshottari Dasha timeline</li>
+          <li>Antardasha &amp; Pratyantardasha</li>
+          <li>Shadbala (planetary strength)</li>
+          <li>Ashtakavarga transit grid</li>
+          <li>47+ Ayanamsa systems (Lahiri, KP, Raman…)</li>
+          <li>Kundali Milan — 8-fold compatibility</li>
+        </ul>
+      </div>
+
+      <div class="feat-cat">
+        <div class="feat-cat-hdr">
+          <span>📅</span>
+          <span class="feat-cat-title">Panchanga &amp; Timing</span>
+        </div>
+        <ul class="feat-list">
+          <li>Daily Panchanga: Tithi, Nakshatra, Yoga, Karana, Vara</li>
+          <li>28 Nakshatras with full qualities</li>
+          <li>Muhurta (auspicious timing) calculator</li>
+          <li>Rahu Kalam &amp; Gulika Kalam</li>
+          <li>Lunar phases &amp; eclipses</li>
+          <li>Planetary ingresses &amp; retrogrades</li>
+          <li>Predictive event timeline</li>
+        </ul>
+      </div>
+
+      <div class="feat-cat">
+        <div class="feat-cat-hdr">
+          <span>🤖</span>
+          <span class="feat-cat-title">AI Interpretations</span>
+        </div>
+        <ul class="feat-list">
+          <li>Natal chart personality report</li>
+          <li>Synastry relationship analysis</li>
+          <li>Classical text citations (BPHS, Phaladeepika)</li>
+          <li>Ask-the-astrologer chat interface</li>
+          <li>Dasha period predictions</li>
+          <li>Muhurta recommendations</li>
+          <li>PDF report generation &amp; export</li>
+        </ul>
+      </div>
+
+      <div class="feat-cat">
+        <div class="feat-cat-hdr">
+          <span>👤</span>
+          <span class="feat-cat-title">User Platform</span>
+        </div>
+        <ul class="feat-list">
+          <li>User accounts with saved birth data</li>
+          <li>Multiple chart profiles (self, family, clients)</li>
+          <li>Astrologer client workspace</li>
+          <li>Consultation notes &amp; history</li>
+          <li>Chart sharing &amp; export</li>
+          <li>Daily horoscope feed</li>
+          <li>Public REST API for developers</li>
+        </ul>
+      </div>
+
+      <div class="feat-cat">
+        <div class="feat-cat-hdr">
+          <span>⚙️</span>
+          <span class="feat-cat-title">Advanced Techniques</span>
+        </div>
+        <ul class="feat-list">
+          <li>Midpoints table &amp; midpoint trees</li>
+          <li>Arabic Parts / Lots calculator</li>
+          <li>Fixed stars conjunctions</li>
+          <li>Asteroids: Chiron, Ceres, Pallas, Vesta, Juno</li>
+          <li>Declinations &amp; out-of-bounds planets</li>
+          <li>Heliacal risings &amp; settings</li>
+          <li>Harmonic charts (3rd, 4th, 5th…)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ROADMAP ── -->
+<div id="tab-roadmap" class="section">
+  <div class="container">
+    <h2 class="section-title">Build <em>Roadmap</em></h2>
+    <p class="section-intro">Five phases — working software at every milestone, progressively adding advanced features. Total estimated build: 8–12 weeks solo, faster with collaboration.</p>
+
+    <div class="roadmap">
+      <div class="phase">
+        <div class="phase-dot">I</div>
+        <div class="phase-content">
+          <div class="phase-num">Phase 1 · Week 1–2</div>
+          <div class="phase-title">Core Engine + REST API</div>
+          <div class="phase-items">
+            <span class="phase-item">Clone &amp; install Kerykeion + VedAstro</span>
+            <span class="phase-item">FastAPI project scaffold</span>
+            <span class="phase-item">Birth chart calculation endpoint</span>
+            <span class="phase-item">SVG chart generation</span>
+            <span class="phase-item">GeoNames city search</span>
+            <span class="phase-item">Timezone resolution</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-dot">II</div>
+        <div class="phase-content">
+          <div class="phase-num">Phase 2 · Week 3–4</div>
+          <div class="phase-title">Frontend + Auth</div>
+          <div class="phase-items">
+            <span class="phase-item">React + Vite setup</span>
+            <span class="phase-item">Birth data input form</span>
+            <span class="phase-item">Interactive chart SVG viewer</span>
+            <span class="phase-item">User accounts (JWT)</span>
+            <span class="phase-item">Save &amp; load profiles</span>
+            <span class="phase-item">PostgreSQL schema + Alembic</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-dot">III</div>
+        <div class="phase-content">
+          <div class="phase-num">Phase 3 · Week 5–6</div>
+          <div class="phase-title">Vedic + Advanced Chart Types</div>
+          <div class="phase-items">
+            <span class="phase-item">Kundali chart (N/S Indian style)</span>
+            <span class="phase-item">Vimshottari Dasha timeline</span>
+            <span class="phase-item">Panchanga daily view</span>
+            <span class="phase-item">Synastry chart</span>
+            <span class="phase-item">Transit overlay</span>
+            <span class="phase-item">House system selector</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-dot">IV</div>
+        <div class="phase-content">
+          <div class="phase-num">Phase 4 · Week 7–8</div>
+          <div class="phase-title">AI Interpretations</div>
+          <div class="phase-items">
+            <span class="phase-item">Classical text indexing (BPHS)</span>
+            <span class="phase-item">pgvector RAG search</span>
+            <span class="phase-item">Natal report generation</span>
+            <span class="phase-item">AI chat interface</span>
+            <span class="phase-item">Synastry analysis report</span>
+            <span class="phase-item">PDF export</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-dot">V</div>
+        <div class="phase-content">
+          <div class="phase-num">Phase 5 · Week 9–12</div>
+          <div class="phase-title">Advanced Features + Production</div>
+          <div class="phase-items">
+            <span class="phase-item">Solar Return &amp; Progressions</span>
+            <span class="phase-item">Divisional charts D9, D10…</span>
+            <span class="phase-item">Ashtakavarga grid</span>
+            <span class="phase-item">Asteroids &amp; fixed stars</span>
+            <span class="phase-item">Public REST API</span>
+            <span class="phase-item">Docker Compose deployment</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <div class="cta-badge">✓ Ready to build</div>
+      <h3>Where do we start?</h3>
+      <p>Tell me: <strong style="color:var(--fg)">Western-only, Vedic-only, or both?</strong><br>And do you want to start with cloning the repos and setting up the backend engine, or jump straight into the full project scaffold?</p>
+      <button class="cta-btn" onclick="switchTab('repos')">View Repos to Clone →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(id) {
+  const tabs = ['overview','repos','stack','features','roadmap'];
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('tab-' + id);
+  if (el) el.classList.add('active');
+  const idx = tabs.indexOf(id);
+  const btns = document.querySelectorAll('.nav-btn');
+  if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+
+</body></html>

@@ -1,0 +1,6 @@
+{
+  "name": "AstroSphere — Vedic & Western Ephemeris Observatory",
+  "description": "Professional full-stack astrology & astronomical calculation platform combining Western Tropical and Vedic Sidereal traditions, high-precision ephemeris, Divisional Kundali charts (D1/D9/D10), Vimshottari Dasha timelines, Panchanga & Muhurta almanac, Synastry, and classical-text grounded AI interpretations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

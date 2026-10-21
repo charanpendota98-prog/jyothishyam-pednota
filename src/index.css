@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-canvas: #090C18;
+    --bg-surface: #0F1326;
+    --bg-elevated: #141932;
+    --border-hairline: rgba(255, 255, 255, 0.08);
+    --border-gold: rgba(201, 169, 110, 0.32);
+    --fg-primary: #EDE8E0;
+    --fg-muted: rgba(237, 232, 224, 0.62);
+    --fg-dim: rgba(237, 232, 224, 0.38);
+    --accent-gold: #C9A96E;
+    --accent-amethyst: #9B8FD4;
+    --accent-teal: #5BBFB5;
+    --accent-rose: #D47B7B;
+    --font-display: 'Noto Serif Telugu', 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Noto Sans Telugu', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.65;
+    letter-spacing: 0.01em;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.cosmic-starfield {
+  background-image:
+    radial-gradient(1px 1px at 14% 16%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 42% 8%, rgba(255, 255, 255, 0.28) 0%, transparent 100%),
+    radial-gradient(1px 1px at 76% 29%, rgba(255, 255, 255, 0.32) 0%, transparent 100%),
+    radial-gradient(1px 1px at 26% 64%, rgba(255, 255, 255, 0.22) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 86% 48%, rgba(201, 169, 110, 0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 59% 81%, rgba(255, 255, 255, 0.22) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 33% 43%, rgba(155, 143, 212, 0.20) 0%, transparent 100%);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090C18;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 169, 110, 0.4);
+}
+
+/* On-screen Royal Telugu Panchanga Print-Book Mode (.jathaka-print-book) */
+.jathaka-print-book {
+  background-color: #FFFDF7 !important;
+  color: #1A1412 !important;
+  border: 3px double #8B1E1E !important;
+  padding: 28px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55) !important;
+}
+
+.jathaka-print-book [class*="bg-[#0F1326]"],
+.jathaka-print-book [class*="bg-[#090C18]"],
+.jathaka-print-book [class*="bg-[#141932]"],
+.jathaka-print-book [class*="from-[#141932]"] {
+  background: #FFFDF9 !important;
+  background-image: none !important;
+  border-color: #C59B27 !important;
+  color: #1A1412 !important;
+}
+
+.jathaka-print-book [class*="text-[#EDE8E0]"] {
+  color: #1A1412 !important;
+}
+
+.jathaka-print-book [class*="text-[#C9A96E]"] {
+  color: #8B1E1E !important;
+}
+
+.jathaka-print-book [class*="text-[#5BBFB5]"] {
+  color: #0F5E56 !important;
+}
+
+.jathaka-print-book [class*="border-white"] {
+  border-color: rgba(139, 30, 30, 0.22) !important;
+}
+
+.jathaka-print-book svg rect[fill="#0B0F20"],
+.jathaka-print-book svg rect[fill="#080B18"],
+.jathaka-print-book svg rect[fill="#10152B"],
+.jathaka-print-book svg rect[fill="#1B2242"] {
+  fill: #FFFDF7 !important;
+}
+
+.jathaka-print-book svg text {
+  fill: #1A1412 !important;
+}
+
+/* Classical Peetham / Astro-Vision Print Book Mode (On-Screen Preview) */
+.classical-pdf-preview-wrapper {
+  background: #ded6c1;
+  padding: 1.5rem 0.75rem;
+  border-radius: 0.75rem;
+}
+
+.classical-pdf-page {
+  background: #FCF9F2;
+  color: #1A120B;
+  max-width: 210mm;
+  margin: 0 auto 1.75rem auto;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* Professional Multi-Page Print / Save-as-PDF Stylesheet */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 7mm 8mm;
+  }
+
+  html, body, .cosmic-starfield {
+    background: #FFFFFF !important;
+    background-image: none !important;
+    color: #111111 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.38 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print,
+  .screen-interactive-only,
+  header,
+  nav,
+  aside,
+  footer {
+    display: none !important;
+  }
+
+  .classical-pdf-only {
+    display: block !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .classical-pdf-preview-wrapper {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .classical-pdf-page {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    background: #FCF9F2 !important;
+    color: #1A120B !important;
+  }
+
+  .print-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
