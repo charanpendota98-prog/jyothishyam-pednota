@@ -34,6 +34,8 @@ import { computeAvakahada } from '../src/engine/avakahadaEngine';
 import { computeBhavaSandhi } from '../src/engine/bhavaSandhiEngine';
 import { computeUpagrahas } from '../src/engine/upagrahaEngine';
 import { computeVimshottariDeep } from '../src/engine/vimshottariDeepEngine';
+import { computeAshtakavargaPhala } from '../src/engine/ashtakavargaPhalaEngine';
+import { computeAntardashaPhalaBook } from '../src/engine/antardashaPhalaBookEngine';
 
 let pass = 0;
 const failures: string[] = [];
@@ -297,6 +299,39 @@ check(
   'సర్వాష్టకవర్గం (మొత్తం 337)',
   JSON.stringify(KUNDALI.ashtakavarga.sarvashtakavarga) === JSON.stringify(SAV),
   `app ${KUNDALI.ashtakavarga.sarvashtakavarga.join(',')} — మొత్తం ${KUNDALI.ashtakavarga.totalBindus}`
+);
+
+console.log('— సాముదాయిక అష్టకవర్గ ఫల విచారణ (PDF పేజీలు 108–114) —');
+const avPhala = computeAshtakavargaPhala(KUNDALI);
+const PDF_SAV_BY_HOUSE = [29, 31, 36, 22, 22, 26, 30, 23, 25, 31, 31, 31];
+check(
+  'భావాల వారీగా సర్వాష్టక బిందువులు',
+  JSON.stringify(avPhala.rows.map((r) => r.bindus)) === JSON.stringify(PDF_SAV_BY_HOUSE),
+  `app ${avPhala.rows.map((r) => r.bindus).join(', ')}`
+);
+check(
+  'ఫలిత వర్గ విభజన (≤24 బలహీనం, 25–29 మధ్యస్థం, 30+ బలం)',
+  JSON.stringify(avPhala.rows.map((r) => r.band)) ===
+    JSON.stringify([
+      'moderate', 'strong', 'strong', 'weak', 'weak', 'moderate', 'strong',
+      'weak', 'moderate', 'strong', 'strong', 'strong',
+    ]),
+  `బలం ${avPhala.bandCounts.strong} · మధ్యస్థం ${avPhala.bandCounts.moderate} · బలహీనం ${avPhala.bandCounts.weak}`
+);
+checkNum('సగటు బిందువులు (337 ÷ 12)', avPhala.averageBindus, 28.08, 0.01, ' బిందువులు');
+checkNum('కేంద్ర సగటు', avPhala.kendraAvg, 28, 0.01, ' బిందువులు');
+checkNum('త్రికోణ సగటు', avPhala.trikonaAvg, 25.33, 0.01, ' బిందువులు');
+check('అత్యధిక బిందువుల భావం (సింహం / 3వ భావం, 36)', avPhala.strongestHouse === 3, `${avPhala.strongestHouse}వ భావం`);
+check('అత్యల్ప బిందువుల భావం (22 బిందువులు)', avPhala.rows[avPhala.weakestHouse - 1].bindus === 22, `${avPhala.weakestHouse}వ భావం`);
+check(
+  'ప్రతి భావానికి ఫలితం + పరిహారం',
+  avPhala.rows.every((r) => r.phalaTe.length > 40 && r.pariharaTe.length > 10),
+  '12 భావాలకు తెలుగు ఫలితం, పరిహారం సిద్ధం'
+);
+check(
+  'లగ్న / సప్తమ బిందువుల పోలిక',
+  avPhala.lagnaBindus === 29 && avPhala.seventhBindus === 30,
+  `లగ్నం ${avPhala.lagnaBindus} · సప్తమం ${avPhala.seventhBindus}`
 );
 
 console.log('— అవకహడ చక్రం (PDF పేజీ 3) —');
@@ -669,6 +704,39 @@ console.log('\n— వింశోత్తరీ దశా చక్రం (PDF
     `Δ ${((sum - (md.endMs - md.startMs)) / 1000).toFixed(2)} సె.`
   );
 }
+
+console.log('— అంతర దశా ఫల పుస్తకం (PDF పేజీలు 67–107) —');
+const adBook = computeAntardashaPhalaBook(KUNDALI);
+check(
+  '9 మహాదశలు × 9 భుక్తులు = 81 ఫలాలు',
+  adBook.sections.length === 9 && adBook.totalBhuktis === 81,
+  `${adBook.sections.length} మహాదశలు · ${adBook.totalBhuktis} భుక్తులు`
+);
+check(
+  'ప్రతి భుక్తికి తెలుగు ఫలితం, జాగ్రత్త, పరిహారం',
+  adBook.sections.every((sec) =>
+    sec.rows.every((r) => r.phalaTe.length > 120 && r.cautionTe.length > 20 && r.remedyTe.length > 20)
+  ),
+  '81 భుక్తులకూ సంపూర్ణ పాఠ్యం సిద్ధం'
+);
+check(
+  'భుక్తి కాలాలు వరుసగా, ఖాళీ లేకుండా',
+  adBook.sections.every((sec) =>
+    sec.rows.every((r, i) => i === 0 || Math.abs(r.startMs - sec.rows[i - 1].endMs) < 1000)
+  ),
+  'ప్రతి మహాదశలో 9 భుక్తులు నిరంతరంగా కలిసి ఉన్నాయి'
+);
+check(
+  'అనుకూలత స్కోరు 0–100 పరిధిలో',
+  adBook.sections.every((sec) => sec.rows.every((r) => r.score >= 0 && r.score <= 100)),
+  `సగటు స్కోర్లు ${adBook.sections.map((s) => s.scoreAvg).join(', ')}`
+);
+check(
+  'ప్రస్తుత భుక్తి గుర్తింపు (2026-10-22)',
+  adBook.currentPathTe.includes('గురువు') && adBook.currentPathTe.includes('భుక్తి'),
+  adBook.currentPathTe.slice(0, 60)
+);
+
 
 // ─────────────────────────────────────────────────────────────────────────
 console.log('\n══════════════════════════════════════════════════════════');

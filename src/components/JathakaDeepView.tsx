@@ -26,6 +26,8 @@ import { computeAvakahada } from '../engine/avakahadaEngine.ts';
 import { computeBhavaSandhi } from '../engine/bhavaSandhiEngine.ts';
 import { computeUpagrahas } from '../engine/upagrahaEngine.ts';
 import { computeVimshottariDeep } from '../engine/vimshottariDeepEngine.ts';
+import { computeAshtakavargaPhala } from '../engine/ashtakavargaPhalaEngine.ts';
+import { computeAntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
 
 interface JathakaDeepViewProps {
   chart: CompleteChartResult;
@@ -64,6 +66,15 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
   const bhava = useMemo(() => computeBhavaSandhi(chart), [chart]);
   const upagraha = useMemo(() => computeUpagrahas(chart), [chart]);
   const dasha = useMemo(() => computeVimshottariDeep(chart), [chart]);
+  const avPhala = useMemo(() => computeAshtakavargaPhala(chart), [chart]);
+  const adBook = useMemo(() => computeAntardashaPhalaBook(chart), [chart]);
+  const runningMahaIndex = Math.max(
+    0,
+    adBook.sections.findIndex((sec) => sec.rows.some((r) => r.isRunning))
+  );
+  const [mahaTab, setMahaTab] = useState<number | null>(null);
+  const activeMahaIndex = mahaTab ?? runningMahaIndex;
+  const activeMaha = adBook.sections[activeMahaIndex] ?? adBook.sections[0];
 
   const schemeRows = varga.schemes;
 
@@ -77,7 +88,7 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
               {isTe ? 'గ్రంథ ప్రమాణం' : 'Classical Standard'}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[#5BBFB5]/15 border border-[#5BBFB5]/40 text-[#5BBFB5] text-[10px] font-mono-tabular uppercase tracking-wider font-bold">
-              {isTe ? '238 తనిఖీలు' : '238 checks'}
+              {isTe ? '252 తనిఖీలు' : '252 checks'}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[#9B8FD4]/15 border border-[#9B8FD4]/40 text-[#9B8FD4] text-[10px] font-mono-tabular uppercase tracking-wider font-bold">
               BPHS 6 · 7 · 26 · 27
@@ -653,8 +664,8 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
             <p className="flex items-center gap-1.5 text-[#5BBFB5]">
               <BadgeCheck className="w-3.5 h-3.5" />
               {isTe
-                ? '238 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) — npm run verify:jathaka'
-                : '238 pin-to-pin checks against 3 reference jathakam PDFs.'}
+                ? '252 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) — npm run verify:jathaka'
+                : '252 pin-to-pin checks against 3 reference jathakam PDFs.'}
             </p>
             <p className="flex items-center gap-1.5 text-[#C9A96E]">
               <Sparkles className="w-3.5 h-3.5" />
@@ -666,6 +677,266 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
           <div className="px-4 pb-4">
             <SourceStrip feature="jathaka" titleTe="ఈ విభాగపు మూల గ్రంథాలు" compact />
           </div>
+        </div>
+      </div>
+
+      {/* ── సాముదాయిక అష్టకవర్గ ఫల విచారణ ─────────────────── */}
+      <div className={panel}>
+        <div className={panelHead}>
+          <Table2 className="w-3.5 h-3.5" />
+          {isTe
+            ? 'జాతక సాముదాయిక అష్టకవర్గ ఫలితాలు — భావాల బలం (337 బిందువులు)'
+            : 'Sarva-Ashtakavarga phala — house strength (337 bindus)'}
+        </div>
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="rounded-xl border border-[#C9A96E]/25 bg-[#C9A96E]/[0.06] px-3 py-2">
+              <div className="text-[9.5px] font-mono-tabular uppercase tracking-wider text-[#C9A96E]/70">
+                {isTe ? 'మొత్తం బిందువులు' : 'Total bindus'}
+              </div>
+              <div className="text-lg font-bold text-[#E4C68C] font-mono-tabular">{avPhala.totalBindus}</div>
+              <div className="text-[9px] text-[#EDE8E0]/40">{isTe ? 'శాస్త్ర సగటు 337' : 'classical 337'}</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+              <div className="text-[9.5px] font-mono-tabular uppercase tracking-wider text-[#EDE8E0]/45">
+                {isTe ? 'సగటు / భావం' : 'Avg / house'}
+              </div>
+              <div className="text-lg font-bold text-[#EDE8E0] font-mono-tabular">{avPhala.averageBindus}</div>
+              <div className="text-[9px] text-[#EDE8E0]/40">{isTe ? '28.08 = 337 ÷ 12' : '28.08 = 337 ÷ 12'}</div>
+            </div>
+            <div className="rounded-xl border border-[#66CBBF]/25 bg-[#66CBBF]/[0.06] px-3 py-2">
+              <div className="text-[9.5px] font-mono-tabular uppercase tracking-wider text-[#66CBBF]/70">
+                {isTe ? 'బలమైన భావాలు' : 'Strong houses'}
+              </div>
+              <div className="text-lg font-bold text-[#66CBBF] font-mono-tabular">{avPhala.bandCounts.strong} / 12</div>
+              <div className="text-[9px] text-[#EDE8E0]/40">{isTe ? '30+ బిందువులు' : '30+ bindus'}</div>
+            </div>
+            <div className="rounded-xl border border-[#E08585]/25 bg-[#E08585]/[0.06] px-3 py-2">
+              <div className="text-[9.5px] font-mono-tabular uppercase tracking-wider text-[#E08585]/70">
+                {isTe ? 'బలహీన భావాలు' : 'Weak houses'}
+              </div>
+              <div className="text-lg font-bold text-[#E08585] font-mono-tabular">{avPhala.bandCounts.weak} / 12</div>
+              <div className="text-[9px] text-[#EDE8E0]/40">{isTe ? '24 లేదా తక్కువ' : '24 or less'}</div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10.5px] font-mono-tabular">
+              <thead className="text-[#C9A96E]/70 uppercase tracking-wider text-[9px]">
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-1.5 pr-2">{isTe ? 'భావం' : 'House'}</th>
+                  <th className="text-left py-1.5 pr-2">{isTe ? 'రాశి' : 'Rāśi'}</th>
+                  <th className="text-left py-1.5 pr-2">{isTe ? 'బిందువులు' : 'Bindus'}</th>
+                  <th className="text-left py-1.5 pr-2 w-32">{isTe ? 'బలం' : 'Strength'}</th>
+                  <th className="text-left py-1.5">{isTe ? 'ఫలిత వర్గం' : 'Band'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {avPhala.rows.map((r) => (
+                  <tr key={r.house} className="border-b border-white/5 text-[#EDE8E0]/75">
+                    <td className="py-1.5 pr-2 whitespace-nowrap">
+                      <span className="text-[#C9A96E]">{r.house}.</span> {r.houseNameTe}
+                    </td>
+                    <td className="py-1.5 pr-2 whitespace-nowrap">{r.signTe}</td>
+                    <td className="py-1.5 pr-2 font-bold text-[#EDE8E0]">{r.bindus}</td>
+                    <td className="py-1.5 pr-3">
+                      <Bar
+                        value={r.bindus}
+                        max={36}
+                        color={
+                          r.band === 'strong' ? '#66CBBF' : r.band === 'moderate' ? '#C9A96E' : '#E08585'
+                        }
+                      />
+                    </td>
+                    <td className="py-1.5 whitespace-nowrap">
+                      <span
+                        className={
+                          r.band === 'strong'
+                            ? 'text-[#66CBBF]'
+                            : r.band === 'moderate'
+                              ? 'text-[#E4C68C]'
+                              : 'text-[#E08585]'
+                        }
+                      >
+                        {r.bandLabelTe}
+                      </span>
+                      <span className="text-[#EDE8E0]/30"> · {r.lordTe}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {avPhala.rows.map((r) => (
+              <div
+                key={r.house}
+                className={
+                  'rounded-xl border px-3 py-2.5 space-y-1.5 ' +
+                  (r.band === 'strong'
+                    ? 'border-[#66CBBF]/25 bg-[#66CBBF]/[0.04]'
+                    : r.band === 'moderate'
+                      ? 'border-[#C9A96E]/20 bg-[#C9A96E]/[0.04]'
+                      : 'border-[#E08585]/25 bg-[#E08585]/[0.04]')
+                }
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-[11.5px] font-semibold text-[#EDE8E0] leading-snug">
+                    {r.house}వ భావం — {r.houseNameTe}
+                    <span className="block text-[9.5px] font-normal text-[#EDE8E0]/40">{r.houseThemeTe}</span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-[12px] font-bold font-mono-tabular text-[#E4C68C]">{r.bindus}</div>
+                    <div className="text-[8.5px] text-[#EDE8E0]/35 font-mono-tabular">{r.bandRangeTe}</div>
+                  </div>
+                </div>
+                <p className="text-[10.5px] leading-relaxed text-[#EDE8E0]/75">{r.phalaTe}</p>
+                <p className="text-[9.5px] leading-relaxed text-[#9B8FD4]/85">
+                  <span className="text-[#9B8FD4] font-semibold">{isTe ? 'అధిపతి:' : 'Lord:'}</span>{' '}
+                  {r.lordPlacementTe} · {isTe ? 'ఆ రాశికి' : 'rasi'} {r.lordRasiBindus}{' '}
+                  {isTe ? 'బిందువులు' : 'bindus'}
+                </p>
+                {r.band !== 'strong' && (
+                  <p className="text-[9.5px] leading-relaxed text-[#66CBBF]/80">
+                    <span className="font-semibold">{isTe ? 'పరిహారం:' : 'Remedy:'}</span> {r.pariharaTe}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-[#0B1020]/60 px-3.5 py-3 space-y-2">
+            <div className="text-[10px] font-mono-tabular uppercase tracking-wider text-[#C9A96E] font-semibold">
+              {isTe ? 'సమగ్ర నిర్ణయం' : 'Synthesis'}
+            </div>
+            <p className="text-[11px] leading-relaxed text-[#EDE8E0]/80">{avPhala.synthesisTe}</p>
+            <p className="text-[10.5px] leading-relaxed text-[#EDE8E0]/60">{avPhala.lagnaSeventhNoteTe}</p>
+            <p className="text-[10.5px] leading-relaxed text-[#EDE8E0]/60">{avPhala.rasiRankingTe}</p>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              <div className="text-[9.5px] text-[#EDE8E0]/50">
+                {isTe ? 'కేంద్ర సగటు' : 'Kendra avg'}:{' '}
+                <span className="text-[#EDE8E0]/80 font-mono-tabular">{avPhala.kendraAvg}</span> ·{' '}
+                {isTe ? 'త్రికోణ' : 'Trikona'}:{' '}
+                <span className="text-[#EDE8E0]/80 font-mono-tabular">{avPhala.trikonaAvg}</span> ·{' '}
+                {isTe ? 'దుష్ఠాన' : 'Dusthana'}:{' '}
+                <span className="text-[#EDE8E0]/80 font-mono-tabular">{avPhala.dusthanaAvg}</span> ·{' '}
+                {isTe ? 'ఉపచయ' : 'Upachaya'}:{' '}
+                <span className="text-[#EDE8E0]/80 font-mono-tabular">{avPhala.upachayaAvg}</span>
+              </div>
+              <div className="text-[9.5px] text-[#EDE8E0]/50">
+                {isTe ? 'బలమైనవి' : 'Strong'}:{' '}
+                <span className="text-[#66CBBF] font-mono-tabular">{avPhala.strongHousesTe}</span> ·{' '}
+                {isTe ? 'బలహీనమైనవి' : 'Weak'}:{' '}
+                <span className="text-[#E08585] font-mono-tabular">{avPhala.weakHousesTe}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3.5 py-2.5 space-y-1.5">
+            <div className="text-[10px] font-mono-tabular uppercase tracking-wider text-[#EDE8E0]/45">
+              {isTe ? 'నక్షత్ర స్థితి సూచన (సాముదాయిక బిందువుల ఆధారం)' : 'Nakshatra placement notes'}
+            </div>
+            <ul className="space-y-0.5">
+              {avPhala.nakshatraNotesTe.map((n) => (
+                <li key={n} className="text-[10px] leading-relaxed text-[#EDE8E0]/60">
+                  · {n}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="text-[9.5px] leading-relaxed text-[#EDE8E0]/40">{avPhala.classicalRuleTe}</p>
+        </div>
+      </div>
+
+      {/* ── అంతర దశా ఫల పుస్తకం (81 భుక్తులు) ────────────────── */}
+      <div className={panel}>
+        <div className={panelHead}>
+          <Layers className="w-3.5 h-3.5" />
+          {isTe
+            ? 'అంతర దశా ఫల పుస్తకం — 9 మహాదశలు × 9 భుక్తులు = 81 ఫలాలు'
+            : 'Antardaśā phala book — 9 mahādaśās × 9 bhuktis = 81 readings'}
+        </div>
+        <div className="p-4 space-y-3">
+          <p className="text-[11px] leading-relaxed text-[#EDE8E0]/70">{adBook.currentPathTe}</p>
+
+          <div className="flex flex-wrap gap-1.5">
+            {adBook.sections.map((sec, i) => (
+              <button
+                key={`${sec.lord}-${i}`}
+                type="button"
+                onClick={() => setMahaTab(i)}
+                className={
+                  'px-2.5 py-1 rounded-full text-[10.5px] border transition-colors ' +
+                  (i === activeMahaIndex
+                    ? 'bg-[#C9A96E]/20 border-[#C9A96E]/60 text-[#E4C68C] font-semibold'
+                    : 'bg-white/[0.03] border-white/10 text-[#EDE8E0]/60 hover:border-white/25')
+                }
+              >
+                {sec.lordTe}
+                <span className="text-[9px] ml-1 opacity-60">{sec.startLocal.slice(0, 4)}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-[#C9A96E]/25 bg-[#C9A96E]/[0.06] px-3 py-2.5 space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[12px] font-semibold text-[#E4C68C]">
+                {activeMaha.lordTe} మహాదశ · {activeMaha.startLocal.slice(0, 10)} → {activeMaha.endLocal.slice(0, 10)}
+              </div>
+              <div className="text-[10px] font-mono-tabular text-[#EDE8E0]/60">
+                {isTe ? 'సగటు అనుకూలత' : 'avg'} <span className="text-[#66CBBF]">{activeMaha.scoreAvg}</span>/100
+              </div>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-[#EDE8E0]/70">{activeMaha.summaryTe}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            {activeMaha.rows.map((r) => (
+              <div
+                key={`${r.mahaLord}-${r.bhuktiLord}`}
+                className={
+                  'rounded-xl border px-3 py-2 space-y-1 ' +
+                  (r.isRunning
+                    ? 'border-[#66CBBF]/45 bg-[#66CBBF]/[0.07]'
+                    : 'border-white/8 bg-white/[0.02]')
+                }
+              >
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <div className="text-[11px] font-semibold text-[#EDE8E0]">
+                    {r.bhuktiLordTe} భుక్తి
+                    <span className="ml-2 font-mono-tabular text-[10px] font-normal text-[#EDE8E0]/55">
+                      {r.startLocal.slice(0, 10)} → {r.endLocal.slice(0, 10)} · {r.widthTe}
+                    </span>
+                    {r.isRunning && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded-full bg-[#66CBBF]/20 text-[#66CBBF] text-[8.5px] font-bold uppercase tracking-wider">
+                        {isTe ? 'నడుస్తోంది' : 'current'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-[#EDE8E0]/40">{r.relationTe}</span>
+                    <div className="w-16">
+                      <Bar
+                        value={r.score}
+                        max={100}
+                        color={r.score >= 70 ? '#66CBBF' : r.score >= 50 ? '#C9A96E' : '#E08585'}
+                      />
+                    </div>
+                    <span className="text-[10px] font-mono-tabular text-[#EDE8E0]/60 w-6 text-right">{r.score}</span>
+                  </div>
+                </div>
+                <div className="text-[10.5px] font-semibold text-[#E4C68C]">{r.headlineTe}</div>
+                <p className="text-[10.5px] leading-relaxed text-[#EDE8E0]/70">{r.phalaTe}</p>
+                <p className="text-[9.5px] leading-relaxed text-[#E08585]/80">{r.cautionTe}</p>
+                <p className="text-[9.5px] leading-relaxed text-[#66CBBF]/80">{r.remedyTe}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[10px] leading-relaxed text-[#EDE8E0]/45">{adBook.methodNoteTe}</p>
+          <p className="text-[10px] leading-relaxed text-[#EDE8E0]/40">{adBook.sourceNoteTe}</p>
         </div>
       </div>
     </div>

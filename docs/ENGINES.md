@@ -325,7 +325,7 @@ the UI, the PDF and the verification harness cannot drift apart.
 
 ### 6.3 Pin-to-pin gate — `npm run verify:jathaka`
 
-`scripts/verify-jathaka.ts` runs **238 checks** against the three reference
+`scripts/verify-jathaka.ts` runs **252 checks** against the three reference
 PDFs supplied by the user:
 
 | Reference | Chart | What is pinned |
