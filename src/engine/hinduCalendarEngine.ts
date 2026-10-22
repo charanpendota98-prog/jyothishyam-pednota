@@ -716,7 +716,12 @@ export function resolveHinduEra(dateISO: string, geo: GeoContext, mode: Sidereal
   const isShukla = pakshaIdx < 15;
   const purnimantaIdx = isShukla ? masa.masaIndex : (masa.masaIndex + 1) % 12;
 
-  const sunSid = siderealLongitude('Sun', noonJd, mode);
+  // Saṅkrānti rule: a civil day belongs to the new solar month as soon as the
+  // ingress happens *during* that day, so the sign is taken at the end of the
+  // civil day rather than at sunrise. This is the Drik Panchang behaviour
+  // (Tulā saṅkrānti 2026-10-17 19:51 → 17 Oct is "Tulā 1", 22 Oct "Tulā 6").
+  const endOfDayJd = localMidnightJd(dateISO, tz) + 1 - 1e-5;
+  const sunSid = siderealLongitude('Sun', endOfDayJd, mode);
   const sunSign = Math.floor(sunSid / 30) % 12;
   const rituIdx = Math.floor(((sunSign + 12 - 0) % 12) / 2); // Mesha/Vrishabha → Vasanta
   const lunarRituIdx = Math.floor((((masa.masaIndex + 12 - 0) % 12) / 2)) % 6;
@@ -727,15 +732,15 @@ export function resolveHinduEra(dateISO: string, geo: GeoContext, mode: Sidereal
   const solarMonthDay = (() => {
     const gy = Number(dateISO.slice(0, 4));
     const candidates = [sankrantiJd(gy, sunSign, mode), sankrantiJd(gy - 1, sunSign, mode)];
-    const valid = candidates.filter((t) => t <= sunriseJd + 1e-6);
+    const valid = candidates.filter((t) => t <= endOfDayJd + 1e-6);
     if (valid.length === 0) return 1;
     const last = Math.max(...valid);
-    // Pravishte convention: the ingress day itself is day 1 when the sankranti
-    // occurs before sunset; a night ingress starts the count on the next day.
-    const ingressISO0 = civilDateAt(last, tz);
-    const sunsetJd = riseSetForLocalDate(ingressISO0, geo.lat, geo.lng, tz).sunsetJd;
-    const ingressISO =
-      sunsetJd !== null && last <= sunsetJd ? ingressISO0 : addDaysISO(ingressISO0, 1);
+    // "Pravishte" counting: the civil day on which the saṅkrānti occurs is day 1,
+    // irrespective of the clock time of the ingress. This is the Drik Panchang
+    // convention (e.g. Tulā saṅkrānti 2026-10-17 19:51 → 2026-10-22 prints
+    // "Tulā 6", not "5"), and it is the only way the printed "solar month day"
+    // stays continuous across a midnight ingress.
+    const ingressISO = civilDateAt(last, tz);
     const [iy, im, id] = ingressISO.split('-').map(Number);
     const [dy, dm, dd] = dateISO.split('-').map(Number);
     const diff = Math.round(
