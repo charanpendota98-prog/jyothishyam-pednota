@@ -33,6 +33,8 @@ import { generateSiddhantaAdvancedAppendices } from '../engine/siddhantaAdvanced
 import { generateSampoornaLifeChronicle } from '../engine/sampoornaLifeChronicleEngine.ts';
 import { generateKundaliSookshmaNadiReport } from '../engine/kundaliSookshmaNadiEngine.ts';
 import { computeAshtakavargaPhala } from '../engine/ashtakavargaPhalaEngine.ts';
+import { computeAvakahada } from '../engine/avakahadaEngine.ts';
+import { computeYogaVichara } from '../engine/yogaVicharaEngine.ts';
 import { computeAntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
 import { computeGrahaSahayaka, AREAS as SAHAYAKA_AREAS } from '../engine/grahaSahayakaEngine.ts';
 import {
@@ -60,6 +62,8 @@ type JathakamChapter =
   | 'siddhanta_verifications'
   | 'siddhanta_appendices'
   | 'panchanga_kundali'
+  | 'avakahada_ghata'
+  | 'yoga_vichara'
   | 'shodashavarga_jaimini'
   | 'shadbala_ashtakavarga'
   | 'grantha_research'
@@ -119,6 +123,8 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
     () => generateKundaliSookshmaNadiReport(chart),
     [chart]
   );
+  const avakahada = useMemo(() => computeAvakahada(chart), [chart]);
+  const yogaVichara = useMemo(() => computeYogaVichara(chart), [chart]);
   const avPhala = useMemo(() => computeAshtakavargaPhala(chart), [chart]);
   const adBook = useMemo(() => computeAntardashaPhalaBook(chart), [chart]);
   const sahayaka = useMemo(() => computeGrahaSahayaka(chart), [chart]);
@@ -214,11 +220,13 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
   }, [externalPdfTrigger]);
 
   const chapters: { id: JathakamChapter; labelTe: string; icon: React.ReactNode }[] = [
-    { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (All 14 Chapters)', icon: <Layers className="w-3.5 h-3.5" /> },
+    { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (All 16 Chapters)', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'sampoorna_jeevita_charitra', labelTe: '0. సంపూర్ణ జీవిత చరిత్ర (0–100 సం. 7 పర్వాలు & నవగ్రహ ఫలితాలు)', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'sookshma_nadi_kp', labelTe: '0A. 100% కుండలి సూక్ష్మ నాడి, భావాధిపతి, KP సబ్-లార్డ్ & 18 మూల గ్రంథాలు', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'tajika_varshaphala', labelTe: '0B. తాజిక వర్షఫలం & 12-నెలల దినచర్య ఫలితాలు (Varshaphala & 12-Month)', icon: <Calendar className="w-3.5 h-3.5" /> },
     { id: 'panchanga_kundali', labelTe: '1. పంచాంగం, ఇష్టఘడియలు & నవగ్రహాలు', icon: <Compass className="w-3.5 h-3.5" /> },
+    { id: 'avakahada_ghata', labelTe: '1A. అవకహడ, ఘాత చక్రం & నామాక్షరం', icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { id: 'yoga_vichara', labelTe: '1B. యోగ విచారణ — రాజ, ధన & మహాపురుష యోగాలు', icon: <Award className="w-3.5 h-3.5" /> },
     { id: 'siddhanta_verifications', labelTe: '2. గణిత తనిఖీ, భావ చలిత, పంచధా మైత్రి & అవస్థలు', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
     { id: 'siddhanta_appendices', labelTe: '3. మాందీ-ఉపగ్రహాలు, ఇష్ట-కష్ట ఫల, భావ బల & శోధన పిండ', icon: <Award className="w-3.5 h-3.5" /> },
     { id: 'shodashavarga_jaimini', labelTe: '4. షోడశవర్గ & జైమిని కారకులు', icon: <Award className="w-3.5 h-3.5" /> },
@@ -2406,6 +2414,283 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================================== */}
+      {/* CHAPTER 1A: AVAKAHADA CHAKRA · GHATA CHAKRA · NAMA AKSHARA (శాస్త్ర మూల పరిచయ అధ్యాయం) */}
+      {/* ==================================================================================== */}
+      {showSection('avakahada_ghata') && (
+        <div className="space-y-6 print-page-break">
+          <div className="bg-[#0F1326] border-2 border-[#C9A96E]/55 rounded-xl p-4 sm:p-6 md:p-8 space-y-5 shadow-xl">
+            <div className="border-b border-white/10 pb-4">
+              <div className="text-xs uppercase tracking-widest text-[#C9A96E] font-semibold flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#C9A96E]" />
+                అధ్యాయం 1A · అవకహడ చక్రం, ఘాత చక్రం & నామాక్షర నిర్ణయం
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[#EDE8E0] mt-1">
+                జన్మ స్వరూపం — నక్షత్రం, పాదం, రాశి, వర్ణ-వశ్య-యోని-నాడి & ఘాత (నిషిద్ధ) కాలాలు
+              </h2>
+              <p className="text-xs text-[#EDE8E0]/70 mt-2 leading-relaxed">
+                ప్రతి జాతక పత్రిక ఆరంభంలో ఉండే <strong className="text-[#C9A96E]">అవకహడ చక్రం</strong> —
+                అనగా “అ అకారాది క్రమంలో” జన్మ వివరాలు. ఇది ఫలితం చెప్పే అధ్యాయం కాదు; తరువాతి అన్ని
+                అధ్యాయాలకు <em>పునాది</em>. చంద్రుని రాశి (జన్మ రాశి) ఆధారంగా పంచాంగ పంచకం, వర్ణ-వశ్య-యోని-గణ-నాడి
+                కూటాలు, జన్మ నామాక్షరం మరియు ఘాత చక్రం — అన్నీ ఇక్కడ ఒకే చోట సిద్ధాంత సూత్రంతో సహా ఇవ్వబడ్డాయి.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* అవకహడ పట్టిక */}
+              <div className="bg-[#090C18]/85 border border-[#C9A96E]/40 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-[#C9A96E] border-b border-white/10 pb-2 mb-3 flex items-center justify-between">
+                  <span>అవకహడ చక్రం (జన్మ వివర పట్టిక)</span>
+                  <span className="text-[11px] font-normal text-[#EDE8E0]/50">Avakahada Chakra</span>
+                </h3>
+                <table className="w-full text-xs border-collapse">
+                  <tbody>
+                    {avakahada.rows.map((r) => (
+                      <tr key={r.key} className="border-b border-white/5 last:border-0">
+                        <td className="py-1.5 pr-2 text-[#EDE8E0]/65 align-top w-[42%]">{r.labelTe}</td>
+                        <td className="py-1.5 font-semibold text-[#EDE8E0] align-top">
+                          {r.valueTe}
+                          {r.noteTe ? (
+                            <span className="block text-[11px] font-normal text-[#EDE8E0]/50 mt-0.5">{r.noteTe}</span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ఘాత చక్రం */}
+              <div className="space-y-4">
+                <div className="bg-[#090C18]/85 border border-[#E8A317]/50 rounded-lg p-4">
+                  <h3 className="text-sm font-bold text-[#E8A317] border-b border-white/10 pb-2 mb-3 flex items-center justify-between">
+                    <span>ఘాత చక్రం — జన్మ రాశి ప్రకారం నిషిద్ధ కాలాలు</span>
+                    <span className="text-[11px] font-normal text-[#EDE8E0]/50">Ghata Chakra</span>
+                  </h3>
+                  <div className="text-[11px] text-[#EDE8E0]/70 mb-2">
+                    జన్మ రాశి: <strong className="text-[#C9A96E]">{avakahada.ghata.janmaRasiTe}</strong> —
+                    ఈ రాశికి శాస్త్రంలో నిర్దిష్టమైన మాస, తిథి సమూహం, వార, నక్షత్ర, యోగ, కరణ, ప్రహరం కలవు.
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    {[
+                      { k: 'ఘాత మాసం', v: avakahada.ghata.row.masaTe },
+                      { k: 'ఘాత తిథి సమూహం', v: avakahada.ghata.row.tithiGroupTe },
+                      { k: 'ఘాత వారం', v: avakahada.ghata.row.varaTe },
+                      { k: 'ఘాత నక్షత్రం', v: avakahada.ghata.row.nakshatraTe },
+                      { k: 'ఘాత యోగం', v: avakahada.ghata.row.yogaTe },
+                      { k: 'ఘాత కరణం', v: avakahada.ghata.row.karanaTe },
+                      { k: 'ఘాత ప్రహరం', v: `${avakahada.ghata.row.prahara}వ ప్రహరం` },
+                      { k: 'తిథి సమూహ స్వభావం', v: avakahada.ghata.tithiGroupTe },
+                    ].map((it) => (
+                      <div key={it.k} className="flex justify-between gap-2 border-b border-white/5 py-1">
+                        <span className="text-[#EDE8E0]/60">{it.k}</span>
+                        <span className="font-semibold text-[#EDE8E0] text-right">{it.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-[11px] leading-relaxed text-[#EDE8E0]/75 border-t border-white/10 pt-2">
+                    {avakahada.ghata.meaningTe}
+                  </p>
+                </div>
+
+                <div className="bg-[#5BBFB5]/10 border border-[#5BBFB5]/40 rounded-lg p-4">
+                  <h3 className="text-sm font-bold text-[#5BBFB5] border-b border-[#5BBFB5]/25 pb-2 mb-2">
+                    నామాక్షరం — పేరు ఎలా పెట్టాలి?
+                  </h3>
+                  <p className="text-xs text-[#EDE8E0]/85 leading-relaxed">
+                    జన్మ నక్షత్రం <strong className="text-[#C9A96E]">{jathakam.janmaNakshatramTe}</strong> —
+                    <strong className="text-[#C9A96E]"> {jathakam.janmaPadam}వ పాదం</strong> అక్షరం
+                    <strong className="text-[#5BBFB5]"> “{jathakam.namaAksharamTe}”</strong>.
+                    శాస్త్ర ప్రకారం పేరు ఈ అక్షరంతో ఆరంభం కావడం శుభం; అది సాధ్యం కానప్పుడు అదే నక్షత్రంలోని మిగతా పాదాక్షరాలు
+                    ({jathakam.allFourPadaAksharaluTe}) ఉపయోగించవచ్చు. ఇది తంత్రం కాదు — శబ్ద-స్పందన ఆధారిత
+                    సంప్రదాయ సూచన మాత్రమే; భావం, అర్థం ముఖ్యం.
+                  </p>
+                  <p className="mt-2 text-[11px] text-[#EDE8E0]/65 leading-relaxed">
+                    వేద జ్యోతిషంలో పేరు-రాశి అనేది నామాక్షర పాదానికి చెందిన నక్షత్ర రాశిని సూచిస్తుంది — కేవలం
+                    జన్మ రాశిని (చంద్ర రాశిని) కాదు. వాస్తు నామ సూచికలో ఈ భేదం స్పష్టంగా తెలుపబడింది.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* సమన్వయ వివరణ */}
+            <div className="bg-[#090C18]/85 border border-[#C9A96E]/35 rounded-lg p-4">
+              <h3 className="text-sm font-bold text-[#C9A96E] mb-2">శ్లోక సూత్రం & సమన్వయ వివరణ</h3>
+              <p className="text-xs text-[#EDE8E0]/85 leading-relaxed">{avakahada.summaryTe}</p>
+              <ul className="mt-2 space-y-1 text-[11px] text-[#EDE8E0]/70 leading-relaxed list-disc pl-5">
+                <li><strong className="text-[#EDE8E0]">జన్మ రాశి</strong> — చంద్రుడు ఉన్న రాశి; అన్ని కూట మైత్రి (వర్ణ, వశ్య, తార, యోని, గ్రహ మైత్రి, గణ, భకూట, నాడి) లెక్కలకు ఆధారం.</li>
+                <li><strong className="text-[#EDE8E0]">జన్మ లగ్నం</strong> — ఆరంభ సమయంలో తూర్పు క్షితిజం; భావ విభజన (1–12) దీని నుండే.</li>
+                <li><strong className="text-[#EDE8E0]">గణం · యోని · నాడి · రజ్జు</strong> — వివాహ మేలుకూర్పు (అష్టకూట) పరీక్షకు; ఇవి జన్మ నక్షత్రం నుండి నిర్ణయమవుతాయి.</li>
+                <li><strong className="text-[#EDE8E0]">ఇష్ట ఘడియలు</strong> — సూర్యోదయం నుండి జన్మ సమయం వరకు గడిచిన ఘడియలు (1 ఘడియ = 24 నిమిషాలు); దశా నిల్వ గణనకు ప్రాణాధారం.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================================== */}
+      {/* CHAPTER 1B: YOGA VICHARA — RAJA / DHANA / MAHAPURUSHA YOGAS (యోగ విచారణ) */}
+      {/* ==================================================================================== */}
+      {showSection('yoga_vichara') && (
+        <div className="space-y-6 print-page-break">
+          <div className="bg-[#0F1326] border-2 border-[#C9A96E]/55 rounded-xl p-4 sm:p-6 md:p-8 space-y-5 shadow-xl">
+            <div className="border-b border-white/10 pb-4 flex flex-wrap items-start justify-between gap-3">
+              <div className="max-w-3xl">
+                <div className="text-xs uppercase tracking-widest text-[#C9A96E] font-semibold flex items-center gap-2">
+                  <Award className="w-4 h-4 text-[#C9A96E]" />
+                  అధ్యాయం 1B · యోగ విచారణ (Yoga Vichara)
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-[#EDE8E0] mt-1">
+                  రాజ యోగాలు, ధన యోగాలు, పంచ మహాపురుష యోగాలు & చంద్ర-సూర్య యోగాలు — బలం, ఆధారం & ఫలితం
+                </h2>
+                <p className="text-xs text-[#EDE8E0]/70 mt-2 leading-relaxed">
+                  “గ్రహం బలవంతుడా?” అనేది ఒక ప్రశ్న. “ఏ గ్రహాలు కలిసి ఏ <strong className="text-[#C9A96E]">యోగాన్ని</strong> ఏర్పరుస్తున్నాయి?”
+                  అనేది మరో ప్రశ్న — జాతక ఫలాన్ని నిర్ణయించేది ఈ రెండోదే. క్రింద ప్రతి యోగానికి
+                  ఏర్పడిన/కాని స్థితి, దానికి కారణమైన గ్రహ-రాశి-భావం, శాస్త్ర సూత్రం, సులభ తెలుగులో ఫలితం
+                  మరియు బలహీనత ఉంటే పరిహారం — అన్నీ ఒకే పట్టికలో.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 text-xs">
+                <span className="px-3 py-1.5 rounded-lg bg-[#C9A96E]/20 border border-[#C9A96E] font-bold text-[#C9A96E]">
+                  గుర్తించిన యోగాలు: {yogaVichara.activeCount}
+                </span>
+                <span className="px-3 py-1.5 rounded-lg bg-[#5BBFB5]/15 border border-[#5BBFB5]/50 font-bold text-[#5BBFB5]">
+                  రాజ యోగాలు: {yogaVichara.rajaYogaCount} · ధన యోగాలు: {yogaVichara.dhanaYogaCount}
+                </span>
+              </div>
+            </div>
+
+            {/* సారాంశం & తీర్పు */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-[#090C18]/90 border border-[#C9A96E]/35 rounded-lg p-4">
+                <div className="text-xs font-bold text-[#C9A96E] mb-1">యోగ సారాంశం</div>
+                <p className="text-xs text-[#EDE8E0]/90 leading-relaxed">{yogaVichara.summaryTe}</p>
+              </div>
+              <div className="bg-[#5BBFB5]/10 border border-[#5BBFB5]/40 rounded-lg p-4">
+                <div className="text-xs font-bold text-[#5BBFB5] mb-1">శాస్త్ర తీర్పు</div>
+                <p className="text-xs text-[#EDE8E0]/90 leading-relaxed">{yogaVichara.verdictTe}</p>
+              </div>
+            </div>
+
+            {/* ఏర్పడిన యోగాల కార్డులు */}
+            <div>
+              <h3 className="text-sm font-bold text-[#EDE8E0] mb-2 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#5BBFB5]" />
+                మీ కుండలిలో ఏర్పడిన యోగాలు ({yogaVichara.findings.filter((f) => f.present).length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {yogaVichara.findings.filter((f) => f.present).map((f) => (
+                  <div key={f.id} className="bg-[#090C18]/90 border border-[#C9A96E]/40 rounded-lg p-3.5 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-bold text-[#C9A96E]">{f.nameTe}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-[#EDE8E0]/45">{f.nameEn}</div>
+                      </div>
+                      <span className="shrink-0 px-2 py-0.5 rounded bg-[#5BBFB5]/15 border border-[#5BBFB5]/40 text-[10px] font-bold text-[#5BBFB5]">
+                        {f.strengthPct}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${f.strengthPct}%`, background: 'linear-gradient(90deg,#C9A96E,#5BBFB5)' }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-[#EDE8E0]/70 leading-relaxed">{f.evidenceTe}</p>
+                    <p className="text-xs text-[#EDE8E0]/90 leading-relaxed">{f.phalamTe}</p>
+                    <p className="text-[10px] text-[#C9A96E]/80 leading-relaxed border-t border-white/10 pt-1.5">
+                      సూత్రం: {f.sutraTe}
+                    </p>
+                    {f.cautionTe ? (
+                      <p className="text-[10px] text-[#E8A317] leading-relaxed">⚠ {f.cautionTe}</p>
+                    ) : null}
+                  </div>
+                ))}
+                {yogaVichara.findings.filter((f) => f.present).length === 0 && (
+                  <div className="text-xs text-[#EDE8E0]/60 border border-white/10 rounded-lg p-4">
+                    ప్రామాణిక యోగాలు ఏవీ స్పష్టంగా ఏర్పడలేదు — ఫలితాలు గ్రహ స్థితి మరియు దశా కాలంపై ఆధారపడతాయి.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* పూర్తి పట్టిక — ఏర్పడని యోగాలతో సహా */}
+            <details open className="bg-[#090C18]/85 border border-white/15 rounded-lg p-4">
+              <summary className="cursor-pointer text-sm font-bold text-[#EDE8E0]">
+                సంపూర్ణ యోగ పట్టిక — పరీక్షించిన {yogaVichara.findings.length} యోగాలు (ఏర్పడనివి కూడా ఎందుకు లేవో స్పష్టంగా)
+              </summary>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-[11px] border-collapse">
+                  <thead>
+                    <tr className="text-[#C9A96E] border-b border-[#C9A96E]/40">
+                      <th className="text-left py-2 pr-2">యోగం</th>
+                      <th className="text-left py-2 pr-2">స్థితి</th>
+                      <th className="text-left py-2 pr-2">బలం</th>
+                      <th className="text-left py-2 pr-2">ఆధారం (ఏ గ్రహం-రాశి-భావం)</th>
+                      <th className="text-left py-2">ఫలితం</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {yogaVichara.findings.map((f) => (
+                      <tr key={f.id} className={`border-b border-white/5 align-top ${f.present ? 'bg-[#C9A96E]/[0.04]' : ''}`}>
+                        <td className="py-2 pr-2">
+                          <div className={`font-bold ${f.present ? 'text-[#C9A96E]' : 'text-[#EDE8E0]/55'}`}>{f.nameTe}</div>
+                          <div className="text-[10px] text-[#EDE8E0]/40">{f.nameEn}</div>
+                        </td>
+                        <td className="py-2 pr-2">
+                          <span className={`font-semibold ${f.present ? 'text-[#5BBFB5]' : 'text-[#EDE8E0]/45'}`}>
+                            {f.present ? 'ఏర్పడింది' : 'లేదు'}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-2 font-mono-tabular">
+                          <span className={f.present ? 'text-[#C9A96E] font-bold' : 'text-[#EDE8E0]/40'}>
+                            {f.present ? `${f.strengthPct}%` : '—'}
+                          </span>
+                          <div className="text-[10px] text-[#EDE8E0]/45">{f.present ? f.strengthTe : ''}</div>
+                        </td>
+                        <td className="py-2 pr-2 text-[#EDE8E0]/75">{f.evidenceTe}</td>
+                        <td className="py-2 text-[#EDE8E0]/85">
+                          {f.phalamTe}
+                          <div className="text-[10px] text-[#C9A96E]/70 mt-1">{f.sutraTe}</div>
+                          {f.cautionTe ? <div className="text-[10px] text-[#E8A317] mt-0.5">⚠ {f.cautionTe}</div> : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+
+            {/* దశా అధిపతుల యోగాలు + ఎలా చదవాలి */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-[#090C18]/90 border border-white/10 rounded-lg p-4">
+                <div className="text-xs font-bold text-[#EDE8E0] mb-2">ఏ గ్రహం ఏ యోగానికి కారణం?</div>
+                <div className="space-y-1.5 text-[11px]">
+                  {yogaVichara.dashaLordYogas.map((d) => (
+                    <div key={d.planetTe} className="flex gap-2 border-b border-white/5 pb-1">
+                      <span className="text-[#C9A96E] font-bold shrink-0 w-16">{d.planetTe}</span>
+                      <span className="text-[#EDE8E0]/80">{d.yogasTe.join(', ')}</span>
+                    </div>
+                  ))}
+                  {yogaVichara.dashaLordYogas.length === 0 && (
+                    <div className="text-[#EDE8E0]/55">—</div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-[#090C18]/90 border border-[#C9A96E]/30 rounded-lg p-4">
+                <div className="text-xs font-bold text-[#C9A96E] mb-2">ఈ అధ్యాయం ఎలా చదవాలి?</div>
+                <ul className="space-y-1.5 text-[11px] text-[#EDE8E0]/80 leading-relaxed list-disc pl-4">
+                  <li><strong className="text-[#EDE8E0]">“ఏర్పడింది”</strong> అంటే యోగానికి కావలసిన శాస్త్ర నియమాలు అన్నీ నెరవేరాయి.</li>
+                  <li><strong className="text-[#EDE8E0]">బలం %</strong> — క్షేత్ర బలం (ఉచ్ఛ/స్వక్షేత్ర), భావ స్థితి, మౌఢ్యం, వక్రత్వం కలిపి లెక్కించిన తీవ్రత. 80%+ అంటే పూర్తి ఫలం.</li>
+                  <li>యోగం లేకపోవడం “అశుభం” కాదు — ఆ రంగంలో ఫలం కృషి, దశా కాలంపై ఆధారపడుతుంది అని మాత్రమే.</li>
+                  <li>యోగ ఫలం ఆ యోగానికి కారణమైన గ్రహాల <strong className="text-[#EDE8E0]">మహాదశా-భుక్తి</strong> కాలంలో స్పష్టంగా కనిపిస్తుంది (అధ్యాయం 9 చూడండి).</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       )}

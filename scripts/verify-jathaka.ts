@@ -30,7 +30,9 @@
 import { calculateChart, type CompleteChartResult } from '../src/engine/ephemeris';
 import { computeShadbalaDeep } from '../src/engine/shadbalaDeepEngine';
 import { computeVargaVimshopaka, VIMSHOPAKA_SCHEMES } from '../src/engine/vargaVimsopakaEngine';
-import { computeAvakahada } from '../src/engine/avakahadaEngine';
+import { computeAvakahada, GHATA_TABLE } from '../src/engine/avakahadaEngine';
+import { computeYogaVichara } from '../src/engine/yogaVicharaEngine';
+import { SampoornaJathakamView } from '../src/components/SampoornaJathakamView';
 import { computeBhavaSandhi } from '../src/engine/bhavaSandhiEngine';
 import { computeUpagrahas } from '../src/engine/upagrahaEngine';
 import { computeVimshottariDeep } from '../src/engine/vimshottariDeepEngine';
@@ -1000,6 +1002,148 @@ check(
   allPadas.length === 108 && roundTrip.length === 0,
   roundTrip.length ? roundTrip.slice(0, 3).map((p) => `${p.s}→${p.nak}:${p.pada}`).join(' ') : '108/108 సరైనవి'
 );
+// ─────────────────────────────────────────────────────────────────────────
+//  యోగ విచారణ — శాస్త్ర నియమాల స్వతంత్ర తనిఖీ
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── యోగ విచారణ (అధ్యాయం 1B) ──');
+const yogaRep = computeYogaVichara(KUNDALI);
+check(
+  'యోగ పరీక్ష — 19 ప్రామాణిక యోగాలు పరిశీలించబడ్డాయి (మహాపురుష 5 + రాజ/ధన/చంద్ర/సూర్య/దోష)',
+  yogaRep.findings.length === 19 &&
+    ['mahapurusha_mars', 'mahapurusha_mercury', 'mahapurusha_jupiter', 'mahapurusha_venus', 'mahapurusha_saturn', 'gajakesari', 'budhaditya', 'saraswati', 'vipareeta_raja', 'neecha_bhanga', 'kemadruma', 'dhana_yoga', 'raja_yoga', 'chandra_yoga', 'surya_yoga', 'adi_dur'].every(
+      (id) => yogaRep.findings.some((f) => f.id.includes(id))
+    ),
+  `${yogaRep.findings.length} యోగాలు`
+);
+check(
+  'యోగ ఫలితం — ఏర్పడిన ప్రతి యోగానికి ఆధారం, ఫలం, సూత్రం మూడూ నిండి ఉన్నాయి',
+  yogaRep.findings.every(
+    (f) =>
+      f.evidenceTe.length > 12 &&
+      f.phalamTe.length > 25 &&
+      f.sutraTe.length > 12 &&
+      (!f.present || (f.strengthPct > 0 && f.strengthTe !== '—'))
+  ),
+  `${yogaRep.activeCount} యోగాలు ఏర్పడ్డాయి · ${yogaRep.findings.filter((f) => f.present).map((f) => `${f.nameTe} ${f.strengthPct}%`).join(', ')}`
+);
+check(
+  'సూర్యుడు తులాలో నీచుడు — నీచభంగ యోగం సరిగ్గా గుర్తించబడింది (సూర్యుని ఉచ్ఛాధిపతి/రాశ్యధిపతి నియమం)',
+  (() => {
+    const sun = KUNDALI.planets.find((p) => p.id === 'Sun')!;
+    const nb = yogaRep.findings.find((f) => f.id === 'neecha_bhanga')!;
+    return sun.dignity === 'Debilitated' && nb.present && nb.evidenceTe.includes('సూర్యుడు');
+  })(),
+  yogaRep.findings.find((f) => f.id === 'neecha_bhanga')!.evidenceTe
+);
+check(
+  'బుధాదిత్య యోగం — సూర్య-బుధ యుతి + బుధుడు మౌఢ్యం కాదు అనే రెండు నియమాలు వేరువేరుగా తనిఖీ చేయబడుతున్నాయి',
+  (() => {
+    const ba = yogaRep.findings.find((f) => f.id === 'budhaditya')!;
+    const sun = KUNDALI.planets.find((p) => p.id === 'Sun')!;
+    const mer = KUNDALI.planets.find((p) => p.id === 'Mercury')!;
+    const sep = Math.abs(((mer.siderealLon - sun.siderealLon + 540) % 360) - 180);
+    const combust = 180 - sep <= 14;
+    return ba.present && ba.evidenceTe.includes(combust ? 'మౌఢ్యంలో' : 'మౌఢ్యం కాదు');
+  })(),
+  yogaRep.findings.find((f) => f.id === 'budhaditya')!.evidenceTe
+);
+check(
+  'కేమద్రుమం — చంద్రునికి 2/12 భావాలు ఖాళీగా లేవు కాబట్టి ఏర్పడకూడదు (శని 2వ భావంలో)',
+  (() => {
+    const km = yogaRep.findings.find((f) => f.id === 'kemadruma')!;
+    return !km.present;
+  })(),
+  yogaRep.findings.find((f) => f.id === 'kemadruma')!.evidenceTe
+);
+check(
+  'యోగ సారాంశం & తీర్పు — సంఖ్యలతో సహా రెండూ రూపొందాయి',
+  yogaRep.summaryTe.includes(String(yogaRep.activeCount)) && yogaRep.verdictTe.length > 30,
+  yogaRep.summaryTe
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+//  పూర్తి జాతక పుస్తకం SSR — అన్ని అధ్యాయాలు ఒకేసారి రెండర్ అవుతాయా?
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── సంపూర్ణ జాతక పుస్తకం (SSR) ──');
+const BOOK_HTML = renderToString(
+  React.createElement(SampoornaJathakamView, {
+    chart: KUNDALI,
+    lang: 'te',
+    selectedPlanetId: null,
+    onSelectPlanet: () => {},
+  } as Parameters<typeof SampoornaJathakamView>[0])
+);
+check(
+  'పూర్తి జాతక గ్రంథం రెండర్ — అధ్యాయం 1A (అవకహడ · ఘాత · నామాక్షరం) & 1B (యోగ విచారణ) సహా',
+  BOOK_HTML.length > 700_000 &&
+    BOOK_HTML.includes('అవకహడ చక్రం') &&
+    BOOK_HTML.includes('ఘాత చక్రం') &&
+    BOOK_HTML.includes('నామాక్షరం — పేరు ఎలా పెట్టాలి?') &&
+    BOOK_HTML.includes('యోగ విచారణ') &&
+    BOOK_HTML.includes('పంచ మహాపురుష యోగాలు'),
+  `${Math.round(BOOK_HTML.length / 1000)} వేల అక్షరాలు`
+);
+check(
+  'పుస్తకంలో ఖాళీ గణన లేదు (NaN / undefined ఏ ఫలితంలోనూ లేవు)',
+  !/NaN/.test(BOOK_HTML) && !/>undefined</.test(BOOK_HTML),
+  `${(BOOK_HTML.match(/NaN/g) ?? []).length} NaN · ${(BOOK_HTML.match(/>undefined</g) ?? []).length} undefined`
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+//  అవకహడ / ఘాత చక్రం — అధ్యాయం 1A ఇంజిన్ స్థిరత్వం
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── అవకహడ & ఘాత చక్రం (అధ్యాయం 1A) ──');
+const ghata = GHATA_TABLE;
+const ghataBad = ghata.filter(
+  (g) =>
+    !g.rasiTe ||
+    !g.masaTe ||
+    !g.tithiGroupTe ||
+    !g.varaTe ||
+    !g.nakshatraTe ||
+    !g.yogaTe ||
+    !g.karanaTe ||
+    !(g.prahara >= 1 && g.prahara <= 8)
+);
+check(
+  'ఘాత చక్ర పట్టిక — 12 రాశులకు 12 వరుసలు, అన్ని ఖానాలు పూర్తి',
+  ghata.length === 12 && ghataBad.length === 0 && new Set(ghata.map((g) => g.rasiTe)).size === 12,
+  `${ghata.length} వరుసలు · లోపాలు ${ghataBad.length}`
+);
+
+const avaK = computeAvakahada(KUNDALI);
+check(
+  'అవకహడ చక్రం — 14 మూల పదాలు (నక్షత్రం నుండి స్వభావం వరకు) నిండి ఉన్నాయి',
+  avaK.rows.length === 14 && avaK.rows.every((r) => r.valueTe && r.valueTe !== '—'),
+  `${avaK.rows.length} పదాలు · ${avaK.rows.map((r) => r.key).join(',')}`
+);
+check(
+  'అవకహడ నామాక్షరం = 108-పాద పట్టికలోని అదే పాదాక్షరం (జన్మ నక్షత్రం నుండి నేరుగా)',
+  (() => {
+    const moon = KUNDALI.planets.find((p) => p.id === 'Moon')!;
+    const nakIdx = Math.floor(moon.siderealLon / (360 / 27)) % 27;
+    const pada = Math.floor((moon.siderealLon % (360 / 27)) / (360 / 108)) + 1;
+    const expected = NAMA_NAKSHATRAS[nakIdx]?.padasTe[pada - 1];
+    const nama = avaK.rows.find((r) => r.key === 'nama')?.valueTe;
+    return !!expected && expected === nama;
+  })(),
+  (() => {
+    const moon = KUNDALI.planets.find((p) => p.id === 'Moon')!;
+    const nakIdx = Math.floor(moon.siderealLon / (360 / 27)) % 27;
+    const pada = Math.floor((moon.siderealLon % (360 / 27)) / (360 / 108)) + 1;
+    return `అవకహడ: ${avaK.rows.find((r) => r.key === 'nama')?.valueTe ?? '—'} · పట్టిక: ${
+      NAMA_NAKSHATRAS[nakIdx]?.padasTe[pada - 1] ?? '—'
+    } (${NAMA_NAKSHATRAS[nakIdx]?.nameTe} పాదం ${pada})`;
+  })()
+);
+check(
+  'ఘాత చక్ర వివరణ జన్మ రాశిని మరియు ఘాత మాసాన్ని పేర్కొంటుంది',
+  avaK.ghata.meaningTe.length > 40 &&
+    avaK.summaryTe.includes(avaK.ghata.janmaRasiTe) &&
+    avaK.summaryTe.includes(avaK.ghata.row.masaTe),
+  `${avaK.ghata.janmaRasiTe} → ${avaK.ghata.row.masaTe}`
+);
+
 const uniquePadas = new Set(allPadas.map((p) => p.s));
 check(
   '108 పాదాక్షరాలలో పునరావృత్తి లేదు (ఒకే అక్షరం ఒకే పాదానికి)',
