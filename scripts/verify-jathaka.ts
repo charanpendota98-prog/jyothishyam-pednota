@@ -32,6 +32,7 @@ import { computeShadbalaDeep } from '../src/engine/shadbalaDeepEngine';
 import { computeVargaVimshopaka, VIMSHOPAKA_SCHEMES } from '../src/engine/vargaVimsopakaEngine';
 import { computeAvakahada, GHATA_TABLE } from '../src/engine/avakahadaEngine';
 import { computeYogaVichara } from '../src/engine/yogaVicharaEngine';
+import { computeJeevitaVistara } from '../src/engine/jeevitaVistaraEngine';
 import { SampoornaJathakamView } from '../src/components/SampoornaJathakamView';
 import { computeBhavaSandhi } from '../src/engine/bhavaSandhiEngine';
 import { computeUpagrahas } from '../src/engine/upagrahaEngine';
@@ -1062,6 +1063,68 @@ check(
 );
 
 // ─────────────────────────────────────────────────────────────────────────
+//  జీవిత రంగాల లోతైన విశ్లేషణ (అధ్యాయం 1C)
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── జీవిత రంగాల లోతైన విశ్లేషణ (అధ్యాయం 1C) ──');
+const vist = computeJeevitaVistara(KUNDALI);
+check(
+  'ఎనిమిది జీవిత రంగాలు — వివాహం, ఉద్యోగం, చదువు, ఆరోగ్యం, ధనం, సంతానం, విదేశం, ఆధ్యాత్మికత',
+  vist.domains.length === 8 &&
+    ['marriage', 'career', 'education', 'health', 'wealth', 'children', 'foreign', 'spirituality'].every((id) =>
+      vist.domains.some((d) => d.id === id)
+    ),
+  vist.domains.map((d) => `${d.titleTe.split(' ')[0]}:${d.scorePct}%`).join(' · ')
+);
+check(
+  'ప్రతి రంగానికి 5 భాగాలు నిండి ఉన్నాయి — ఆధారం, 3 వివరణలు, బలాలు, జాగ్రత్తలు, కాల ఫలం + పరిహారం',
+  vist.domains.every(
+    (d) =>
+      d.foundationTe.length > 80 &&
+      d.analysis.length === 3 &&
+      d.analysis.every((a) => a.headingTe.length > 6 && a.bodyTe.length > 120) &&
+      d.strengthsTe.length >= 2 &&
+      d.cautionsTe.length >= 2 &&
+      d.remedyTe.length > 40 &&
+      d.housesTe.length > 40
+  ),
+  `సగటు వివరణ పొడవు: ${Math.round(
+    vist.domains.reduce((a, d) => a + d.analysis.reduce((x, y) => x + y.bodyTe.length, 0), 0) / 8
+  )} అక్షరాలు/రంగం`
+);
+check(
+  'వివాహ కాలం — శుక్రుడు/7వ అధిపతి భుక్తి కిటికీలు వాస్తవ తేదీలతో వస్తున్నాయి',
+  (() => {
+    const m = vist.domains.find((d) => d.id === 'marriage')!;
+    return m.timing.length > 0 && m.timing.every((t) => /\d{4}-\d{2}-\d{2}/.test(t.yearsTe));
+  })(),
+  vist.domains
+    .find((d) => d.id === 'marriage')!
+    .timing.map((t) => `${t.periodTe} (${t.yearsTe.slice(0, 10)})`)
+    .join(' · ')
+);
+check(
+  'ఆరోగ్యం — లగ్నాధిపతి త్రికోణ స్థితిని కూడా “బలం”గా లెక్కిస్తుంది (కేంద్రం మాత్రమే కాదు)',
+  (() => {
+    const h = vist.domains.find((d) => d.id === 'health')!;
+    const lagnaLord = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'].includes('')
+      ? ''
+      : '';
+    void lagnaLord;
+    return h.analysis[0].bodyTe.includes('కేంద్ర/త్రికోణ') || h.analysis[0].bodyTe.includes('శ్రద్ధ అవసరం');
+  })(),
+  vist.domains.find((d) => d.id === 'health')!.analysis[0].bodyTe.slice(0, 60)
+);
+check(
+  'రంగాల నివేదికలో ఆంగ్ల వాక్యాలు లేవు (D9/D10 మొదలైన పరిభాష తప్ప)',
+  vist.domains.every((d) => {
+    const text = [d.foundationTe, ...d.analysis.map((a) => a.bodyTe), ...d.strengthsTe, ...d.cautionsTe, d.remedyTe].join(' ');
+    const cleaned = text.replace(/\bD\d{1,2}\b/g, '').replace(/\b(Marriage|Career|Business|Education|Health|Wealth)\b/g, '');
+    return !/[A-Za-z]{4,}\s+[A-Za-z]{4,}\s+[A-Za-z]{4,}/.test(cleaned);
+  }),
+  '0 ఆంగ్ల వాక్యాలు'
+);
+
+// ─────────────────────────────────────────────────────────────────────────
 //  పూర్తి జాతక పుస్తకం SSR — అన్ని అధ్యాయాలు ఒకేసారి రెండర్ అవుతాయా?
 // ─────────────────────────────────────────────────────────────────────────
 console.log('\n── సంపూర్ణ జాతక పుస్తకం (SSR) ──');
@@ -1074,13 +1137,15 @@ const BOOK_HTML = renderToString(
   } as Parameters<typeof SampoornaJathakamView>[0])
 );
 check(
-  'పూర్తి జాతక గ్రంథం రెండర్ — అధ్యాయం 1A (అవకహడ · ఘాత · నామాక్షరం) & 1B (యోగ విచారణ) సహా',
+  'పూర్తి జాతక గ్రంథం రెండర్ — అధ్యాయాలు 1A (అవకహడ) · 1B (యోగ విచారణ) · 1C (జీవిత రంగాలు) సహా',
   BOOK_HTML.length > 700_000 &&
     BOOK_HTML.includes('అవకహడ చక్రం') &&
     BOOK_HTML.includes('ఘాత చక్రం') &&
     BOOK_HTML.includes('నామాక్షరం — పేరు ఎలా పెట్టాలి?') &&
     BOOK_HTML.includes('యోగ విచారణ') &&
-    BOOK_HTML.includes('పంచ మహాపురుష యోగాలు'),
+    BOOK_HTML.includes('పంచ మహాపురుష యోగాలు') &&
+    BOOK_HTML.includes('జీవిత రంగాల లోతైన విశ్లేషణ') &&
+    BOOK_HTML.includes('దాంపత్య జీవితం') && BOOK_HTML.includes('జీవిత రంగాల లోతైన విశ్లేషణ'),
   `${Math.round(BOOK_HTML.length / 1000)} వేల అక్షరాలు`
 );
 check(

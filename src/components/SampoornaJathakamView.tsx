@@ -35,6 +35,7 @@ import { generateKundaliSookshmaNadiReport } from '../engine/kundaliSookshmaNadi
 import { computeAshtakavargaPhala } from '../engine/ashtakavargaPhalaEngine.ts';
 import { computeAvakahada } from '../engine/avakahadaEngine.ts';
 import { computeYogaVichara } from '../engine/yogaVicharaEngine.ts';
+import { computeJeevitaVistara } from '../engine/jeevitaVistaraEngine.ts';
 import { computeAntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
 import { computeGrahaSahayaka, AREAS as SAHAYAKA_AREAS } from '../engine/grahaSahayakaEngine.ts';
 import {
@@ -64,6 +65,7 @@ type JathakamChapter =
   | 'panchanga_kundali'
   | 'avakahada_ghata'
   | 'yoga_vichara'
+  | 'life_domains_deep'
   | 'shodashavarga_jaimini'
   | 'shadbala_ashtakavarga'
   | 'grantha_research'
@@ -125,6 +127,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
   );
   const avakahada = useMemo(() => computeAvakahada(chart), [chart]);
   const yogaVichara = useMemo(() => computeYogaVichara(chart), [chart]);
+  const lifeVistara = useMemo(() => computeJeevitaVistara(chart), [chart]);
   const avPhala = useMemo(() => computeAshtakavargaPhala(chart), [chart]);
   const adBook = useMemo(() => computeAntardashaPhalaBook(chart), [chart]);
   const sahayaka = useMemo(() => computeGrahaSahayaka(chart), [chart]);
@@ -220,13 +223,14 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
   }, [externalPdfTrigger]);
 
   const chapters: { id: JathakamChapter; labelTe: string; icon: React.ReactNode }[] = [
-    { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (All 16 Chapters)', icon: <Layers className="w-3.5 h-3.5" /> },
+    { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (All 17 Chapters)', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'sampoorna_jeevita_charitra', labelTe: '0. సంపూర్ణ జీవిత చరిత్ర (0–100 సం. 7 పర్వాలు & నవగ్రహ ఫలితాలు)', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'sookshma_nadi_kp', labelTe: '0A. 100% కుండలి సూక్ష్మ నాడి, భావాధిపతి, KP సబ్-లార్డ్ & 18 మూల గ్రంథాలు', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'tajika_varshaphala', labelTe: '0B. తాజిక వర్షఫలం & 12-నెలల దినచర్య ఫలితాలు (Varshaphala & 12-Month)', icon: <Calendar className="w-3.5 h-3.5" /> },
     { id: 'panchanga_kundali', labelTe: '1. పంచాంగం, ఇష్టఘడియలు & నవగ్రహాలు', icon: <Compass className="w-3.5 h-3.5" /> },
     { id: 'avakahada_ghata', labelTe: '1A. అవకహడ, ఘాత చక్రం & నామాక్షరం', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'yoga_vichara', labelTe: '1B. యోగ విచారణ — రాజ, ధన & మహాపురుష యోగాలు', icon: <Award className="w-3.5 h-3.5" /> },
+    { id: 'life_domains_deep', labelTe: '1C. వివాహం · ఉద్యోగం · చదువు · ఆరోగ్యం — లోతైన విశ్లేషణ', icon: <HeartHandshake className="w-3.5 h-3.5" /> },
     { id: 'siddhanta_verifications', labelTe: '2. గణిత తనిఖీ, భావ చలిత, పంచధా మైత్రి & అవస్థలు', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
     { id: 'siddhanta_appendices', labelTe: '3. మాందీ-ఉపగ్రహాలు, ఇష్ట-కష్ట ఫల, భావ బల & శోధన పిండ', icon: <Award className="w-3.5 h-3.5" /> },
     { id: 'shodashavarga_jaimini', labelTe: '4. షోడశవర్గ & జైమిని కారకులు', icon: <Award className="w-3.5 h-3.5" /> },
@@ -2692,6 +2696,178 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ==================================================================================== */}
+      {/* CHAPTER 1C: LIFE DOMAINS IN DEPTH — వివాహం / ఉద్యోగం / చదువు / ఆరోగ్యం / ధనం … */}
+      {/* ==================================================================================== */}
+      {showSection('life_domains_deep') && (
+        <div className="space-y-8 print-page-break">
+          <div className="bg-[#0F1326] border-2 border-[#C9A96E]/55 rounded-xl p-4 sm:p-6 md:p-8 space-y-4 shadow-xl">
+            <div className="border-b border-white/10 pb-4">
+              <div className="text-xs uppercase tracking-widest text-[#C9A96E] font-semibold flex items-center gap-2">
+                <HeartHandshake className="w-4 h-4 text-[#C9A96E]" />
+                అధ్యాయం 1C · జీవిత రంగాల లోతైన విశ్లేషణ (Life Domains in Depth)
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[#EDE8E0] mt-1">
+                వివాహం, ఉద్యోగం, చదువు, ఆరోగ్యం, ధనం, సంతానం, విదేశం & ఆధ్యాత్మికత — ఒక్కో రంగానికి ప్రత్యేక అధ్యాయం
+              </h2>
+              <p className="text-xs text-[#EDE8E0]/70 mt-2 leading-relaxed">
+                ప్రతి రంగానికి ఐదు భాగాలు: <strong className="text-[#C9A96E]">శాస్త్ర ఆధారం</strong> (ఏ భావం, ఏ అధిపతి, ఏ కారకుడు — వాస్తవ స్థితితో),
+                <strong className="text-[#5BBFB5]"> లోతైన వివరణ</strong> (మూడు ఉపశీర్షికలతో),
+                <strong className="text-[#EDE8E0]"> బలాలు</strong>, <strong className="text-[#E8A317]">జాగ్రత్తలు</strong> మరియు
+                <strong className="text-[#C9A96E]"> కాల ఫలం</strong> (దశా-భుక్తి కాలాలు) + పరిహారం.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="bg-[#090C18]/90 border border-[#C9A96E]/35 rounded-lg p-3">
+                <div className="text-[11px] text-[#EDE8E0]/55">మొత్తం జీవిత రంగాల బలం</div>
+                <div className="text-base font-bold text-[#C9A96E] mt-1">{lifeVistara.overallTe}</div>
+              </div>
+              <div className="bg-[#090C18]/90 border border-[#5BBFB5]/35 rounded-lg p-3">
+                <div className="text-[11px] text-[#EDE8E0]/55">అత్యంత బలమైన రంగం</div>
+                <div className="text-base font-bold text-[#5BBFB5] mt-1">{lifeVistara.bestDomainTe}</div>
+              </div>
+              <div className="bg-[#090C18]/90 border border-[#E8A317]/40 rounded-lg p-3">
+                <div className="text-[11px] text-[#EDE8E0]/55">ఎక్కువ శ్రద్ధ అవసరమైన రంగం</div>
+                <div className="text-base font-bold text-[#E8A317] mt-1">{lifeVistara.watchDomainTe}</div>
+              </div>
+            </div>
+
+            <div className="no-print flex flex-wrap gap-2">
+              {lifeVistara.domains.map((d) => (
+                <a
+                  key={d.id}
+                  href={`#jv-${d.id}`}
+                  className="px-2.5 py-1.5 rounded bg-[#090C18] border border-white/10 text-[11px] text-[#EDE8E0]/80 hover:border-[#C9A96E]/50 hover:text-[#C9A96E]"
+                >
+                  {d.number}. {d.titleTe.split(' — ')[0]}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {lifeVistara.domains.map((d) => (
+            <div
+              key={d.id}
+              id={`jv-${d.id}`}
+              className="bg-[#0F1326] border border-[#C9A96E]/40 rounded-xl p-4 sm:p-6 space-y-4 shadow-lg print-avoid-break scroll-mt-24"
+            >
+              {/* శీర్షిక */}
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-widest text-[#C9A96E] font-semibold">
+                    అధ్యాయం 1C · రంగం {d.number} · {d.subtitleTe}
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-bold text-[#EDE8E0] mt-0.5">
+                    {d.number}. {d.titleTe}
+                  </h2>
+                  <p className="text-[11px] text-[#EDE8E0]/55 mt-1">{d.housesTe}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2.5 py-1 rounded text-[11px] font-bold border ${
+                      d.scorePct >= 65
+                        ? 'text-[#5BBFB5] border-[#5BBFB5]/50 bg-[#5BBFB5]/10'
+                        : d.scorePct >= 45
+                          ? 'text-[#C9A96E] border-[#C9A96E]/50 bg-[#C9A96E]/10'
+                          : 'text-[#E8A317] border-[#E8A317]/50 bg-[#E8A317]/10'
+                    }`}
+                  >
+                    {d.scorePct}% · {d.verdictTe}
+                  </span>
+                </div>
+              </div>
+
+              {/* 1. శాస్త్ర ఆధారం */}
+              <div className="bg-[#090C18]/90 border border-[#C9A96E]/30 rounded-lg p-3.5">
+                <h3 className="text-xs font-bold text-[#C9A96E] mb-1.5">
+                  1. శాస్త్ర ఆధారం — ఏ భావాలు, ఏ అధిపతులు, ఏ కారక గ్రహాలు పరిశీలించబడ్డాయి?
+                </h3>
+                <p className="text-[11px] sm:text-xs text-[#EDE8E0]/85 leading-relaxed">{d.foundationTe}</p>
+              </div>
+
+              {/* 2. లోతైన వివరణ */}
+              <div className="space-y-3">
+                {d.analysis.map((a, i) => (
+                  <div key={i} className="bg-[#090C18]/70 border border-white/10 rounded-lg p-3.5">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#5BBFB5] mb-1.5">
+                      2.{i + 1} {a.headingTe}
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-[#EDE8E0]/88 leading-relaxed text-justify">{a.bodyTe}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 3-4. బలాలు & జాగ్రత్తలు */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-[#5BBFB5]/[0.07] border border-[#5BBFB5]/35 rounded-lg p-3.5">
+                  <h3 className="text-xs font-bold text-[#5BBFB5] mb-1.5">3. బలాలు — మీకు అనుకూల అంశాలు</h3>
+                  <ul className="space-y-1 text-[11px] text-[#EDE8E0]/85 leading-relaxed list-disc pl-4">
+                    {d.strengthsTe.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-[#E8A317]/[0.07] border border-[#E8A317]/35 rounded-lg p-3.5">
+                  <h3 className="text-xs font-bold text-[#E8A317] mb-1.5">4. జాగ్రత్తలు — ఏమి గమనించాలి?</h3>
+                  <ul className="space-y-1 text-[11px] text-[#EDE8E0]/85 leading-relaxed list-disc pl-4">
+                    {d.cautionsTe.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* 5. కాల ఫలం */}
+              <div className="bg-[#090C18]/90 border border-[#C9A96E]/30 rounded-lg p-3.5">
+                <h3 className="text-xs font-bold text-[#C9A96E] mb-2">
+                  5. కాల ఫలం — ఈ రంగంలో ముఖ్యమైన దశా-భుక్తి కాలాలు
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px] border-collapse">
+                    <thead>
+                      <tr className="text-[#EDE8E0]/55 border-b border-white/10">
+                        <th className="text-left py-1.5 pr-2">కాలం</th>
+                        <th className="text-left py-1.5 pr-2">సంవత్సరాలు</th>
+                        <th className="text-left py-1.5">ఏమి ఆశించవచ్చు</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.timing.map((t, i) => (
+                        <tr
+                          key={i}
+                          className={`border-b border-white/5 ${t.isRunning ? 'bg-[#5BBFB5]/10' : ''}`}
+                        >
+                          <td className="py-1.5 pr-2 font-semibold text-[#EDE8E0]">
+                            {t.periodTe}
+                            {t.isRunning ? (
+                              <span className="ml-1.5 text-[10px] text-[#5BBFB5] font-bold">● ఇప్పుడు నడుస్తోంది</span>
+                            ) : null}
+                          </td>
+                          <td className="py-1.5 pr-2 font-mono-tabular text-[#C9A96E]">{t.yearsTe}</td>
+                          <td className="py-1.5 text-[#EDE8E0]/75">{t.noteTe}</td>
+                        </tr>
+                      ))}
+                      {d.timing.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="py-2 text-[#EDE8E0]/55">
+                            ఈ కాలంలో ప్రత్యేక దశా-భుక్తి కిటికీ లేదు — లభ్యమైన కాలరేఖ ఆధారంగా.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-2 text-[11px] text-[#EDE8E0]/80 leading-relaxed border-t border-white/10 pt-2">
+                  <span className="font-bold text-[#C9A96E]">పరిహారం: </span>
+                  {d.remedyTe}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
