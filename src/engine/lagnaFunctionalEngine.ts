@@ -130,23 +130,26 @@ export function computeLagnaFunctional(lagnaSignIndex: number): LagnaFunctionalR
 
     // ── స్కోరు (భావ స్వభావం ఆధారంగా) ────────────────────────
     const hasTrikona59 = ownsHouses.some((h) => [5, 9].includes(h));
+    // త్రికోణాధిపతి ఉన్నప్పుడు దుష్ఠాన దోషం సగం మాత్రమే (BPHS: త్రికోణం బలీయం)
+    const dusthanaPenalty = (base: number) => (hasTrikona59 ? Math.round(base * 0.55) : base);
     let score = 0;
     for (const h of ownsHouses) {
       if (h === 1) score += 12; // లగ్నం — కేంద్రం; త్రికోణంగా రెట్టింపు లెక్కించము
       else if ([5, 9].includes(h)) score += 32; // త్రికోణం — అత్యంత శుభం
       else if ([4, 7, 10].includes(h)) score += 14; // కేంద్రం
       else if (h === 2) score += 0; // ధనం — మారక స్వభావం
-      else if (h === 11) score -= 14; // లాభం — పాప స్థానం
-      else if (h === 3) score -= 14; // విక్రమం — పాప స్థానం
-      else if (h === 6) score -= 18; // శత్రు — పాప స్థానం
-      else if (h === 8) score -= hasTrikona59 ? 10 : 20; // ఆయుః — త్రికోణ ఉంటే సగం
-      else if (h === 12) score -= 14; // వ్యయం — పాప స్థానం
+      else if (h === 11) score -= 16; // లాభం — పాప స్థానం
+      else if (h === 3) score -= 16; // విక్రమం — పాప స్థానం
+      else if (h === 6) score -= dusthanaPenalty(18); // శత్రు — పాప స్థానం
+      else if (h === 8) score -= dusthanaPenalty(20); // ఆయుః — త్రికోణ ఉంటే సగం
+      else if (h === 12) score -= dusthanaPenalty(16); // వ్యయం — పాప స్థానం
     }
-    if (isLagnaLord && ownsHouses.length === 1) score += 10; // కేవలం లగ్నాధిపతి
-    if (isLagnaLord && ownsHouses.length === 2 && ownsHouses.includes(2)) score += 8; // లగ్నం + ధనం
     if (isYogakaraka) score += 20;
     if (isKendradhipatiDosha) score -= 14;
+    // మారకత్వం (2/7) — త్రికోణాధిపత్యం లేకపోతే మాత్రమే శిక్ష
     if ((ownsHouses.includes(2) || ownsHouses.includes(7)) && !hasTrikona59) score -= 8;
+    // లగ్నాధిపతి ఎప్పుడూ పాపగ్రహంగా పరిగణించబడడు — కనీసం క్రియాత్మక శుభుడు
+    if (isLagnaLord) score = Math.max(score, 16);
     score = Math.max(-100, Math.min(100, Math.round(score)));
 
     const isMaraka = ownsHouses.includes(2) || ownsHouses.includes(7);

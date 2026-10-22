@@ -1,6 +1,6 @@
 import type { CompleteChartResult } from './ephemeris.ts';
 import { computeLagnaFunctional, type PlanetId9 } from './lagnaFunctionalEngine.ts';
-import { lagnaLordHousePhalaTe } from './lagnaLordHousePhala.ts';
+import { lagnaLordInHouseNamedTe } from './lagnaLordHousePhala.ts';
 import {
   TELUGU_PLANETS,
   TELUGU_RASIS,
@@ -247,9 +247,33 @@ export function generateSampoornaLifeChronicle(
 
   const swaroopaTitleTe = `${lagnaRasiTe} లగ్నం · ${janmaRasiClean} · ${nakshatraClean} (${jathakam.janmaPadam}వ పాదం) — జాతక ముఖ్యాంశాలు`;
 
-  const physicalAndMentalConstitutionTe = `మీరు ${lagnaRasiTe} లగ్నంలో జన్మించారు. ${lagnaLordHousePhalaTe(lagnaHouseOfLord)} జన్మ రాశి ${janmaRasiClean}, ${nakshatraClean} నక్షత్రం (${pureTe(moonNakshatraObj.ganaTe)}) — మనస్సు స్వభావానికి ఇది కూడా స్పష్టమైన ముద్ర వేస్తుంది.`;
+  const physicalAndMentalConstitutionTe = `మీరు ${lagnaRasiTe} లగ్నంలో జన్మించారు. ${lagnaLordInHouseNamedTe(pureTe(TELUGU_PLANETS[lagnaLordId]?.nameTe) || 'లగ్నాధిపతి', lagnaHouseOfLord)} జన్మ రాశి ${janmaRasiClean}, ${nakshatraClean} నక్షత్రం (${pureTe(moonNakshatraObj.ganaTe)}) — మనస్సు స్వభావానికి ఇది కూడా స్పష్టమైన ముద్ర వేస్తుంది.`;
 
-  const atmakarakaAndSoulMissionTe = `మీ జాతకంలో ఆత్మకారకుడు "${akNameClean}" మరియు అమాత్యకారకుడు "${amkNameClean}". దీనివల్ల జీవితంలో ధర్మబద్ధంగా సంపాదించడం, వృత్తిలో ఉన్నత స్థానానికి చేరుకోవడం మరియు కుటుంబ గౌరవాన్ని నిలబెట్టడం మీ ప్రధాన జీవన లక్ష్యం. 30 సంవత్సరాల వయస్సు నుండి ఆర్థిక స్థిరత్వం, సొంత ఆస్తులు మరియు సమాజంలో ప్రత్యేక గుర్తింపు లభిస్తాయి.`;
+  // ఆత్మకారకుడి మహాదశ వయస్సు-వ్యవధిని చార్ట్ నుంచే లెక్కిస్తాము (ఏ వయస్సు రాయకూడదు).
+  const birthMs = new Date(`${chart.input.date}T${chart.input.time || '00:00'}:00`).getTime();
+  const akDasha = chart.dashas.find((d) => d.lord === akRow?.planetId);
+  const ageAt = (iso: string): number => {
+    const ms = new Date(`${iso}T00:00:00`).getTime();
+    return Number.isFinite(ms) && Number.isFinite(birthMs) ? Math.floor((ms - birthMs) / (365.2425 * 86400000)) : NaN;
+  };
+  const akAgeStart = akDasha ? ageAt(akDasha.startDate) : NaN;
+  const akAgeEnd = akDasha ? ageAt(akDasha.endDate) : NaN;
+  const currentAge = Number.isFinite(birthMs) ? (Date.now() - birthMs) / (365.2425 * 86400000) : NaN;
+  const akDashaPeriodTe = (() => {
+    if (!Number.isFinite(akAgeStart) || !Number.isFinite(akAgeEnd) || akAgeEnd <= 0) return '';
+    const from = Math.max(0, akAgeStart);
+    const to = Math.max(0, akAgeEnd);
+    const phase = Number.isFinite(currentAge)
+      ? currentAge >= to
+        ? 'ఈ దశ గతించింది — ఈ కాలంలో పడిన పునాదే తర్వాతి బలం'
+        : currentAge >= from
+          ? 'ఈ దశ ఇప్పుడు నడుస్తోంది — జీవన లక్ష్య సాధనకు ప్రధాన కాలం'
+          : 'ఈ దశ రాబోతోంది — సన్నాహం ఇప్పటి నుంచే ప్రారంభించండి'
+      : '';
+    return ` ఆత్మకారకుడు ${akNameClean} మహాదశ ${from}–${to} సంవత్సరాల మధ్య.${phase ? ` ${phase}.` : ''}`;
+  })();
+
+  const atmakarakaAndSoulMissionTe = `మీ జాతకంలో ఆత్మకారకుడు "${akNameClean}" మరియు అమాత్యకారకుడు "${amkNameClean}". ఆత్మకారకుడు నడిపించే రంగమే మీ జీవన లక్ష్యం; అమాత్యకారకుడు వృత్తి మార్గాన్ని చూపుతాడు. ధర్మబద్ధమైన సంపాదన, వృత్తిలో గౌరవ స్థానం, కుటుంబ పరువు — ఇవే ఈ కారకుల ప్రధాన సూచన.${akDashaPeriodTe}`;
 
   const beneficNames = functional.benefics.map((id: PlanetId9) => pureTe(TELUGU_PLANETS[id]?.nameTe) || id);
   const lagnaAndChandraSynthesisTe =

@@ -25,3 +25,12 @@ export const LAGNA_LORD_IN_HOUSE_TE: Record<number, string> = {
 export function lagnaLordHousePhalaTe(house: number): string {
   return LAGNA_LORD_IN_HOUSE_TE[((house - 1) % 12) + 1] ?? LAGNA_LORD_IN_HOUSE_TE[1];
 }
+
+/**
+ * లగ్నాధిపతి పేరుతో కలిపిన ఫలితం — "లగ్నాధిపతి బుధుడు 5వ భావంలో …".
+ * వాక్య నిర్మాణం: మొదటి మాటను గ్రహం పేరుతో భర్తీ చేస్తాము (ఏకవచన క్రియతో).
+ */
+export function lagnaLordInHouseNamedTe(lordNameTe: string, house: number): string {
+  const base = lagnaLordHousePhalaTe(house);
+  return base.replace(/^లగ్నాధిపతి/, `లగ్నాధిపతి ${lordNameTe}`).replace(/ఉన్నారు/g, 'ఉన్నాడు');
+}
