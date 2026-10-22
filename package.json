@@ -12,7 +12,8 @@
     "lint": "tsc --noEmit",
     "verify:panchanga": "tsx scripts/verify-panchanga.ts",
     "verify:calendar": "tsx scripts/verify-calendar.ts",
-    "verify": "npm run verify:panchanga && npm run verify:calendar"
+    "verify:jathaka": "tsx scripts/verify-jathaka.ts",
+    "verify": "npm run verify:panchanga && npm run verify:calendar && npm run verify:jathaka"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

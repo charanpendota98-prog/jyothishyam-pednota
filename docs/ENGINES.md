@@ -276,3 +276,75 @@ Two classical conventions this gate forced into the engine:
   only; alignment must come from the solar shadow methods.
 * Magnetic declination is **not** published as a construction value — use the
   solar shadow methods or a current WMM/IGRF survey.
+
+
+## 6. జాతక సూక్ష్మ ఇంజిన్లు (Deep Jathaka engines)
+
+Three engines extend the natal chart to the contents of a classical Telugu
+jathaka patrika. All three are pure functions over `CompleteChartResult`, so
+the UI, the PDF and the verification harness cannot drift apart.
+
+| Module | Purpose |
+| --- | --- |
+| `src/engine/vargaVimsopakaEngine.ts` | 16 vargas D-1 … D-60, Vimshopaka bala (Shadvarga / Saptavarga / Dashavarga / Shodashavarga), Vaiseshikamsa, vargottama |
+| `src/engine/shadbalaDeepEngine.ts` | Full BPHS Ch. 27 Shadbala (sthana, dig, kala, cheshta, naisargika, drik), bhava bala, ishta/kashta phala |
+| `src/engine/avakahadaEngine.ts` | Avakahada chakra (varna, vashya, yoni, gana, nadi, rajju, yunja, hansaka, nama syllable), Ghata chakra, Panchadha maitri |
+
+### 6.1 Divisional mathematics
+
+* `calculateVargaSign` (ephemeris.ts) is the **only** implementation of the
+  varga arithmetic. `d40Sign` (Khavedamsa: odd → Aries, even → Libra) and
+  `d45Sign` (Akshavedamsa: movable → Aries, fixed → Leo, dual → Sagittarius)
+  were added, and the **D-60 rule was corrected**: BPHS Ch. 6 says to ignore
+  the sign and multiply the degrees traversed by 2, divide by 12, add 1 —
+  i.e. the 0°30′ amsas run continuously from Aries, *not* from the sign
+  itself. The old formula shifted whole charts.
+* Moolatrikona is awarded in D-1 only and only inside the classical degree
+  band; in higher vargas the moolatrikona rasi counts as *own* (30/20). This
+  is what the reference patrikas do and it reproduces their numbers exactly.
+* Vimshopaka: `score = Varga Viswa × weight ÷ 20`, with Varga Viswa = own 20,
+  great friend 18, friend 15, neutral 10, enemy 7, sworn enemy 5. Each of the
+  four schemes' weights sums to 20 (asserted in the gate).
+
+### 6.2 Shadbala conventions
+
+* Dig bala = angular distance from the graha's **weakest angle** ÷ 3, where
+  the weak angle is the IC (Sun, Mars), the MC (Moon, Venus), the Descendant
+  (Mercury, Jupiter) and the Ascendant (Saturn). Verified to ±0.02 virupa
+  against the reference for all seven grahas.
+* Kala bala = nathonnatha (local civil hours from noon; Mercury always 60) +
+  paksha (elongation ÷ 3, malefics 60 − x) + tribhaga (part lord, Jupiter
+  always 60) + varsha/masa/dina/hora (15/30/45/60) + ayana (Parashara's
+  45/33/12 khanda method on the tropical longitude).
+* Cheshta bala follows the eight classical motions (Vakra 60, Anuvakra 30,
+  Vikala 15, Mandatara 15, Manda 30, Sama 7.5, Chara 45, Atichara 30); the
+  Sun's cheshta is its ayana bala and the Moon's is its paksha bala.
+* Drik bala = net benefic-minus-malefic **sphuta drishti** (BPHS Ch. 26)
+  received by the graha, ÷ 4.
+* Ishta/Kashta phala = √(uchcha × cheshta) and √((60 − uchcha)(60 − cheshta)).
+
+### 6.3 Pin-to-pin gate — `npm run verify:jathaka`
+
+`scripts/verify-jathaka.ts` runs **170 checks** against the three reference
+PDFs supplied by the user:
+
+| Reference | Chart | What is pinned |
+| --- | --- | --- |
+| 116-page jathakam | 2026-10-22 22:55, Hyderabad | 9 grahas + lagna (sign, degree, house, nakshatra-pada), 15 varga rows, Sun/Moon bhinna-ashtakavarga, sarvashtakavarga (337), avakahada, ghata chakra, panchanga, dig bala, kala bala (fixed parts), paksha, hora/dina lords, shadbala ratios, vimshopaka invariants |
+| 62-page nadi report | 1947-08-15 00:00, Delhi | lagna, 9 grahas (sign, degree to 3′, house), janma rasi & nakshatra |
+| 49-page year forecast | 1988-09-21 10:18, Hansi | lagna + 9 grahas to 1.2′ (including retrograde flags) |
+
+Documented, intentional divergences (printed by the gate):
+
+1. **Rāhu/Ketu** — the app uses the true node, the reference PDFs the mean
+   node (≈1° apart). Node checks therefore use a 1.5° tolerance.
+2. **D-2 Hora** — the reference's D-2 column is internally inconsistent (Sun
+   and Venus, both first-half odd-sign placements, get different signs). The
+   app follows BPHS (odd signs 0°–15° → Leo).
+3. **Varsha/Masa bala** — the 15/30 virupas are awarded by a different lord
+   convention in the reference; the app derives them from the weekday lord of
+   the Mesha-sankranti / solar-month start. This shifts Sun by 15 and Moon by
+   30 virupas; all other grahas match the reference kala bala to ±0.1.
+4. **Reference errata** — the 116-page PDF prints ఆర్ద్ర for Mars (Cancer
+   19°35′) and Jupiter (Cancer 28°52′), both of which are Ashleshā. The gate
+   asserts the astronomically correct value and records the erratum.

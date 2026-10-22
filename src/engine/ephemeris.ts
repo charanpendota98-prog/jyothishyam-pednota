@@ -200,6 +200,8 @@ export interface PlanetPosition {
   d24Sign: number; // Chaturvimsamsa (0-11)
   d27Sign: number; // Saptavimsamsa (0-11)
   d30Sign: number; // Trimsamsa (0-11)
+  d40Sign: number; // Khavedamsa (0-11)
+  d45Sign: number; // Akshavedamsa (0-11)
   d60Sign: number; // Shashtiamsa (0-11)
 }
 
@@ -408,6 +410,8 @@ export interface CompleteChartResult {
     d24Sign: number;
     d27Sign: number;
     d30Sign: number;
+    d40Sign: number;
+    d45Sign: number;
     d60Sign: number;
   };
   midheaven: {
@@ -523,6 +527,8 @@ export type VargaDivisionCode =
   | 'D24'
   | 'D27'
   | 'D30'
+  | 'D40'
+  | 'D45'
   | 'D60';
 
 // Calculate Divisional Chart (Shodashavarga) sign index (0-11) per Brihat Parashara Hora Shastra Ch. 6
@@ -634,10 +640,31 @@ export function calculateVargaSign(
       }
     }
 
+    case 'D40': {
+      // Khavedamsa (BPHS Ch. 6): 40 parts of 0°45'; odd signs count from
+      // Aries, even signs from Libra.
+      const part = Math.min(39, Math.floor(degInSign / 0.75));
+      const startSign = isOddSign ? 0 : 6;
+      return (startSign + part) % 12;
+    }
+
+    case 'D45': {
+      // Akshavedamsa (BPHS Ch. 6): 45 parts of 0°40'; movable signs count from
+      // Aries, fixed from Leo, dual from Sagittarius.
+      const part = Math.min(44, Math.floor(degInSign / (30 / 45)));
+      const mod3 = signIdx % 3;
+      const startSign = mod3 === 0 ? 0 : mod3 === 1 ? 4 : 8;
+      return (startSign + part) % 12;
+    }
+
     case 'D60': {
-      // Shashtiamsa: 60 parts of 0.5° counted from the sign itself
+      // Shashtiamsa (BPHS Ch. 6): "ignore the sign position of the planet and
+      // take the degrees traversed in that sign; multiply by 2 and divide by 12;
+      // add 1 to the remainder" — i.e. the 0°30' amsas are counted continuously
+      // from Aries, NOT from the sign itself. Verified pin-to-pin against the
+      // onlinejyotish 116-page sample jathakam (2026-10-22 22:55 Hyderabad).
       const part = Math.min(59, Math.floor(degInSign * 2));
-      return (signIdx + part) % 12;
+      return part % 12;
     }
 
     default:
@@ -2033,6 +2060,8 @@ export function calculateChart(
       d24Sign: calculateVargaSign(sidLon, 'D24'),
       d27Sign: calculateVargaSign(sidLon, 'D27'),
       d30Sign: calculateVargaSign(sidLon, 'D30'),
+      d40Sign: calculateVargaSign(sidLon, 'D40'),
+      d45Sign: calculateVargaSign(sidLon, 'D45'),
       d60Sign: calculateVargaSign(sidLon, 'D60'),
     };
   });
@@ -2103,6 +2132,8 @@ export function calculateChart(
       d24Sign: calculateVargaSign(siderealAsc, 'D24'),
       d27Sign: calculateVargaSign(siderealAsc, 'D27'),
       d30Sign: calculateVargaSign(siderealAsc, 'D30'),
+      d40Sign: calculateVargaSign(siderealAsc, 'D40'),
+      d45Sign: calculateVargaSign(siderealAsc, 'D45'),
       d60Sign: calculateVargaSign(siderealAsc, 'D60'),
     },
     midheaven: {

@@ -33,6 +33,7 @@ import { TajikaVarshaphalaView } from './components/TajikaVarshaphalaView.tsx';
 import { VastuShastraView } from './components/VastuShastraView.tsx';
 import { HinduCalendarView } from './components/HinduCalendarView.tsx';
 import { GocharaView } from './components/GocharaView.tsx';
+import { JathakaDeepView } from './components/JathakaDeepView.tsx';
 import { GranthaSourcesView } from './components/GranthaSourcesView.tsx';
 import { RoyalWhatsAppSummaryModal } from './components/RoyalWhatsAppSummaryModal.tsx';
 import {
@@ -43,6 +44,7 @@ import {
   Menu,
   Compass,
   Orbit,
+  Layers,
   Library,
   Home,
   Clock,
@@ -70,6 +72,7 @@ type ActiveWorkspaceTab =
   | 'vastu'
   | 'hindu_calendar'
   | 'gochara'
+  | 'jathaka_deep'
   | 'granthas';
 
 const INITIAL_PROFILES: BirthInput[] = [
@@ -355,6 +358,13 @@ export default function App() {
       shortTe: 'గ్రంథాలు',
       labelEn: 'Classical Sources',
       icon: <Library className="w-4 h-4" />,
+    },
+    {
+      id: 'jathaka_deep',
+      labelTe: 'జాతక సూక్ష్మ చక్రం (అవకహడ · వర్గాలు · షడ్బల)',
+      shortTe: 'సూక్ష్మ జాతకం',
+      labelEn: 'Deep Jathaka',
+      icon: <Layers className="w-4 h-4" />,
     },
     {
       id: 'gochara',
@@ -1392,6 +1402,8 @@ export default function App() {
 
         {activeTab === 'gochara' && <GocharaView chart={chart} lang={lang} />}
 
+        {activeTab === 'jathaka_deep' && <JathakaDeepView chart={chart} lang={lang} />}
+
         {activeTab === 'granthas' && <GranthaSourcesView lang={lang} />}
 
         {activeTab === 'vastu' && (
@@ -1562,6 +1574,9 @@ export default function App() {
             </button>
             <button onClick={() => setActiveTab('hindu_calendar')} className="hover:text-[#EDE8E0]">
               హిందూ పంచాంగం
+            </button>
+            <button onClick={() => setActiveTab('jathaka_deep')} className="hover:text-[#EDE8E0]">
+              సూక్ష్మ జాతకం
             </button>
             <button onClick={() => setActiveTab('gochara')} className="hover:text-[#EDE8E0]">
               గోచార ఫలం
