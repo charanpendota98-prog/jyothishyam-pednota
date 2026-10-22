@@ -330,7 +330,7 @@ PDFs supplied by the user:
 
 | Reference | Chart | What is pinned |
 | --- | --- | --- |
-| 116-page jathakam | 2026-10-22 22:55, Hyderabad | 9 grahas + lagna (sign, degree, house, nakshatra-pada), all 16 varga rows × 8 bodies (128 cells), Sun/Moon bhinna-ashtakavarga, sarvashtakavarga (337), avakahada, ghata chakra, panchanga, ṣrīpati bhāva-sandhi (36 values), 13 upagrahas, 5-level vimśottarī (balance + bhukti + pratyantar dates), dig bala (7 exact), naiśargika (7 exact), kāla bala (5 exact / 2 by convention), pakṣa, hora/dina lords |
+| 116-page jathakam | 2026-10-22 22:55, Hyderabad | 9 grahas + lagna (sign, degree, house, nakshatra-pada), all 16 varga rows × 8 bodies (128 cells), Sun/Moon bhinna-ashtakavarga, sarvashtakavarga (337), SAV phala banding for all 12 bhāvas (p. 108–114), avakahada, ghata chakra, panchanga, ṣrīpati bhāva-sandhi (36 values), 13 upagrahas, 5-level vimśottarī (balance + bhukti + pratyantar dates), the 81-bhukti phala book (p. 67–107), dig bala (7 exact), naiśargika (7 exact), kāla bala (5 exact / 2 by convention), pakṣa, hora/dina lords |
 | 62-page nadi report | 1947-08-15 00:00, Delhi | lagna, 9 grahas (sign, degree to 3′, house), janma rasi & nakshatra |
 | 49-page year forecast | 1988-09-21 10:18, Hansi | lagna + 9 grahas to 1.2′ (including retrograde flags) |
 
@@ -404,3 +404,41 @@ with the pratyantaras 2026-06-30 … 2027-04-05; the app lands within 2 days).
 | Kāla total | exact for Mercury (157.98), Venus (125.17 vs 125.23), Jupiter (203.30 vs 203.36); ±15/±30 virūpas for Sun/Moon/Mars/Saturn because the reference awards varṣa bala to the Sun and māsa bala to the Moon, while this engine uses the classical weekday lords of the Meṣa-saṅkrānti (Mars) and the solar-month start (Saturn) |
 | Cheṣṭā | discrete eight-motion classification (Saravali); the reference uses a continuous formula |
 | Sthāna, Dṛk | computed from BPHS ch. 27 / ch. 26 but not yet pinned cell-by-cell |
+
+### 6.8 సాముదాయిక అష్టకవర్గ ఫలం — `ashtakavargaPhalaEngine.ts`
+
+The 116-page patrikā's chapter *జాతక సాముదాయ అష్టకవర్గ ఫలితాలు (భావాల బలం)*
+(pp. 108–114) publishes one banded reading per bhāva. The engine reproduces
+the banding rule exactly:
+
+| Bindu band | Meaning |
+| --- | --- |
+| ≥ 30 | బలమైనది — the bhāva's matters fructify naturally |
+| 25–29 | మధ్యస్థం — results follow effort, no dramatic swings |
+| ≤ 24 | బలహీనం — needs preparation, remedy and caution |
+
+The average is 337 ÷ 12 = 28.08 bindus. For the reference chart the 12 values
+(29, 31, 36, 22, 22, 26, 30, 23, 25, 31, 31, 31) and all 12 bands match the
+PDF; the engine additionally derives kendra / trikoṇa / duṣṭhāna / upacaya
+averages, the lagna-vs-7th contrast, the rāśi ranking and the nakṣatra notes.
+Each bhāva also gets a Telugu parihāra line, because the patrikā prints one
+for every weak bhāva.
+
+### 6.9 అంతర దశా ఫల పుస్తకం — `antardashaPhalaBookEngine.ts`
+
+Pages 67–107 of the patrikā are a *daśā phala* book: every bhukti of every
+mahādaśā gets its own reading (9 × 9 = 81). The engine builds the same book
+programmatically from BPHS ch. 46–47 + Phaladīpikā ch. 19–20 rules:
+
+1. mahādaśā lord's bhāva → the primary life field;
+2. bhukti lord's bhāva → the secondary field (what the period actually asks
+   of the native);
+3. the bhukti lord's position **from** the mahādaśā lord — 6/8/12 → obstacles,
+   1/4/7/10 and 5/9 → support, 3/11 → effort and gain;
+4. natural friendship of the two lords (mitra / sama / śatru);
+5. the bhukti lord's dignity (exaltation … debilitation).
+
+These five factors produce a 0–100 favour index (never presented as a
+probability), a three-sentence Telugu phala, a caution line and a remedy line
+(deity + dāna). The book is time-ordered, gap-free (verified), and marks the
+bhukti that is running today.
