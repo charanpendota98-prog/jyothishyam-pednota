@@ -325,7 +325,7 @@ the UI, the PDF and the verification harness cannot drift apart.
 
 ### 6.3 Pin-to-pin gate — `npm run verify:jathaka`
 
-`scripts/verify-jathaka.ts` runs **252 checks** against the three reference
+`scripts/verify-jathaka.ts` runs **258 checks** against the three reference
 PDFs supplied by the user:
 
 | Reference | Chart | What is pinned |
@@ -442,3 +442,25 @@ These five factors produce a 0–100 favour index (never presented as a
 probability), a three-sentence Telugu phala, a caution line and a remedy line
 (deity + dāna). The book is time-ordered, gap-free (verified), and marks the
 bhukti that is running today.
+
+### 6.10 గ్రహ సహాయక సూచిక — `grahaSahayakaEngine.ts`
+
+Page 29 of the patrikā prints a 9-planet × 7-life-area matrix on a −100…+100
+scale (తెలివి, సమర్థత, ప్రేమ/కుటుంబం, ఆరోగ్యం, సమాజం, వృత్తి/వ్యాపారం,
+ఆర్థిక స్థితి) with an average row. The patrikā itself states the scores are
+neither ṣaḍbala nor probabilities, and its exact weights are proprietary. This
+engine therefore publishes a **fully documented** equivalent:
+
+```
+score = 45 % bhāva affinity  +  35 % natural kārakatva  +  20 % dignity
+```
+
+* bhāva affinity — the planet's bhāva counted as primary / secondary /
+  tertiary for that area (1.0 / 0.65 / 0.35) and −0.5 for 6/8/12;
+* kārakatva — a published 9 × 7 table (Mercury → intellect, Venus → love,
+  Saturn → career effort, …);
+* dignity — exaltation +1 … debilitation −1, with a −0.15 retrograde nudge.
+
+The reference chart's averages land in the same shape as the patrikā
+(intellect highest, health lowest), and the app prints the formula, the range
+and the “not a probability” caveat next to the table.

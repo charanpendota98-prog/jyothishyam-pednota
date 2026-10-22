@@ -28,6 +28,7 @@ import { computeUpagrahas } from '../engine/upagrahaEngine.ts';
 import { computeVimshottariDeep } from '../engine/vimshottariDeepEngine.ts';
 import { computeAshtakavargaPhala } from '../engine/ashtakavargaPhalaEngine.ts';
 import { computeAntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
+import { computeGrahaSahayaka, AREAS } from '../engine/grahaSahayakaEngine.ts';
 
 interface JathakaDeepViewProps {
   chart: CompleteChartResult;
@@ -68,6 +69,7 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
   const dasha = useMemo(() => computeVimshottariDeep(chart), [chart]);
   const avPhala = useMemo(() => computeAshtakavargaPhala(chart), [chart]);
   const adBook = useMemo(() => computeAntardashaPhalaBook(chart), [chart]);
+  const sahayaka = useMemo(() => computeGrahaSahayaka(chart), [chart]);
   const runningMahaIndex = Math.max(
     0,
     adBook.sections.findIndex((sec) => sec.rows.some((r) => r.isRunning))
@@ -88,7 +90,7 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
               {isTe ? 'గ్రంథ ప్రమాణం' : 'Classical Standard'}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[#5BBFB5]/15 border border-[#5BBFB5]/40 text-[#5BBFB5] text-[10px] font-mono-tabular uppercase tracking-wider font-bold">
-              {isTe ? '252 తనిఖీలు' : '252 checks'}
+              {isTe ? '258 తనిఖీలు' : '258 checks'}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[#9B8FD4]/15 border border-[#9B8FD4]/40 text-[#9B8FD4] text-[10px] font-mono-tabular uppercase tracking-wider font-bold">
               BPHS 6 · 7 · 26 · 27
@@ -664,8 +666,8 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
             <p className="flex items-center gap-1.5 text-[#5BBFB5]">
               <BadgeCheck className="w-3.5 h-3.5" />
               {isTe
-                ? '252 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) — npm run verify:jathaka'
-                : '252 pin-to-pin checks against 3 reference jathakam PDFs.'}
+                ? '258 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) — npm run verify:jathaka'
+                : '258 pin-to-pin checks against 3 reference jathakam PDFs.'}
             </p>
             <p className="flex items-center gap-1.5 text-[#C9A96E]">
               <Sparkles className="w-3.5 h-3.5" />
@@ -937,6 +939,82 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
 
           <p className="text-[10px] leading-relaxed text-[#EDE8E0]/45">{adBook.methodNoteTe}</p>
           <p className="text-[10px] leading-relaxed text-[#EDE8E0]/40">{adBook.sourceNoteTe}</p>
+        </div>
+      </div>
+
+      {/* ── గ్రహ సహాయక సూచిక (9 గ్రహాలు × 7 అంశాలు) ─────────────── */}
+      <div className={panel}>
+        <div className={panelHead}>
+          <Target className="w-3.5 h-3.5" />
+          {isTe
+            ? 'గ్రహ సహాయక సూచిక — 9 గ్రహాలు × 7 జీవితాంశాలు (−100 … +100)'
+            : 'Graha sahayaka index — 9 planets × 7 life areas'}
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10.5px] font-mono-tabular">
+              <thead className="text-[#C9A96E]/70 uppercase tracking-wider text-[8.5px]">
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-1.5 pr-2 sticky left-0 bg-[#0B1020]">{isTe ? 'గ్రహం' : 'Planet'}</th>
+                  <th className="py-1.5 px-1">{isTe ? 'భావం' : 'H'}</th>
+                  {AREAS.map((a) => (
+                    <th key={a.id} className="py-1.5 px-1 text-center whitespace-nowrap" title={a.karakaTe}>
+                      {a.labelTe}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sahayaka.rows.map((r) => (
+                  <tr key={r.id} className="border-b border-white/5">
+                    <td className="py-1.5 pr-2 sticky left-0 bg-[#0B1020] text-[#EDE8E0] font-sans font-semibold whitespace-nowrap">
+                      {r.nameTe}
+                      <span className="ml-1 text-[8.5px] text-[#EDE8E0]/35">{r.dignityTe}</span>
+                    </td>
+                    <td className="py-1.5 px-1 text-center text-[#EDE8E0]/50">{r.house}</td>
+                    {AREAS.map((a) => {
+                      const v = r.scores[a.id];
+                      const color =
+                        v >= 50 ? 'text-[#66CBBF]' : v >= 20 ? 'text-[#E4C68C]' : v >= 0 ? 'text-[#EDE8E0]/70' : 'text-[#E08585]';
+                      return (
+                        <td key={a.id} className={`py-1.5 px-1 text-center font-bold ${color}`}>
+                          {v}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                <tr className="border-t border-[#C9A96E]/30">
+                  <td className="py-1.5 pr-2 sticky left-0 bg-[#0B1020] text-[#C9A96E] font-sans font-bold">
+                    {isTe ? 'సగటు' : 'Avg'}
+                  </td>
+                  <td className="py-1.5 px-1" />
+                  {AREAS.map((a) => (
+                    <td key={a.id} className="py-1.5 px-1 text-center font-bold text-[#C9A96E]">
+                      {sahayaka.averages[a.id]}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {sahayaka.rows.map((r) => (
+              <div key={r.id} className="rounded-lg border border-white/8 bg-white/[0.02] px-2.5 py-1.5">
+                <div className="text-[10.5px] text-[#EDE8E0]/70 leading-relaxed">{r.noteTe}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-[#0B1020]/60 px-3.5 py-3 space-y-1.5">
+            <p className="text-[11px] leading-relaxed text-[#EDE8E0]/80">{sahayaka.synthesisTe}</p>
+            <p className="text-[10px] leading-relaxed text-[#EDE8E0]/55">{sahayaka.areaRankingTe}</p>
+            <p className="text-[10px] leading-relaxed text-[#EDE8E0]/55">{sahayaka.planetRankingTe}</p>
+          </div>
+
+          <p className="text-[9.5px] leading-relaxed text-[#EDE8E0]/45">{sahayaka.methodNoteTe}</p>
+          <p className="text-[9.5px] leading-relaxed text-[#EDE8E0]/40">{sahayaka.scaleNoteTe}</p>
         </div>
       </div>
     </div>

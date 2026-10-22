@@ -36,6 +36,7 @@ import { computeUpagrahas } from '../src/engine/upagrahaEngine';
 import { computeVimshottariDeep } from '../src/engine/vimshottariDeepEngine';
 import { computeAshtakavargaPhala } from '../src/engine/ashtakavargaPhalaEngine';
 import { computeAntardashaPhalaBook } from '../src/engine/antardashaPhalaBookEngine';
+import { computeGrahaSahayaka, AREAS } from '../src/engine/grahaSahayakaEngine';
 
 let pass = 0;
 const failures: string[] = [];
@@ -735,6 +736,44 @@ check(
   'ప్రస్తుత భుక్తి గుర్తింపు (2026-10-22)',
   adBook.currentPathTe.includes('గురువు') && adBook.currentPathTe.includes('భుక్తి'),
   adBook.currentPathTe.slice(0, 60)
+);
+
+
+console.log('— గ్రహ సహాయక సూచిక (PDF పేజీ 29) —');
+const sahayaka = computeGrahaSahayaka(KUNDALI);
+check(
+  '9 గ్రహాలు × 7 జీవితాంశాలు = 63 గడులు',
+  sahayaka.rows.length === 9 && AREAS.length === 7 &&
+    sahayaka.rows.every((r) => AREAS.every((a) => typeof r.scores[a.id] === 'number')),
+  `${sahayaka.rows.length} గ్రహాలు · ${AREAS.length} అంశాలు`
+);
+check(
+  'స్కోర్లు −100 … +100 పరిధిలో',
+  sahayaka.rows.every((r) => AREAS.every((a) => r.scores[a.id] >= -100 && r.scores[a.id] <= 100)),
+  'అన్ని గడులు పరిధిలో ఉన్నాయి'
+);
+check(
+  'సగటు వరుస గణన సరైనది',
+  AREAS.every((a) => {
+    const mean = Math.round(sahayaka.rows.reduce((s, r) => s + r.scores[a.id], 0) / 9);
+    return mean === sahayaka.averages[a.id];
+  }),
+  AREAS.map((a) => `${a.labelTe} ${sahayaka.averages[a.id]}`).join(' · ')
+);
+check(
+  'బుధుడు తెలివి అంశంలో అగ్రస్థానం',
+  sahayaka.rows.every((r) => r.id === 'Mercury' || r.scores.intellect <= sahayaka.rows.find((x) => x.id === 'Mercury')!.scores.intellect),
+  `బుధుడు ${sahayaka.rows.find((r) => r.id === 'Mercury')!.scores.intellect}`
+);
+check(
+  'శని వృత్తి అంశంలో అగ్రస్థానం',
+  sahayaka.rows.every((r) => r.id === 'Saturn' || r.scores.career <= sahayaka.rows.find((x) => x.id === 'Saturn')!.scores.career),
+  `శని ${sahayaka.rows.find((r) => r.id === 'Saturn')!.scores.career}`
+);
+check(
+  'ప్రతి గ్రహానికి బల/బలహీన అంశాల వ్యాఖ్యానం',
+  sahayaka.rows.every((r) => r.noteTe.length > 40 && r.bestAreaTe && r.weakAreaTe),
+  '9 గ్రహాలకూ తెలుగు వ్యాఖ్యానం సిద్ధం'
 );
 
 
