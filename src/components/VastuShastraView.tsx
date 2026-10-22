@@ -879,6 +879,7 @@ export function VastuShastraView({
             return (
               <details
                 key={r.key}
+                open
                 className="rounded-xl border bg-white/[0.02] px-3 py-2"
                 style={{ borderColor: `${tone}33` }}
               >

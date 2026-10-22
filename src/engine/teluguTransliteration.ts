@@ -49,8 +49,8 @@ const TOKENS: Tok[] = [
   C('gh', 'ఘ'), C('Gh', 'ఘ'),
   C('ch', 'చ'), C('Ch', 'చ'), C('CH', 'చ'),
   C('jh', 'ఝ'), C('Jh', 'ఝ'),
-  C('Th', 'త'), C('Dh', 'ద'),
-  C('th', 'త'), C('dh', 'ద'),
+  C('Th', 'త'), C('Dh', 'ధ'),
+  C('th', 'త'), C('dh', 'ధ'),
   C('ph', 'ఫ'), C('Ph', 'ఫ'),
   C('bh', 'భ'), C('Bh', 'భ'),
   C('sh', 'ష'), C('Sh', 'ష'),
@@ -248,6 +248,17 @@ const NAME_OVERRIDES: Record<string, string> = {
   swetha: 'శ్వేత',
   sweta: 'శ్వేత',
   nirmala: 'నిర్మల',
+  rama: 'రామ',
+  indira: 'ఇందిర',
+  indu: 'ఇందు',
+  uma: 'ఉమ',
+  dhruv: 'ధ్రువ్',
+  dhanush: 'ధనుష్',
+  dhanunjaya: 'ధనుంజయ',
+  dheeraj: 'ధీరజ్',
+  dharma: 'ధర్మ',
+  dharani: 'ధరణి',
+  dhanya: 'ధన్య',
   padmavathi: 'పద్మావతి',
   sailaja: 'శైలజ',
   shyamala: 'శ్యామల',
@@ -361,6 +372,7 @@ const TELUGU_TO_LATIN_OVERRIDES: Record<string, string> = {
   చరణ్: 'Charan', లక్ష్మి: 'Lakshmi', కృష్ణ: 'Krishna', కృష్ణా: 'Krishna',
   శ్రీనివాస్: 'Srinivas', వెంకట: 'Venkata', వెంకటేష్: 'Venkatesh',
   రావు: 'Rao', రమేష్: 'Ramesh', సాయి: 'Sai', అనిత: 'Anitha',
+  ఇందిర: 'Indira', ఉమ: 'Uma', ధ్రువ్: 'Dhruv', ధనుష్: 'Dhanush',
   శర్మ: 'Sharma', రెడ్డి: 'Reddy', నాయుడు: 'Naidu', చౌదరి: 'Chowdary',
   ప్రసాద్: 'Prasad', కుమార్: 'Kumar', సురేష్: 'Suresh', మహేష్: 'Mahesh',
   రవి: 'Ravi', దివ్య: 'Divya', స్వాతి: 'Swathi', కవిత: 'Kavitha',
@@ -395,7 +407,9 @@ function romanizeWord(word: string): string {
       if (next === HALANT_TE) {
         out += TE_CONS[c];
         i += 1;
-      } else if (next && TE_MATRA[next] !== undefined) {
+      } else if (next && TE_MATRA[next] !== undefined && next !== 'ం' && next !== 'ఁ') {
+        // అనుస్వారం (ం) అచ్చు కాదు — తదుపరి స్వరూపమే అచ్చు. దాన్ని ఇక్కడ తినకూడదు
+        // (లేకపోతే చంద్ర → "chamdr" అవుతుంది).
         out += TE_CONS[c] + TE_MATRA[next];
         i += 1;
       } else {
@@ -420,8 +434,9 @@ function romanizeWord(word: string): string {
     if (c === HALANT_TE) continue;
     out += c;
   }
-  // తెలుగు పేర్ల చివరి 'a' సాధారణంగా మౌనం (చరణ → Charan)
-  return out.replace(/a$/, '') || out;
+  // చివరి అచ్చును తీసేయము: పూజ → Pooja, భవ్య → Bhavya, చంద్ర → Chandra.
+  // హలంతుతో ముగిసిన పేర్లలో (చరణ్) 'a' అసలే చేరదు — Charan.
+  return out || word;
 }
 
 /**

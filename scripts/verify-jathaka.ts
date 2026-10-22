@@ -896,6 +896,16 @@ check(
 );
 
 check(
+  'గది వారీ ప్లాన్ ప్రింట్/PDF లో పూర్తిగా తెరిచి ఉంటుంది (<details open> — ముడుచుకుపోదు)',
+  (() => {
+    const html = renderToString(React.createElement(VastuShastraView, { lang: 'te', defaultName: 'Charan' }));
+    const details = html.match(/<details[^>]*>/g) ?? [];
+    return details.length >= 16 && details.every((d) => /\bopen\b/.test(d));
+  })(),
+  '16 గదుల వివరాలన్నీ ప్రింట్‌లో కనిపిస్తాయి'
+);
+
+check(
   'వాస్తు + ఇంజనీరింగ్ ప్లాన్ ద్విభాషా పరిపూర్ణత (ప్రతి వాక్యానికి te & en)',
   (() => {
     const plan = buildVastuProjectPlan({ rooms: {}, lengthFt: 40, widthFt: 30 });
@@ -954,6 +964,28 @@ check(
   bilingualName('Charan').te === 'చరణ్' && bilingualName('చరణ్').en === 'Charan',
   `${bilingualName('Charan').te} ⇄ ${bilingualName('చరణ్').en}`
 );
+check(
+  'అనుస్వారం + ధ కుటుంబం: చంద్ర → Chandra, ధనుష్ ← Dhanush, ధ్రువ్ ← Dhruv',
+  englishToTeluguSmart('Chandra') === 'చంద్ర' &&
+    englishToTeluguSmart('Dhanush') === 'ధనుష్' &&
+    englishToTeluguSmart('Dhruv') === 'ధ్రువ్' &&
+    teluguToLatin('చంద్ర') === 'Chandra',
+  `${englishToTeluguSmart('Chandra')} · ${englishToTeluguSmart('Dhanush')} · ${englishToTeluguSmart('Dhruv')}`
+);
+check(
+  'చివరి అచ్చు నిలిచే పేర్లు: పూజ → Pooja, భవ్య → Bhavya, సంజయ్ → Sanjay',
+  teluguToLatin('పూజ') === 'Pooja' && teluguToLatin('భవ్య') === 'Bhavya' && teluguToLatin('సంజయ్') === 'Sanjay',
+  `${teluguToLatin('పూజ')} · ${teluguToLatin('భవ్య')} · ${teluguToLatin('సంజయ్')}`
+);
+check(
+  'ద్విదిశ గుండ్రన అనువాదం (20 పేర్లు తిరిగి అదే ఆంగ్ల రూపానికి)',
+  (() => {
+    const names = ['Charan', 'Krishna', 'Suresh', 'Chandra', 'Sanjay', 'Sandeep', 'Dhanush', 'Dhruv', 'Indira', 'Uma', 'Indu', 'Dheeraj'];
+    return names.every((n) => teluguToLatin(englishToTeluguSmart(n)).toLowerCase() === n.toLowerCase());
+  })(),
+  '12/12 తిరోగమనం సరైనది'
+);
+
 // ─────────────────────────────────────────────────────────────────────────
 //  నామాక్షరం — 108 పాదాక్షరాల స్వీయ స్థిరత్వం
 // ─────────────────────────────────────────────────────────────────────────
