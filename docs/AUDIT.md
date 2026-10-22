@@ -161,3 +161,38 @@ year ≈ 250 ms, gōcara ≈ 130 ms, upcoming festivals ≈ 95 ms.
 5. Per-tab code splitting + a light “print edition” typographic pass.
 6. Dasha-boundary tests (viṁśottarī, Jaimini chara) against an independent
    implementation.
+
+---
+
+## 8. Landscape — how this differs from the public jyotiṣa repos
+
+The most-starred public projects in this space are **calculation libraries or
+REST wrappers**, not end-user pañcāṅga applications:
+
+| Project | What it is | Where this app differs |
+| --- | --- | --- |
+| `kunjara/jyotish` (PHP) | library for vaidika calculations | no UI, no pañcāṅga calendar, no Telugu output |
+| `jyotisham/jyotisha` (Python/TeX) | historical/astronomical vedāṅga tools | research-oriented; not a practising jyotiṣī's workspace |
+| `teal33t/jyotish-api` (C) | self-hosted REST API for chart maths | API only; no festival rules, no grantha citations |
+| `northtara/jyotishganit` (Python) | JPL-ephemeris calculation library | library; no mandala/vastu, no printable book |
+| `VicharaVandana/jyotishyamitra` | birth-data computation helper | narrower scope (data computation) |
+
+What no public repo in this group offers, and this app does:
+
+1. **Telugu-first output** end to end (aṅgas, kālas, festivals, 14-page grantha),
+   not transliterated English.
+2. **A festival rule engine that is regression-gated** against published dates —
+   including kṣaya/vṛddhi tithi handling and moonrise-based Saṅkaṣṭi.
+3. **A citation registry** so each number on screen can be traced to a grantha and
+   a chapter, mirrored into the PDF appendix.
+4. **Vāstu with true-north geometry** (solar shadow methods, 81-pada mandala,
+   name-syllable directions) — outside the scope of an ephemeris library.
+5. **Gōcara with vedha logic** from the janma rāśi, with the classical exemptions
+   and Sāḍe-sātī boundary instants derived from real ingress crossings.
+
+The honest counterpoint: those libraries are **specialised, test-covered
+building blocks** with wider API surfaces (multiple house systems, JHD/SE1 file
+support, bulk ephemeris export). Where this app can borrow from them is test
+discipline (property-based nakṣatra/tithi boundary tests) and ephemeris
+interoperability (reading Swiss `.se1` files directly for offline deployments).
+
