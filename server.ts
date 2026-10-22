@@ -414,7 +414,13 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        // Allow the sandbox preview proxy host (and any host in dev) so the
+        // live preview can reach the Vite middleware.
+        allowedHosts: true,
+        host: '0.0.0.0',
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

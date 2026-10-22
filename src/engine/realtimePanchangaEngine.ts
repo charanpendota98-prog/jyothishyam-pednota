@@ -1,9 +1,6 @@
-import * as Astronomy from 'astronomy-engine';
-import {
-  calculatePanchanga,
-  type PanchangaData,
-} from './ephemeris.ts';
-import { TELUGU_NAKSHATRAS, TELUGU_RASIS } from './teluguJathakam.ts';
+import { computeDayPanchanga } from './hinduCalendarEngine.ts';
+import { msFromJd } from './astroCore.ts';
+import { TELUGU_NAKSHATRAS } from './teluguJathakam.ts';
 
 export interface RealtimePanchangaFeed {
   timestampMs: number;
@@ -88,9 +85,7 @@ export interface RealtimePanchangaFeed {
     gulikaKalam: { window: string; isActive: boolean; remainingMinutes: number };
     abhijitMuhurta: { window: string; isActive: boolean; remainingMinutes: number };
     brahmaMuhurta: { window: string; isActive: boolean };
-    amritKalam: { window: string; isActive: boolean };
     durmuhurtham: { window: string; isActive: boolean };
-    varjyam: { window: string; isActive: boolean };
   };
 
   // Live Hora Right Now
@@ -290,7 +285,13 @@ const CHOGHADIYA_META: Record<
 };
 
 /**
- * Calculates a high-precision, real-time Panchanga feed for the user's specific location & time.
+ * Real-time Panchanga feed.
+ *
+ * All pañcāṅga elements are delegated to `hinduCalendarEngine.computeDayPanchanga`
+ * (true sidereal Sun/Moon, Lahiri ayanāṁśa, sunrise-anchored angas, computed
+ * saṁvatsara / ṛtu / ayana / māsa). This function only adds the "live" layer:
+ * which kāla, horā and choṣhaḍiyā are running at `targetDate`, and how many
+ * minutes remain.
  */
 export function getRealtimePanchangaFeed(
   targetDate: Date,
@@ -300,338 +301,191 @@ export function getRealtimePanchangaFeed(
   locationName: string = 'హైదరాబాద్ (తెలంగాణ)'
 ): RealtimePanchangaFeed {
   const targetMs = targetDate.getTime();
-  const localMs = targetMs + tzOffsetHours * 3600 * 1000;
-  const localDate = new Date(localMs);
+  const localMsValue = targetMs + tzOffsetHours * 3600 * 1000;
+  const local = new Date(localMsValue);
+  const dateISO = `${local.getUTCFullYear()}-${String(local.getUTCMonth() + 1).padStart(2, '0')}-${String(
+    local.getUTCDate()
+  ).padStart(2, '0')}`;
+  const localTimeStr = `${String(local.getUTCHours()).padStart(2, '0')}:${String(local.getUTCMinutes()).padStart(
+    2,
+    '0'
+  )}:${String(local.getUTCSeconds()).padStart(2, '0')}`;
 
-  const localTimeStr = `${String(localDate.getUTCHours()).padStart(2, '0')}:${String(
-    localDate.getUTCMinutes()
-  ).padStart(2, '0')}:${String(localDate.getUTCSeconds()).padStart(2, '0')}`;
+  const geo = { lat, lng, tzOffsetHours, placeName: locationName };
+  const day = computeDayPanchanga(dateISO, geo);
 
-  const localDateStr = `${localDate.getUTCFullYear()}-${String(
-    localDate.getUTCMonth() + 1
-  ).padStart(2, '0')}-${String(localDate.getUTCDate()).padStart(2, '0')}`;
-
-  const dayOfWeek = localDate.getUTCDay(); // 0=Sun..6=Sat
-  const vaaraInfo = TELUGU_VAARAS[dayOfWeek];
-
-  const observer = new Astronomy.Observer(lat, lng, 0);
-
-  // Day start in UTC
-  const startOfLocalDayUTC = new Date(
-    Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0) -
-      tzOffsetHours * 3600 * 1000
-  );
-
-  // Sun and Moon Rise/Set
-  const sunRiseEvent = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, startOfLocalDayUTC, 1);
-  const sunSetEvent = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, startOfLocalDayUTC, 1);
-  const moonRiseEvent = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, +1, startOfLocalDayUTC, 1.5);
-  const moonSetEvent = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, startOfLocalDayUTC, 1.5);
-
-  const sunriseMs = sunRiseEvent ? sunRiseEvent.date.getTime() : startOfLocalDayUTC.getTime() + 6 * 3600 * 1000;
-  const sunsetMs = sunSetEvent ? sunSetEvent.date.getTime() : startOfLocalDayUTC.getTime() + 18 * 3600 * 1000;
-
-  const dayDurationMs = Math.max(4 * 3600 * 1000, sunsetMs - sunriseMs);
-  const nightDurationMs = Math.max(4 * 3600 * 1000, 24 * 3600 * 1000 - dayDurationMs);
+  const toMs = (jd: number | null) => (jd === null ? null : msFromJd(jd));
+  const sunriseMs = toMs(day.sunriseJd) ?? localMsValue;
+  const sunsetMs = toMs(day.sunsetJd) ?? localMsValue + 6 * 3600 * 1000;
   const isDaytime = targetMs >= sunriseMs && targetMs <= sunsetMs;
 
-  const fmtTime = (ms: number) => {
+  const fmtTime = (ms: number | null) => {
+    if (ms === null) return '—';
     const d = new Date(ms + tzOffsetHours * 3600 * 1000);
     return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
   };
 
-  const sunriseLocal = fmtTime(sunriseMs);
-  const sunsetLocal = fmtTime(sunsetMs);
-  const moonriseLocal = moonRiseEvent ? fmtTime(moonRiseEvent.date.getTime()) : 'రాత్రి సంచారం';
-  const moonsetLocal = moonSetEvent ? fmtTime(moonSetEvent.date.getTime()) : 'పగటి సంచారం';
+  const dayHours = (day.dayLengthMs / 3_600_000).toFixed(1);
+  const nightHours = (day.nightLengthMs / 3_600_000).toFixed(1);
 
-  const dayHours = (dayDurationMs / (3600 * 1000)).toFixed(1);
-  const nightHours = (nightDurationMs / (3600 * 1000)).toFixed(1);
+  const vaaraInfo = TELUGU_VAARAS[day.weekday.index] ?? TELUGU_VAARAS[0];
+  const teluguNak = TELUGU_NAKSHATRAS[day.nakshatra.number - 1];
+  const yogaMeta = TELUGU_YOGAS[day.yoga.number - 1];
+  const karanaRawName = day.karana.nameEn;
+  const karanaMeta =
+    TELUGU_KARANAS[karanaRawName] ??
+    Object.values(TELUGU_KARANAS).find((k) => k.nameTe === day.karana.nameTe) ?? {
+      nameTe: day.karana.nameTe,
+      typeTe: 'చర కరణం',
+      isBhadra: day.karana.isBhadra,
+    };
 
-  // Calculate planetary Sidereal Longitudes for Sun and Moon
-  const timeAstro = Astronomy.MakeTime(targetDate);
-  const sunEquator = Astronomy.Equator(Astronomy.Body.Sun, timeAstro, observer, true, true);
-  const moonEquator = Astronomy.Equator(Astronomy.Body.Moon, timeAstro, observer, true, true);
+  const tithiIndex = day.tithi.number - 1;
+  const isShukla = tithiIndex < 15;
 
-  // Approximate Lahiri Ayanamsa: 23.85° at J2000 + 50.29"/year
-  const yearFrac = 2000.0 + (targetMs - Date.UTC(2000, 0, 1)) / (365.25 * 86400000);
-  const ayanamsaLahiri = 23.85 + (yearFrac - 2000) * (50.29 / 3600);
-
-  const sunTropicalLon = sunEquator.ra * 15; // approximate RA to ecliptic
-  const sunSidLon = (sunTropicalLon - ayanamsaLahiri + 360) % 360;
-
-  const moonTropicalLon = moonEquator.ra * 15;
-  const moonSidLon = (moonTropicalLon - ayanamsaLahiri + 360) % 360;
-
-  const panchanga: PanchangaData = calculatePanchanga(
-    targetDate,
-    sunSidLon,
-    moonSidLon,
-    lat,
-    lng,
-    tzOffsetHours
-  );
-
-  // Tithi calculations
-  const elongation = (moonSidLon - sunSidLon + 360) % 360;
-  const tithiIdx = Math.floor(elongation / 12);
-  const tithiPercent = Number((((elongation % 12) / 12) * 100).toFixed(1));
-  const tithiDegRemaining = 12 - (elongation % 12);
-  // Avg relative speed: ~12.19 deg/day => ~0.508 deg/hour
-  const tithiMsRemaining = (tithiDegRemaining / 0.508) * 3600 * 1000;
-  const tithiEndTimeLocal = fmtTime(targetMs + tithiMsRemaining);
-
-  const tithiNameTe = TELUGU_TITHIS[tithiIdx] ?? 'శుక్ల పాడ్యమి';
-  const nextTithiNameTe = TELUGU_TITHIS[(tithiIdx + 1) % 30];
-  const isShukla = tithiIdx < 15;
-
-  const tithiDeities = [
-    'అగ్ని దేవుడు', 'బ్రహ్మ దేవుడు', 'గౌరీ దేవి', 'శ్రీ మహాగణపతి', 'సర్ప దేవతలు',
-    'సుబ్రహ్మణ్య స్వామి', 'సూర్య భగవానుడు', 'శివ-దుర్గా దేవి', 'శ్రీరామ చంద్రుడు', 'యమధర్మరాజు',
-    'శ్రీ మహావిష్ణువు', 'శ్రీహరి / వామన మూర్తి', 'మన్మథుడు / కామదేవుడు', 'పరమేశ్వరుడు', 'శ్రీ లక్ష్మీనారాయణులు',
-  ];
-  const tithiDeityTe = tithiDeities[tithiIdx % 15] ?? 'శ్రీ మహావిష్ణువు';
-
-  // Nakshatra calculations
-  const nakSpan = 360 / 27;
-  const nakIdx = Math.floor(moonSidLon / nakSpan);
-  const degInNak = moonSidLon % nakSpan;
-  const pada = Math.floor(degInNak / (nakSpan / 4)) + 1;
-  const nakDegRemaining = nakSpan - degInNak;
-  // Avg Moon speed: ~13.176 deg/day => ~0.549 deg/hour
-  const nakMsRemaining = (nakDegRemaining / 0.549) * 3600 * 1000;
-  const nakEndTimeLocal = fmtTime(targetMs + nakMsRemaining);
-
-  const teluguNak = TELUGU_NAKSHATRAS[nakIdx] ?? TELUGU_NAKSHATRAS[0];
-  const nextNak = TELUGU_NAKSHATRAS[(nakIdx + 1) % 27] ?? TELUGU_NAKSHATRAS[0];
-
-  // Yoga
-  const sumLon = (sunSidLon + moonSidLon) % 360;
-  const yogaIdx = Math.floor(sumLon / nakSpan);
-  const yogaItem = TELUGU_YOGAS[yogaIdx] ?? TELUGU_YOGAS[0];
-
-  // Karana
-  const karanaNameRaw = panchanga.karana.name;
-  const karanaMeta = TELUGU_KARANAS[karanaNameRaw] ?? {
-    nameTe: karanaNameRaw,
-    typeTe: 'కరణం',
-    isBhadra: false,
+  /* ---------- live kala detection ---------- */
+  const windowByKey = (key: string) => day.kalas.find((k) => k.key === key) ?? null;
+  const containsNow = (startJd: number | null, endJd: number | null) => {
+    if (startJd === null || endJd === null) return false;
+    const s = msFromJd(startJd);
+    const e = msFromJd(endJd);
+    return e > s ? targetMs >= s && targetMs < e : targetMs >= s || targetMs < e;
   };
 
-  // Live Kala Timings
-  const octantMs = dayDurationMs / 8;
-  const rahuOctants = [8, 2, 7, 5, 6, 4, 3];
-  const yamaOctants = [5, 4, 3, 2, 1, 7, 6];
-  const gulikaOctants = [7, 6, 5, 4, 3, 2, 1];
-
-  const rahuStartMs = sunriseMs + (rahuOctants[dayOfWeek] - 1) * octantMs;
-  const rahuEndMs = rahuStartMs + octantMs;
-  const isRahuActive = targetMs >= rahuStartMs && targetMs <= rahuEndMs;
-
-  const yamaStartMs = sunriseMs + (yamaOctants[dayOfWeek] - 1) * octantMs;
-  const yamaEndMs = yamaStartMs + octantMs;
-  const isYamaActive = targetMs >= yamaStartMs && targetMs <= yamaEndMs;
-
-  const gulikaStartMs = sunriseMs + (gulikaOctants[dayOfWeek] - 1) * octantMs;
-  const gulikaEndMs = gulikaStartMs + octantMs;
-  const isGulikaActive = targetMs >= gulikaStartMs && targetMs <= gulikaEndMs;
-
-  // Abhijit Muhurta (Midday 8th muhurta of 15 daylight muhurtas)
-  const muhurtaSpanMs = dayDurationMs / 15;
-  const solarNoonMs = sunriseMs + dayDurationMs / 2;
-  const abhijitStartMs = solarNoonMs - muhurtaSpanMs / 2;
-  const abhijitEndMs = solarNoonMs + muhurtaSpanMs / 2;
-  const isAbhijitActive = targetMs >= abhijitStartMs && targetMs <= abhijitEndMs;
-
-  // Brahma Muhurta (96 mins to 48 mins before sunrise)
-  const brahmaStartMs = sunriseMs - 96 * 60 * 1000;
-  const brahmaEndMs = sunriseMs - 48 * 60 * 1000;
-  const isBrahmaActive = targetMs >= brahmaStartMs && targetMs <= brahmaEndMs;
-
-  // Durmuhurtham (based on weekday)
-  // Sun: 14th muhurta, Mon: 9th & 12th, Tue: 4th & 11th, Wed: 5th, Thu: 6th & 13th, Fri: 4th & 9th, Sat: 2nd & 3rd
-  const durmuhurthaOffsets: Record<number, number[]> = {
-    0: [14],
-    1: [9, 12],
-    2: [4, 11],
-    3: [5],
-    4: [6, 13],
-    5: [4, 9],
-    6: [2, 3],
+  const kalaWindow = (key: string) => {
+    const w = windowByKey(key);
+    return {
+      window: w ? `${w.startTime} – ${w.endTime}` : '—',
+      isActive: w ? containsNow(w.startJd, w.endJd) : false,
+      remainingMinutes:
+        w && w.endJd && containsNow(w.startJd, w.endJd)
+          ? Math.max(1, Math.round((msFromJd(w.endJd) - targetMs) / 60000))
+          : 0,
+    };
   };
-  const activeDurmuhurthaSlot = durmuhurthaOffsets[dayOfWeek]?.some((slot) => {
-    const s = sunriseMs + (slot - 1) * muhurtaSpanMs;
-    const e = s + muhurtaSpanMs;
-    return targetMs >= s && targetMs <= e;
-  }) ?? false;
 
-  // Amrit Kalam & Varjyam (Approximate for nakshatra span)
-  const amritStartMs = abhijitStartMs + 2 * muhurtaSpanMs;
-  const isAmritActive = targetMs >= amritStartMs && targetMs <= amritStartMs + muhurtaSpanMs;
+  const durmuhurtaWindows = day.kalas.filter((k) => k.key.startsWith('durmuhurta'));
+  const activeDurmuhurta = durmuhurtaWindows.find((k) => containsNow(k.startJd, k.endJd)) ?? null;
+  const bhadraWindow = windowByKey('bhadra');
 
-  // Determine active primary Kala Right Now
-  let activeKalaNameTe: string | null = null;
-  let activeKalaType: 'auspicious' | 'inauspicious' | 'neutral' = 'neutral';
-  let activeKalaRemainingMinutes = 0;
+  // Which kala is running right now (inauspicious windows take precedence in display)
+  const activeWindow =
+    day.kalas
+      .filter((k) => k.key !== 'bhadra' && containsNow(k.startJd, k.endJd))
+      .sort((a, b) => (a.quality === 'inauspicious' ? -1 : 0) - (b.quality === 'inauspicious' ? -1 : 0))[0] ?? null;
 
-  if (isRahuActive) {
-    activeKalaNameTe = 'రాహు కాలం (అశుభం)';
-    activeKalaType = 'inauspicious';
-    activeKalaRemainingMinutes = Math.max(1, Math.round((rahuEndMs - targetMs) / 60000));
-  } else if (isYamaActive) {
-    activeKalaNameTe = 'యమగండం (అశుభం)';
-    activeKalaType = 'inauspicious';
-    activeKalaRemainingMinutes = Math.max(1, Math.round((yamaEndMs - targetMs) / 60000));
-  } else if (isGulikaActive) {
-    activeKalaNameTe = 'గుళిక కాలం (మధ్యమం)';
-    activeKalaType = 'neutral';
-    activeKalaRemainingMinutes = Math.max(1, Math.round((gulikaEndMs - targetMs) / 60000));
-  } else if (isAbhijitActive) {
-    activeKalaNameTe = 'అభిజిత్ ముహూర్తం (విజయ శుభం ★)';
-    activeKalaType = 'auspicious';
-    activeKalaRemainingMinutes = Math.max(1, Math.round((abhijitEndMs - targetMs) / 60000));
-  } else if (isBrahmaActive) {
-    activeKalaNameTe = 'బ్రహ్మ ముహూర్తం (దివ్య సాధనా కాలం ★)';
-    activeKalaType = 'auspicious';
-    activeKalaRemainingMinutes = Math.max(1, Math.round((brahmaEndMs - targetMs) / 60000));
-  } else if (activeDurmuhurthaSlot) {
-    activeKalaNameTe = 'దుర్ముహూర్తం (వర్జ్యం)';
-    activeKalaType = 'inauspicious';
-    activeKalaRemainingMinutes = 24;
-  }
+  const activeKalaNameTe = activeWindow
+    ? activeDurmuhurta && activeWindow.key.startsWith('durmuhurta')
+      ? 'దుర్ముహూర్తం'
+      : activeWindow.nameTe
+    : null;
+  const activeKalaType: 'auspicious' | 'inauspicious' | 'neutral' = activeWindow
+    ? activeWindow.quality
+    : 'neutral';
+  const activeKalaRemainingMinutes =
+    activeWindow && activeWindow.endJd
+      ? Math.max(1, Math.round((msFromJd(activeWindow.endJd) - targetMs) / 60000))
+      : 0;
 
-  // Live Hora Calculation
-  // 12 day horas from sunrise + 12 night horas from sunset
-  const dayHoraMs = dayDurationMs / 12;
-  const nightHoraMs = nightDurationMs / 12;
-  const dayLordPlanet = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'][dayOfWeek];
-  const startHoraIdx = CHALDEAN_HORA_PLANETS.indexOf(dayLordPlanet);
-
-  let currentHoraPlanetId = 'Jupiter';
-  let horaEndTimeMs = targetMs + 30 * 60 * 1000;
-  let nextHoraPlanetId = 'Venus';
-
-  if (isDaytime) {
-    const elapsedSinceSunrise = targetMs - sunriseMs;
-    const horaIndex = Math.min(11, Math.floor(elapsedSinceSunrise / dayHoraMs));
-    currentHoraPlanetId = CHALDEAN_HORA_PLANETS[(startHoraIdx + horaIndex) % 7];
-    horaEndTimeMs = sunriseMs + (horaIndex + 1) * dayHoraMs;
-    nextHoraPlanetId = CHALDEAN_HORA_PLANETS[(startHoraIdx + horaIndex + 1) % 7];
-  } else {
-    const elapsedSinceSunset = (targetMs - sunsetMs + 24 * 3600 * 1000) % (24 * 3600 * 1000);
-    const horaIndex = Math.min(11, Math.floor(elapsedSinceSunset / nightHoraMs));
-    currentHoraPlanetId = CHALDEAN_HORA_PLANETS[(startHoraIdx + 12 + horaIndex) % 7];
-    horaEndTimeMs = sunsetMs + (horaIndex + 1) * nightHoraMs;
-    nextHoraPlanetId = CHALDEAN_HORA_PLANETS[(startHoraIdx + 12 + horaIndex + 1) % 7];
-  }
-
-  const horaMeta = HORA_PLANET_METAS[currentHoraPlanetId] ?? HORA_PLANET_METAS.Jupiter;
+  /* ---------- hora & choghadiya ---------- */
+  const horaWindow =
+    day.hora.find((h) => containsNow(h.startJd, h.endJd)) ?? day.hora[day.hora.length - 1];
+  const nextHoraWindow = day.hora[(day.hora.indexOf(horaWindow) + 1) % day.hora.length];
+  const planetKeyFromName = (nameTe: string): string => {
+    if (nameTe.includes('రవి') || nameTe.includes('సూర్య')) return 'Sun';
+    if (nameTe.includes('చంద్ర')) return 'Moon';
+    if (nameTe.includes('కుజ') || nameTe.includes('అంగారక')) return 'Mars';
+    if (nameTe.includes('బుధ')) return 'Mercury';
+    if (nameTe.includes('గురు') || nameTe.includes('బృహస్పతి')) return 'Jupiter';
+    if (nameTe.includes('శుక్ర')) return 'Venus';
+    if (nameTe.includes('శని')) return 'Saturn';
+    return 'Jupiter';
+  };
+  const horaPlanetId = planetKeyFromName(horaWindow?.nameTe ?? 'జూపిటర్');
+  const nextHoraPlanetId = planetKeyFromName(nextHoraWindow?.nameTe ?? '');
+  const horaMeta = HORA_PLANET_METAS[horaPlanetId] ?? HORA_PLANET_METAS.Jupiter;
   const nextHoraMeta = HORA_PLANET_METAS[nextHoraPlanetId] ?? HORA_PLANET_METAS.Venus;
+  const horaEndMs = horaWindow?.endJd ? msFromJd(horaWindow.endJd) : targetMs + 3_600_000;
 
-  // Live Choghadiya Calculation (8 day slots from sunrise)
-  const choghadiyaSlotMs = dayDurationMs / 8;
-  const choghadiyaOrder = CHOGHADIYA_ORDERS[dayOfWeek] ?? CHOGHADIYA_ORDERS[0];
-  let currentChoghadiyaName = 'Amrit';
-  let choghadiyaEndMs = targetMs + 45 * 60 * 1000;
-  let nextChoghadiyaName = 'Shubh';
+  const chogAll = [...day.choghadiya.day, ...day.choghadiya.night];
+  const chogWindow = chogAll.find((c) => containsNow(c.startJd, c.endJd)) ?? chogAll[0];
+  const nextChogWindow = chogAll[(chogAll.indexOf(chogWindow) + 1) % chogAll.length];
+  const chogKeyFromName = (nameTe: string): string => {
+    if (nameTe.includes('అమృత')) return 'Amrit';
+    if (nameTe.includes('శుభ')) return 'Shubh';
+    if (nameTe.includes('లాభ')) return 'Labh';
+    if (nameTe.includes('చర')) return 'Char';
+    if (nameTe.includes('రోగ')) return 'Rog';
+    if (nameTe.includes('కాల')) return 'Kaal';
+    if (nameTe.includes('ఉద్వేగ')) return 'Udveg';
+    return 'Shubh';
+  };
+  const chogMeta = CHOGHADIYA_META[chogKeyFromName(chogWindow?.nameTe ?? 'శుభం')] ?? CHOGHADIYA_META.Shubh;
+  const nextChogMeta = CHOGHADIYA_META[chogKeyFromName(nextChogWindow?.nameTe ?? '')] ?? CHOGHADIYA_META.Shubh;
+  const chogEndMs = chogWindow?.endJd ? msFromJd(chogWindow.endJd) : targetMs + 45 * 60 * 1000;
 
-  if (isDaytime) {
-    const chogIdx = Math.min(7, Math.floor((targetMs - sunriseMs) / choghadiyaSlotMs));
-    currentChoghadiyaName = choghadiyaOrder[chogIdx] ?? 'Amrit';
-    choghadiyaEndMs = sunriseMs + (chogIdx + 1) * choghadiyaSlotMs;
-    nextChoghadiyaName = choghadiyaOrder[(chogIdx + 1) % 8] ?? 'Shubh';
-  } else {
-    // Night choghadiya starts with 5th day choghadiya
-    const nightSlotMs = nightDurationMs / 8;
-    const elapsedSinceSunset = (targetMs - sunsetMs + 24 * 3600 * 1000) % (24 * 3600 * 1000);
-    const chogIdx = Math.min(7, Math.floor(elapsedSinceSunset / nightSlotMs));
-    const nightStartOrder = choghadiyaOrder.slice(4).concat(choghadiyaOrder.slice(0, 4));
-    currentChoghadiyaName = nightStartOrder[chogIdx] ?? 'Shubh';
-    choghadiyaEndMs = sunsetMs + (chogIdx + 1) * nightSlotMs;
-    nextChoghadiyaName = nightStartOrder[(chogIdx + 1) % 8] ?? 'Amrit';
-  }
-
-  const chogMeta = CHOGHADIYA_META[currentChoghadiyaName] ?? CHOGHADIYA_META.Amrit;
-  const nextChogMeta = CHOGHADIYA_META[nextChoghadiyaName] ?? CHOGHADIYA_META.Shubh;
-
-  // Vedic Samvatsara & Ritu calculations
-  // Current year (2024-2025 is Krodhi / 2025-2026 is Vishvavasu)
-  const isAfterChaitra = localDate.getUTCMonth() >= 3;
-  const currentSamvatsara = isAfterChaitra ? 'శ్రీ క్రోధినామ సంవత్సరం' : 'శ్రీ శోభకృత్ నామ సంవత్సరం';
-  const isUttarayana = localDate.getUTCMonth() >= 0 && localDate.getUTCMonth() < 6;
-  const ayanaNameTe = isUttarayana ? 'ఉత్తరాయణం (దేవమార్గం)' : 'దక్షిణాయనం (పితృమార్గం)';
-
-  const rituNames = [
-    'శిశిర ఋతువు', 'వసంత ఋతువు', 'వసంత ఋతువు', 'గ్రీష్మ ఋతువు', 'గ్రీష్మ ఋతువు',
-    'వర్ష ఋతువు', 'వర్ష ఋతువు', 'శరద్ ఋతువు', 'శరద్ ఋతువు', 'హేమంత ఋతువు', 'హేమంత ఋతువు', 'శిశిర ఋతువు',
-  ];
-  const rituNameTe = rituNames[localDate.getUTCMonth()] ?? 'శరద్ ఋతువు';
-
-  const maasaNames = [
-    'పుష్య - మాఘ మాసము', 'మాఘ - ఫాల్గుణ మాసము', 'ఫాల్గుణ - చైత్ర మాసము',
-    'చైత్ర మాసము', 'వైశాఖ మాసము', 'జ్యేష్ఠ మాసము', 'ఆషాఢ మాసము',
-    'శ్రావణ మాసము', 'భాద్రపద మాసము', 'ఆశ్వయుజ మాసము', 'కార్తీక మాసము', 'మార్గశిర మాసము',
-  ];
-  const maasaNameTe = maasaNames[localDate.getUTCMonth()] ?? 'ఆశ్వయుజ మాసము';
+  const tithiDeityTe =
+    TITHI_DEITIES_TE[tithiIndex] ?? 'బ్రహ్మ';
+  const tithiLordTe = ['రవి', 'చంద్ర', 'కుజ', 'బుధ', 'గురు', 'శుక్ర', 'శని', 'రాహు'][tithiIndex % 8];
 
   return {
     timestampMs: targetMs,
     localTimeStr,
-    localDateStr,
-    dayOfWeekNameTe: vaaraInfo.nameTe,
-    dayOfWeekNameEn: vaaraInfo.nameEn,
+    localDateStr: dateISO,
+    dayOfWeekNameTe: day.weekday.nameTe,
+    dayOfWeekNameEn: day.weekday.nameEn,
     locationName,
     latitude: lat,
     longitude: lng,
     tzOffsetHours,
 
-    sunriseLocal,
-    sunsetLocal,
-    moonriseLocal,
-    moonsetLocal,
+    sunriseLocal: day.sunrise,
+    sunsetLocal: day.sunset,
+    moonriseLocal: day.moonrise,
+    moonsetLocal: day.moonset,
     dayLengthStr: `${dayHours} గంటలు`,
     nightLengthStr: `${nightHours} గంటలు`,
     isDaytime,
 
     tithi: {
-      number: tithiIdx + 1,
-      nameTe: tithiNameTe,
-      pakshaTe: isShukla ? 'శుక్ల పక్షం (చంద్రవృద్ధి)' : 'కృష్ణ పక్షం (చంద్రక్షయ)',
-      pakshaEn: isShukla ? 'Shukla Paksha' : 'Krishna Paksha',
-      lordTe: ['రవి', 'చంద్ర', 'కుజ', 'బుధ', 'గురు', 'శుక్ర', 'శని', 'రాహు'][tithiIdx % 8],
-      percentElapsed: tithiPercent,
-      endTimeLocal: tithiEndTimeLocal,
-      nextTithiNameTe,
-      isShubha: ![4, 9, 14, 19, 24, 29].includes(tithiIdx),
+      number: day.tithi.number,
+      nameTe: day.tithi.nameTe,
+      pakshaTe: day.tithi.pakshaTe,
+      pakshaEn: day.tithi.pakshaEn,
+      lordTe: tithiLordTe,
+      percentElapsed: day.tithi.percentElapsed,
+      endTimeLocal: day.tithi.endTime,
+      nextTithiNameTe: day.tithi.nextNameTe ?? '',
+      isShubha: ![4, 9, 14, 19, 24, 29].includes(tithiIndex) && tithiIndex !== 29,
       deityTe: tithiDeityTe,
     },
 
     nakshatra: {
-      number: nakIdx + 1,
+      number: day.nakshatra.number,
       nameTe: teluguNak.nameTe,
       nameEn: teluguNak.nameEn,
-      pada,
+      pada: day.nakshatra.pada,
       lordTe: teluguNak.lordTe,
       deityTe: teluguNak.deityTe,
       ganaTe: teluguNak.ganaTe,
       yoniTe: teluguNak.yoniTe,
-      percentElapsed: Number(((degInNak / nakSpan) * 100).toFixed(1)),
-      endTimeLocal: nakEndTimeLocal,
-      nextNakshatraNameTe: nextNak.nameTe,
+      percentElapsed: day.nakshatra.percentElapsed,
+      endTimeLocal: day.nakshatra.endTime,
+      nextNakshatraNameTe: day.nakshatra.nextNameTe ?? '',
       isShubha: !['భరణి', 'కృత్తిక', 'ఆరుద్ర', 'ఆశ్లేష', 'జ్యేష్ఠ'].includes(teluguNak.nameTe),
     },
 
     yoga: {
-      number: yogaIdx + 1,
-      nameTe: yogaItem.nameTe,
-      nameEn: panchanga.yoga.name,
-      meaningTe: yogaItem.meaningTe,
-      isShubha: yogaItem.isShubha,
+      number: day.yoga.number,
+      nameTe: day.yoga.nameTe,
+      nameEn: day.yoga.nameEn,
+      meaningTe: yogaMeta?.meaningTe ?? day.yoga.meaningTe,
+      isShubha: yogaMeta?.isShubha ?? day.yoga.isAuspicious,
     },
 
     karana: {
       nameTe: karanaMeta.nameTe,
-      nameEn: karanaNameRaw,
+      nameEn: karanaRawName,
       typeTe: karanaMeta.typeTe,
       isBhadraVishti: karanaMeta.isBhadra,
       bhadraWarningTe: karanaMeta.isBhadra
@@ -651,74 +505,62 @@ export function getRealtimePanchangaFeed(
       activeKalaNameTe,
       activeKalaType,
       activeKalaRemainingMinutes,
-      rahuKalam: {
-        window: `${fmtTime(rahuStartMs)} – ${fmtTime(rahuEndMs)}`,
-        isActive: isRahuActive,
-        remainingMinutes: isRahuActive ? Math.max(1, Math.round((rahuEndMs - targetMs) / 60000)) : 0,
-      },
-      yamagandam: {
-        window: `${fmtTime(yamaStartMs)} – ${fmtTime(yamaEndMs)}`,
-        isActive: isYamaActive,
-        remainingMinutes: isYamaActive ? Math.max(1, Math.round((yamaEndMs - targetMs) / 60000)) : 0,
-      },
-      gulikaKalam: {
-        window: `${fmtTime(gulikaStartMs)} – ${fmtTime(gulikaEndMs)}`,
-        isActive: isGulikaActive,
-        remainingMinutes: isGulikaActive ? Math.max(1, Math.round((gulikaEndMs - targetMs) / 60000)) : 0,
-      },
-      abhijitMuhurta: {
-        window: `${fmtTime(abhijitStartMs)} – ${fmtTime(abhijitEndMs)}`,
-        isActive: isAbhijitActive,
-        remainingMinutes: isAbhijitActive ? Math.max(1, Math.round((abhijitEndMs - targetMs) / 60000)) : 0,
-      },
-      brahmaMuhurta: {
-        window: `${fmtTime(brahmaStartMs)} – ${fmtTime(brahmaEndMs)}`,
-        isActive: isBrahmaActive,
-      },
-      amritKalam: {
-        window: `${fmtTime(amritStartMs)} – ${fmtTime(amritStartMs + muhurtaSpanMs)}`,
-        isActive: isAmritActive,
-      },
+      rahuKalam: kalaWindow('rahu'),
+      yamagandam: kalaWindow('yamaganda'),
+      gulikaKalam: kalaWindow('gulika'),
+      abhijitMuhurta: kalaWindow('abhijit'),
+      brahmaMuhurta: (() => {
+        const w = windowByKey('brahma');
+        return { window: w ? `${w.startTime} – ${w.endTime}` : '—', isActive: w ? containsNow(w.startJd, w.endJd) : false };
+      })(),
       durmuhurtham: {
-        window: `${fmtTime(sunriseMs + 3 * muhurtaSpanMs)} – ${fmtTime(sunriseMs + 4 * muhurtaSpanMs)}`,
-        isActive: activeDurmuhurthaSlot,
-      },
-      varjyam: {
-        window: `${fmtTime(sunriseMs + 6 * muhurtaSpanMs)} – ${fmtTime(sunriseMs + 7.5 * muhurtaSpanMs)}`,
-        isActive: false,
+        window: activeDurmuhurta
+          ? `${activeDurmuhurta.startTime} – ${activeDurmuhurta.endTime}`
+          : durmuhurtaWindows
+              .map((w) => `${w.startTime} – ${w.endTime}`)
+              .join(' · ') || '—',
+        isActive: Boolean(activeDurmuhurta),
       },
     },
 
     currentHora: {
-      planetId: currentHoraPlanetId,
+      planetId: horaPlanetId,
       planetNameTe: horaMeta.nameTe,
       nature: horaMeta.nature,
       badgeTe: horaMeta.badgeTe,
       bestActivitiesTe: horaMeta.bestActivitiesTe,
-      endTimeLocal: fmtTime(horaEndTimeMs),
-      remainingMinutes: Math.max(1, Math.round((horaEndTimeMs - targetMs) / 60000)),
+      endTimeLocal: fmtTime(horaEndMs),
+      remainingMinutes: Math.max(1, Math.round((horaEndMs - targetMs) / 60000)),
       nextHoraPlanetTe: nextHoraMeta.nameTe,
     },
 
     currentChoghadiya: {
       nameTe: chogMeta.nameTe,
-      nameEn: currentChoghadiyaName,
+      nameEn: chogKeyFromName(chogWindow?.nameTe ?? 'శుభం'),
       rulerTe: chogMeta.rulerTe,
       nature: chogMeta.nature,
       badgeTe: chogMeta.badgeTe,
       isAuspicious: chogMeta.isAuspicious,
-      endTimeLocal: fmtTime(choghadiyaEndMs),
-      remainingMinutes: Math.max(1, Math.round((choghadiyaEndMs - targetMs) / 60000)),
+      endTimeLocal: fmtTime(chogEndMs),
+      remainingMinutes: Math.max(1, Math.round((chogEndMs - targetMs) / 60000)),
       nextChoghadiyaTe: nextChogMeta.nameTe,
     },
 
     vedicEra: {
-      samvatsaraNameTe: currentSamvatsara,
-      ayanaNameTe,
-      rituNameTe,
-      maasaNameTe,
-      kalyugYear: 5126,
-      shakaEraYear: 1946,
+      samvatsaraNameTe: `శ్రీ ${day.era.samvatsaraTe} నామ సంవత్సరం`,
+      ayanaNameTe: day.era.ayanaTe,
+      rituNameTe: day.era.rituTe,
+      maasaNameTe: `${day.era.masaLabelTe} మాసము (${day.era.pakshaTe})`,
+      kalyugYear: day.era.kaliYear,
+      shakaEraYear: day.era.shakaYear,
     },
   };
 }
+
+/** Tithi deities in order (śukla pratipadā → amāvāsyā). */
+const TITHI_DEITIES_TE = [
+  'అగ్ని', 'బ్రహ్మ', 'గౌరీ', 'గణేశుడు', 'నాగ దేవత', 'కార్తికేయుడు', 'సూర్యుడు', 'శివుడు',
+  'దుర్గ', 'యముడు', 'విశ్వేదేవతలు', 'విష్ణువు', 'కామదేవుడు', 'శివుడు', 'చంద్రుడు',
+  'అగ్ని', 'బ్రహ్మ', 'గౌరీ', 'గణేశుడు', 'నాగ దేవత', 'కార్తికేయుడు', 'సూర్యుడు', 'శివుడు',
+  'దుర్గ', 'యముడు', 'విశ్వేదేవతలు', 'విష్ణువు', 'కామదేవుడు', 'శివుడు', 'పితృ దేవతలు',
+];

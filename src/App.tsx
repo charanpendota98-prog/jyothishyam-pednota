@@ -30,6 +30,9 @@ import { ClassicalAiView } from './components/ClassicalAiView.tsx';
 import { PrashnaShastraView } from './components/PrashnaShastraView.tsx';
 import { NamakaranaShastraView } from './components/NamakaranaShastraView.tsx';
 import { TajikaVarshaphalaView } from './components/TajikaVarshaphalaView.tsx';
+import { VastuShastraView } from './components/VastuShastraView.tsx';
+import { HinduCalendarView } from './components/HinduCalendarView.tsx';
+import { GocharaView } from './components/GocharaView.tsx';
 import { RoyalWhatsAppSummaryModal } from './components/RoyalWhatsAppSummaryModal.tsx';
 import {
   Bookmark,
@@ -38,6 +41,8 @@ import {
   Plus,
   Menu,
   Compass,
+  Orbit,
+  Home,
   Clock,
   Calendar,
   Heart,
@@ -59,7 +64,10 @@ type ActiveWorkspaceTab =
   | 'panchanga_lots'
   | 'synastry'
   | 'classical_ai'
-  | 'prashna';
+  | 'prashna'
+  | 'vastu'
+  | 'hindu_calendar'
+  | 'gochara';
 
 const INITIAL_PROFILES: BirthInput[] = [
   {
@@ -337,6 +345,27 @@ export default function App() {
       shortTe: 'ప్రశ్న శాస్త్రం',
       labelEn: 'Prashna Shastra',
       icon: <HelpCircle className="w-4 h-4" />,
+    },
+    {
+      id: 'gochara',
+      labelTe: 'గోచార ఫలం (రాశి గతులు)',
+      shortTe: 'గోచారం',
+      labelEn: 'Gochara & Transits',
+      icon: <Orbit className="w-4 h-4" />,
+    },
+    {
+      id: 'hindu_calendar',
+      labelTe: 'హిందూ పంచాంగం & క్యాలెండర్',
+      shortTe: 'పంచాంగం',
+      labelEn: 'Hindu Calendar',
+      icon: <Calendar className="w-4 h-4" />,
+    },
+    {
+      id: 'vastu',
+      labelTe: 'వాస్తు శాస్త్రం (నామ & గృహ)',
+      shortTe: 'వాస్తు',
+      labelEn: 'Vastu Shastra',
+      icon: <Home className="w-4 h-4" />,
     },
   ];
 
@@ -1339,6 +1368,23 @@ export default function App() {
             chart={chart}
             tradition={tradition}
             savedProfiles={savedProfiles}
+            lang={lang}
+          />
+        )}
+
+        {activeTab === 'hindu_calendar' && (
+          <HinduCalendarView chart={chart} lang={lang} />
+        )}
+
+        {activeTab === 'gochara' && <GocharaView chart={chart} lang={lang} />}
+
+        {activeTab === 'vastu' && (
+          <VastuShastraView
+            defaultName={birthInput.name}
+            defaultPlaceName={birthInput.city}
+            defaultLat={chart.input.lat}
+            defaultLng={chart.input.lng}
+            defaultTzOffsetHours={chart.input.tzOffsetHours}
             lang={lang}
           />
         )}
