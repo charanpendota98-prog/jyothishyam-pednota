@@ -220,7 +220,7 @@ export function GocharaView({ chart, lang = 'te' }: GocharaViewProps) {
   const taraGood = TARA_GOOD[taraNumber - 1];
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-6 space-y-5">
+    <div className="grantha-print-area max-w-6xl mx-auto px-3 sm:px-6 py-6 space-y-5">
       {/* Header */}
       <div className="rounded-2xl border border-[#C9A96E]/25 bg-gradient-to-br from-[#12162B] to-[#0B0F1E] p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">

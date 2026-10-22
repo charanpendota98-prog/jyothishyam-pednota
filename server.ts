@@ -19,6 +19,16 @@ import {
   TELUGU_PLANETS,
   generateTeluguSampoornaJathakam,
 } from './src/engine/teluguJathakam.ts';
+import {
+  computeDayPanchanga,
+  getMonthCalendar,
+  getYearOverview,
+  upcomingFestivals,
+  resolveHinduEra,
+  type GeoContext,
+} from './src/engine/hinduCalendarEngine.ts';
+import { computeGocharaReport } from './src/engine/gocharaVedhaEngine.ts';
+import { GRANTHAS, GRANTHA_DOMAINS } from './src/engine/classicalSources.ts';
 
 dotenv.config();
 
@@ -102,6 +112,165 @@ const savedProfiles: BirthInput[] = [
     notes: 'ధనుర్లగ్న ఆదర్శ జాతక చక్రం — హంస మహాపురుష యోగం & రాజయోగ ప్రమాణం.',
   },
 ];
+
+/* ==================================================================== *
+ *  Panchanga / calendar / gochara / sources API
+ *
+ *  All of these are pure functions of (date, lat, lng, tz, ayanamsa), so the
+ *  endpoints validate their inputs strictly and answer deterministically.
+ * ==================================================================== */
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseGeo(body: any): { geo: GeoContext; mode: 'lahiri' | 'raman' | 'kp' | 'true_citra' } {
+  const lat = Number(body?.lat ?? 17.385);
+  const lng = Number(body?.lng ?? 78.4867);
+  const tzOffsetHours = Number(body?.tzOffsetHours ?? 5.5);
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) throw new Error('lat must be between -90 and 90');
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) throw new Error('lng must be between -180 and 180');
+  if (!Number.isFinite(tzOffsetHours) || tzOffsetHours < -12 || tzOffsetHours > 14)
+    throw new Error('tzOffsetHours must be between -12 and 14');
+  const allowed = ['lahiri', 'raman', 'kp', 'true_citra'] as const;
+  const mode = (allowed as readonly string[]).includes(body?.ayanamsa) ? body.ayanamsa : 'lahiri';
+  return {
+    geo: { lat, lng, tzOffsetHours, placeName: String(body?.placeName ?? body?.city ?? '') || '—' },
+    mode: mode as (typeof allowed)[number],
+  };
+}
+
+/** Full panchanga for one civil day. `GET /api/panchanga?date=2026-10-22&lat=..&lng=..&tz=5.5` */
+app.get('/api/panchanga', (req, res) => {
+  try {
+    const date = String(req.query.date ?? '').trim();
+    if (!ISO_DATE_RE.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const { geo, mode } = parseGeo(req.query);
+    const day = computeDayPanchanga(date, { ...geo, placeName: String(req.query.placeName ?? geo.placeName) }, {
+      siderealMode: mode,
+    });
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(day);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute panchanga' });
+  }
+});
+
+/** Same input, POST body (for long place names / clients that avoid query strings). */
+app.post('/api/panchanga', (req, res) => {
+  try {
+    const date = String(req.body?.date ?? '').trim();
+    if (!ISO_DATE_RE.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const { geo, mode } = parseGeo(req.body);
+    res.json(computeDayPanchanga(date, geo, { siderealMode: mode }));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute panchanga' });
+  }
+});
+
+/** Month grid. `GET /api/calendar/month?year=2026&month=10` */
+app.get('/api/calendar/month', (req, res) => {
+  try {
+    const year = Number(req.query.year);
+    const month = Number(req.query.month);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return res.status(400).json({ error: 'year out of range' });
+    if (!Number.isInteger(month) || month < 1 || month > 12) return res.status(400).json({ error: 'month must be 1-12' });
+    const { geo, mode } = parseGeo(req.query);
+    res.json({
+      year,
+      month,
+      days: getMonthCalendar(year, month, geo, { siderealMode: mode }),
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute month' });
+  }
+});
+
+/** Year overview: months, sankrantis, eclipses, festivals, era. */
+app.get('/api/calendar/year', (req, res) => {
+  try {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return res.status(400).json({ error: 'year out of range' });
+    const { geo, mode } = parseGeo(req.query);
+    res.json(getYearOverview(year, geo, { siderealMode: mode }));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute year' });
+  }
+});
+
+/** Upcoming festivals. `GET /api/festivals/upcoming?from=2026-10-22&count=12` */
+app.get('/api/festivals/upcoming', (req, res) => {
+  try {
+    const from = String(req.query.from ?? new Date().toISOString().slice(0, 10));
+    if (!ISO_DATE_RE.test(from)) return res.status(400).json({ error: 'from must be YYYY-MM-DD' });
+    const count = Math.min(60, Math.max(1, Number(req.query.count ?? 12) || 12));
+    const { geo, mode } = parseGeo(req.query);
+    res.json({ from, count, festivals: upcomingFestivals(from, geo, { siderealMode: mode, count }) });
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to list festivals' });
+  }
+});
+
+/**
+ * Gochara (transits from the natal Moon).
+ * Accepts either a full birth `input` (moon sign derived) or an explicit
+ * `moonSignIndex` (0 = Mesha) + `moonNakshatraIndex`.
+ */
+app.post('/api/gochara', (req, res) => {
+  try {
+    const body = req.body ?? {};
+    let moonSignIndex: number;
+    let moonNakIndex: number;
+    let tz = Number(body.tzOffsetHours ?? 5.5);
+    let mode: any = body.ayanamsa ?? 'lahiri';
+
+    if (body.input) {
+      const chart = calculateChart(body.input as BirthInput, body.tradition ?? 'vedic');
+      const moon = chart.planets.find((p) => p.id === 'Moon');
+      if (!moon) throw new Error('Moon position unavailable');
+      moonSignIndex = moon.signIndex;
+      moonNakIndex = Math.floor(moon.siderealLon / (360 / 27));
+      tz = Number(body.input.tzOffsetHours ?? tz);
+      mode = body.input.ayanamsa ?? mode;
+    } else {
+      moonSignIndex = Number(body.moonSignIndex);
+      moonNakIndex = Number(body.moonNakshatraIndex ?? 0);
+      if (!Number.isInteger(moonSignIndex) || moonSignIndex < 0 || moonSignIndex > 11)
+        throw new Error('moonSignIndex must be 0-11 (0 = Mesha)');
+      if (!Number.isInteger(moonNakIndex) || moonNakIndex < 0 || moonNakIndex > 26)
+        throw new Error('moonNakshatraIndex must be 0-26');
+    }
+
+    const asOfISO = String(body.asOfISO ?? new Date().toISOString().slice(0, 10));
+    if (!ISO_DATE_RE.test(asOfISO)) throw new Error('asOfISO must be YYYY-MM-DD');
+    const report = computeGocharaReport(moonSignIndex, moonNakIndex, {
+      asOfISO,
+      tzOffsetHours: tz,
+      siderealMode: mode,
+    });
+    res.json(report);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute gochara' });
+  }
+});
+
+/** Era / samvatsara for a date (Shaka, Vikram, Kali, samvatsara name). */
+app.get('/api/era', (req, res) => {
+  try {
+    const date = String(req.query.date ?? '').trim();
+    if (!ISO_DATE_RE.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const { geo, mode } = parseGeo(req.query);
+    res.json(resolveHinduEra(date, geo, mode));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to resolve era' });
+  }
+});
+
+/** Classical source registry — the bibliography every calculation cites. */
+app.get('/api/sources', (req, res) => {
+  const domain = String(req.query.domain ?? '').trim();
+  const list = domain ? GRANTHAS.filter((g) => g.domain === domain) : GRANTHAS;
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.json({ count: list.length, domains: GRANTHA_DOMAINS, granthas: list });
+});
 
 // 1. Calculate Natal / Divisional Chart API
 app.post('/api/chart/calculate', (req, res) => {

@@ -213,7 +213,7 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
   const leadingBlanks = monthCells.length > 0 ? monthCells[0].weekdayIndex : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="grantha-print-area space-y-4">
       {/* ---------- Title / controls ---------- */}
       <div className="rounded-2xl border border-[#C9A96E]/25 bg-gradient-to-br from-[#141932] via-[#0F1326] to-[#0B0F1E] p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">

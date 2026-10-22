@@ -156,7 +156,46 @@ use the **true** (perturbed) node.
 
 ---
 
-## 5. Validation
+## 5. `src/engine/classicalSources.ts` — grantha registry & API
+
+Every analytical tab cites its sources from one registry (`GRANTHAS`, 22 texts):
+Vedāṅga Jyotiṣa, Sūrya Siddhānta, Dṛk-gaṇita (Swiss Ephemeris), BPHS, Sārāvalī,
+Jātaka Pārijāta, Bṛhaj Jātaka, Bṛhat Saṁhitā, Phaladīpikā, Muhūrta Cintāmaṇi,
+Uttara Kālāmṛta, Saṅketa Nidhi (Telugu pañcāṅga practice), Praśna Mārga,
+Ṣaṭpañcāśikā, Tājika Nīlakaṇṭhī, Saṁjñā Tantra, Jaimini Sūtras, Viśvakarma
+Prakāśa, Mayamata, Samarāṅgaṇa Sūtradhāra, Aparājita Pṛcchā, Mānasāra.
+
+Editorial discipline (also stated in the UI):
+
+* chapter numbers only where the division is standard across printed editions;
+* Sanskrit quoted only where the reading is stable — otherwise a paraphrase;
+* periods are scholarly ranges, never asserted as exact dates;
+* the underlying Sanskrit texts are public domain.
+
+The PDF grantha (`ClassicalJathakaPdfDocument`) carries a **Page 14 appendix**
+built from the same registry, so the printed book and the on-screen citations can
+never diverge.
+
+### HTTP API (Express, `server.ts`)
+
+| Method & path | Purpose |
+| --- | --- |
+| `GET /api/panchanga?date&lat&lng&tz&ayanamsa` | full day pañcāṅga (aṅgas, kālas, choghadiyā, horā, era) |
+| `POST /api/panchanga` | same, JSON body (`date`, `lat`, `lng`, `tzOffsetHours`, `ayanamsa`) |
+| `GET /api/era?date` | Saṁvatsara / Śaka / Vikrama / Kali + māsa, pakṣa, ṛtu, ayana |
+| `GET /api/calendar/month?year&month` | month grid with tithi, nakṣatra, festivals |
+| `GET /api/calendar/year?year` | months, saṅkrāntis, eclipses, festivals (clamped to the year), adhika māsa |
+| `GET /api/festivals/upcoming?from&count` | span-resolved festival feed |
+| `POST /api/gochara` | gōcara + vedha + sāḍe-sātī (accepts a full birth `input` or `moonSignIndex`) |
+| `GET /api/sources?domain=` | grantha registry |
+
+Validation is strict: dates must be `YYYY-MM-DD`, latitudes ±90, longitudes ±180,
+time zones −12…+14, and `ayanamsa` is restricted to the four supported modes.
+Invalid input returns **400** with a message rather than a stack trace.
+
+---
+
+## 6. Validation
 
 ### Golden fixture (automated)
 
@@ -185,6 +224,15 @@ max sunrise delta     : 1 min
   true node (mean node is the traditional choice for Rāhu/Ketu).
 * **Saṅkrānti times 2026** — computed ingresses match Swiss Ephemeris to the
   minute (Kanyā 17 Sep 07:52, Tulā 17 Oct 19:51, Vṛścika 16 Nov 19:43, …).
+* **Saturn's sign ingresses** — checked against Swiss Ephemeris: Kumbha
+  2022-04-29, Mīna 2025-03-29, Meṣa 2027-06-02, Vṛṣabha 2029-08-08 (and the
+  retrograde re-entries of 2022-07-12, 2027-10-20, 2029-10-05). The sāḍe-sātī
+  start/end instants are built from exactly these crossings.
+* **Ugādi 2024–2029** — 2024-04-09, 2025-03-30, 2026-03-19, 2027-04-07,
+  2028-03-27, matching published Telugu pañcāṅgams (kṣaya pratipadā handled).
+* **Vaikuṇṭha Ekādaśī** — pinned to the ekādaśī that falls inside Dhanurmāsa
+  (Sun in Dhanu): 2025-01-10 and 2026-12-20, not the Mārgaśira ekādaśī that
+  precedes the ingress in other years.
 * **Solar eclipses 2026** — 17 Feb (annular), 12 Aug (total); lunar — 3 Mar
   (total), 28 Aug (partial); visibility flags computed from the sub-lunar point.
 
@@ -195,5 +243,10 @@ max sunrise delta     : 1 min
   amānta/pūrṇimānta traditions; the engine follows the Telugu amānta practice.
 * Tārābalam / Chandrabalam are shown relative to the selected native's
   nakṣatra/rāśi.
+* Gōcara uses the **true** node for Rāhu/Ketu (Swiss Ephemeris agrees to
+  ~0.03°); the natal chart uses the mean node, the traditional choice. This is
+  deliberate and documented rather than silently mixed.
+* Vāstu magnetic declination is a coarse dipole estimate shown for orientation
+  only; alignment must come from the solar shadow methods.
 * Magnetic declination is **not** published as a construction value — use the
   solar shadow methods or a current WMM/IGRF survey.
