@@ -1,5 +1,5 @@
 import { ZODIAC_SIGNS, type CompleteChartResult } from './ephemeris.ts';
-import { computeLagnaFunctional } from './lagnaFunctionalEngine.ts';
+import { computeLagnaFunctional, PLANET_TE } from './lagnaFunctionalEngine.ts';
 
 export type AppLanguage = 'te' | 'en';
 
@@ -1128,6 +1128,13 @@ export function generateTeluguSampoornaJathakam(
   // లగ్న గణితం నుండి నేరుగా లెక్కిస్తాము (lagnaFunctionalEngine).
   const functional = computeLagnaFunctional(lagnaSignIdx);
   const badhakaRasiTe = TELUGU_RASIS[(lagnaSignIdx + functional.badhakaHouse - 1) % 12].nameTe;
+  // శ్లోక/గ్రంథ వాక్యాలలో వాడే సంక్షిప్త రూపాలు (పూర్తి వాక్యం కాదు)
+  const ykShortTe = functional.yogakarakas.length
+    ? functional.yogakarakas.map((p) => PLANET_TE[p]).join(', ')
+    : 'ఏకగ్ర యోగకారకుడు లేడు';
+  const shubhaShortTe = functional.benefics.map((p) => PLANET_TE[p]).join(', ');
+  const bestBeneficTe = PLANET_TE[functional.bestBenefic];
+  const badhakaShortTe = `${functional.badhakaHouse}వ భావం (${badhakaRasiTe}) — అధిపతి ${PLANET_TE[functional.badhakaLord]}`;
   const lagnaShastraPramanam: LagnaShastraPramanamTe = {
     lagnaNameTe: lagnaRasiObj.nameTe,
     tattvamTe: lagnaShastraRaw.tattvamTe,
@@ -1673,7 +1680,7 @@ export function generateTeluguSampoornaJathakam(
           ? `ఈ జాతకంలో ${chart.vedicYogas.map((y) => y.name).join(', ')} వంటి విశేష యోగాలు క్రియాశీలకంగా ఉన్నాయి.`
           : 'కేంద్ర-త్రికోణాధిపతుల దశా కాలాలలో ఉన్నత పురోగతి నిశ్చయం.'
       }`,
-      keyVerdictTe: `లగ్నాధిపతి ${lagnaLordPlanet.house}వ భావ స్థితి & ${lagnaShastraPramanam.yogakarakaGrahaTe.split('(')[0].trim()} యోగబలం`,
+      keyVerdictTe: `లగ్నాధిపతి ${lagnaLordPlanet.house}వ భావ స్థితి & యోగకారకత్వం: ${ykShortTe}${functional.yogakarakas.length === 0 ? ` (అత్యుత్తమ శుభుడు ${bestBeneficTe})` : ''}`,
     },
     {
       id: 'brihat-jataka-chandra',
@@ -1730,8 +1737,12 @@ export function generateTeluguSampoornaJathakam(
       chapterRefTe: 'ద్వాదశ లగ్న యోగకారక & మారక నిరూపణ (అధ్యాయం 1–12)',
       sanskritSlokaTe: 'కేంద్రకోణాధిపావన్యౌ సంబంధం యది గచ్ఛతః | యోగకారకతాం యాతౌ భుక్తికాలే శుభప్రదౌ ||',
       topicTitleTe: `${lagnaRasiObj.nameTe}నకు యోగకారక, శుభ & బాధక గ్రహ రహస్య నిర్ణయం`,
-      deepAnalysisTe: `'భావార్థ రత్నాకరం' ప్రకారం ప్రతి లగ్నానికి కొన్ని గ్రహాలు మాత్రమే సహజ రాజయోగకారకులుగా పనిచేస్తాయి. మీ ${lagnaRasiObj.nameTe}నకు ${lagnaShastraPramanam.yogakarakaGrahaTe} ప్రధాన యోగకారకులు కాగా, ${lagnaShastraPramanam.shubhaGrahaluTe} శుభ గ్రహాలు. అదే విధంగా ${lagnaShastraPramanam.badhakaSthanamTe} బాధక స్థానం అవుతుంది. యోగకారక గ్రహాల మహాదశ లేదా అంతర్దశ వచ్చినప్పుడు ఎటువంటి ఆటంకాలు లేకుండా ఆస్తులు, పదవులు మరియు కుటుంబ శుభకార్యాలు నెరవేరుతాయి.`,
-      keyVerdictTe: `యోగకారకుడు: ${lagnaShastraPramanam.yogakarakaGrahaTe.split('(')[0].trim()}`,
+      deepAnalysisTe: `'భావార్థ రత్నాకరం' ప్రకారం కేంద్ర (1/4/7/10) మరియు త్రికోణ (5/9) అధిపత్య సంబంధం ఉన్న గ్రహమే క్రియాత్మక యోగకారకుడు. ${lagnaRasiObj.nameTe} లగ్నానికి ${
+        functional.yogakarakas.length
+          ? `యోగకారకుడు ${ykShortTe}`
+          : `ఏకగ్ర యోగకారకుడు లేడు; అత్యుత్తమ క్రియాత్మక శుభుడు ${bestBeneficTe}`
+      }, శుభ గ్రహాలు ${shubhaShortTe}. బాధక స్థానం ${badhakaShortTe}. యోగకారకుడు/అత్యుత్తమ శుభుడు బలంగా ఉన్న మహాదశ–అంతర్దశలలో ఆస్తి, పదవి, కుటుంబ శుభకార్యాలు సులభంగా నెరవేరుతాయి.`,
+      keyVerdictTe: `యోగకారకుడు: ${ykShortTe}${functional.yogakarakas.length === 0 ? ` · శ్రేష్ఠ శుభుడు ${bestBeneficTe}` : ''}`,
     },
     {
       id: 'uttara-kalamrita-vipareeta',
