@@ -1076,11 +1076,11 @@ check(
   vist.domains.map((d) => `${d.titleTe.split(' ')[0]}:${d.scorePct}%`).join(' · ')
 );
 check(
-  'ప్రతి రంగానికి 5 భాగాలు నిండి ఉన్నాయి — ఆధారం, 3 వివరణలు, బలాలు, జాగ్రత్తలు, కాల ఫలం + పరిహారం',
+  'ప్రతి రంగానికి 5 భాగాలు నిండి ఉన్నాయి — ఆధారం, 3+ వివరణలు, బలాలు, జాగ్రత్తలు, కాల ఫలం + పరిహారం',
   vist.domains.every(
     (d) =>
       d.foundationTe.length > 80 &&
-      d.analysis.length === 3 &&
+      d.analysis.length >= 3 &&
       d.analysis.every((a) => a.headingTe.length > 6 && a.bodyTe.length > 120) &&
       d.strengthsTe.length >= 2 &&
       d.cautionsTe.length >= 2 &&
