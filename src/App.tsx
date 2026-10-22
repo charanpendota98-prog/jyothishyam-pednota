@@ -23,6 +23,7 @@ import {
   SouthIndianKundaliSvg,
 } from './components/ChartsSvg.tsx';
 import { SampoornaJathakamView } from './components/SampoornaJathakamView.tsx';
+import { JathakamBookShell } from './components/JathakamBookShell.tsx';
 import { DashaVargaView } from './components/DashaVargaView.tsx';
 import { PanchangaAdvancedView } from './components/PanchangaAdvancedView.tsx';
 import { SynastryMilanView } from './components/SynastryMilanView.tsx';
@@ -57,11 +58,13 @@ import {
   ChevronUp,
   HelpCircle,
   Star,
+  BookOpen,
   Share2,
 } from 'lucide-react';
 
 type ActiveWorkspaceTab =
   | 'studio'
+  | 'jathaka_book'
   | 'varshaphala'
   | 'namakarana'
   | 'dasha_vargas'
@@ -302,6 +305,13 @@ export default function App() {
       shortTe: 'జాతకం',
       labelEn: 'Chart Studio',
       icon: <Compass className="w-4 h-4" />,
+    },
+    {
+      id: 'jathaka_book',
+      labelTe: 'పూర్తి జాతక మహాగ్రంథం (21 అధ్యాయాలు)',
+      shortTe: 'పూర్తి జాతకం',
+      labelEn: 'Full Jathakam Book',
+      icon: <BookOpen className="w-4 h-4" />,
     },
     {
       id: 'varshaphala',
@@ -654,10 +664,23 @@ export default function App() {
                       <span className="text-[10.5px] text-[#EDE8E0]/50">{l}</span>
                     </div>
                   ))}
+<<<<<<< HEAD
                   <button onClick={() => setActiveTab('jathaka_deep')} className="gold-btn mt-1 cursor-pointer">
                     <Sparkles className="w-3.5 h-3.5" />
                     సూక్ష్మ జాతక చక్రం తెరవండి
                   </button>
+=======
+                  <div className="mt-1 flex flex-col gap-2">
+                    <button onClick={() => setActiveTab('jathaka_book')} className="gold-btn cursor-pointer">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      పూర్తి జాతక మహాగ్రంథం
+                    </button>
+                    <button onClick={() => setActiveTab('jathaka_deep')} className="ghost-btn cursor-pointer">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      సూక్ష్మ జాతక చక్రం
+                    </button>
+                  </div>
+>>>>>>> 8a9dcea (feat(book): dedicated full-jathakam reading page with auto TOC, sticky chapter rail, zoom & progress; new 8A phala-vivechana chapter)
                 </div>
               </div>
             </section>
@@ -1375,14 +1398,56 @@ export default function App() {
               </div>
             </div>
 
-            {/* FULL TELUGU SAMPOORNA JATHAKAM BOOK (With 6 Structured Chapters & Deep Grantha Research) */}
-            <SampoornaJathakamView
-              chart={chart}
-              selectedPlanetId={selectedPlanetId}
-              onSelectPlanet={(p) => setSelectedPlanetId(p.id)}
-              lang={lang}
-              externalPdfTrigger={externalPdfTrigger}
-            />
+            {/* పూర్తి జాతక మహాగ్రంథం — ప్రత్యేక పఠన పేజీకి దారి */}
+            <section className="no-print relative overflow-hidden rounded-2xl border border-[#D9B97B]/30 bg-gradient-to-br from-[#141A2E] via-[#0C1120] to-[#0A0E1A] px-5 py-5 sm:px-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E4C68C]">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    పూర్తి జాతక మహాగ్రంథం
+                  </div>
+                  <h2 className="mt-1.5 text-lg font-bold text-[#F1DCAE] sm:text-xl">
+                    21 అధ్యాయాల సంపూర్ణ తెలుగు జాతక పుస్తకం — విషయ సూచికతో, అధ్యాయాల వారీగా
+                  </h2>
+                  <p className="mt-1.5 max-w-3xl text-[12px] leading-relaxed text-[#EDE8E0]/60">
+                    పంచాంగం–లగ్నం, షోడశవర్గ–జైమిని, షడ్బల–అష్టకవర్గ, 12 గ్రంథాల పరిశోధన, జీవిత 6 రంగాలు,
+                    ద్వాదశ భావాలు, 120 సంవత్సరాల దశా చక్రం, సాముదాయిక అష్టకవర్గ ఫలం–81 భుక్తి ఫలాలు, దోష–పరిహారాలు, ఉపాయములు, తాజిక వర్షఫలం —
+                    అన్నీ ఒకే పుస్తకంగా, స్టిక్కీ విషయ సూచిక & అక్షర సౌలభ్యంతో.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setActiveTab('jathaka_book')}
+                      className="gold-btn cursor-pointer"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      పూర్తి జాతకం చదవండి
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('jathaka_deep')}
+                      className="ghost-btn cursor-pointer"
+                    >
+                      <Layers className="h-3.5 w-3.5" />
+                      సూక్ష్మ జాతక చక్రం (వర్గాలు · షడ్బల)
+                    </button>
+                  </div>
+                </div>
+                <div className="w-full shrink-0 sm:w-[220px]">
+                  <div className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-3">
+                    {[
+                      ['21', 'అధ్యాయాలు'],
+                      ['97', 'ఉపాంశాలు'],
+                      ['258', 'తనిఖీలు'],
+                      ['12', 'గ్రంథాలు'],
+                    ].map(([v, l]) => (
+                      <div key={l} className="flex items-baseline justify-between py-0.5">
+                        <span className="font-mono-tabular text-[13px] font-bold text-[#E4C68C]">{v}</span>
+                        <span className="text-[10px] text-[#EDE8E0]/50">{l}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         )}
 
@@ -1446,6 +1511,26 @@ export default function App() {
 
         {activeTab === 'gochara' && <GocharaView chart={chart} lang={lang} />}
 
+<<<<<<< HEAD
+=======
+        {activeTab === 'jathaka_book' && (
+          <div className="pt-4">
+            <JathakamBookShell
+              titleTe="విషయ సూచిక & పఠన సహాయం"
+              subtitleTe={`${chart.input.name || 'జాతకుడు'} · ${chart.input.date} ${chart.input.time} · ${chart.input.city} — 21 అధ్యాయాలు, 97 ఉపాంశాలు. విషయ సూచిక నుండి నేరుగా ఏ అధ్యాయానికైనా వెళ్లవచ్చు.`}
+            >
+              <SampoornaJathakamView
+                chart={chart}
+                selectedPlanetId={selectedPlanetId}
+                onSelectPlanet={(p) => setSelectedPlanetId(p.id)}
+                lang={lang}
+                externalPdfTrigger={externalPdfTrigger}
+              />
+            </JathakamBookShell>
+          </div>
+        )}
+
+>>>>>>> 8a9dcea (feat(book): dedicated full-jathakam reading page with auto TOC, sticky chapter rail, zoom & progress; new 8A phala-vivechana chapter)
         {activeTab === 'jathaka_deep' && <JathakaDeepView chart={chart} lang={lang} />}
 
         {activeTab === 'granthas' && <GranthaSourcesView lang={lang} />}
@@ -1607,8 +1692,8 @@ export default function App() {
             Jyotishyam — సంపూర్ణ తెలుగు జాతక చక్రం &amp; సిద్ధాంత దృగ్గణిత జ్యోతిష వేదిక
           </span>
           <div className="flex flex-wrap items-center gap-4">
-            <button onClick={() => setActiveTab('studio')} className="hover:text-[#EDE8E0]">
-              సంపూర్ణ జాతకం
+            <button onClick={() => setActiveTab('jathaka_book')} className="hover:text-[#EDE8E0]">
+              పూర్తి జాతక గ్రంథం
             </button>
             <button onClick={() => setActiveTab('dasha_vargas')} className="hover:text-[#EDE8E0]">
               వింశోత్తరి దశలు
@@ -1650,7 +1735,11 @@ export default function App() {
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#090C18]/95 backdrop-blur-md border-t border-[#C9A96E]/35 px-1 py-1.5 no-print shadow-[0_-8px_24px_rgba(0,0,0,0.6)]"
       >
         <div className="grid grid-cols-5 gap-0.5 max-w-md mx-auto">
+<<<<<<< HEAD
           {(['studio', 'jathaka_deep', 'gochara', 'hindu_calendar'] as ActiveWorkspaceTab[])
+=======
+          {(['studio', 'jathaka_book', 'gochara', 'hindu_calendar'] as ActiveWorkspaceTab[])
+>>>>>>> 8a9dcea (feat(book): dedicated full-jathakam reading page with auto TOC, sticky chapter rail, zoom & progress; new 8A phala-vivechana chapter)
             .map((id) => navItems.find((n) => n.id === id))
             .filter((n): n is NonNullable<typeof n> => Boolean(n))
             .map((item) => {

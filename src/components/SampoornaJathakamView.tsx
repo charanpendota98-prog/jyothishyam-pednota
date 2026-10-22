@@ -32,6 +32,9 @@ import { generateAstroVisionMasterReport } from '../engine/astroVisionAndTransit
 import { generateSiddhantaAdvancedAppendices } from '../engine/siddhantaAdvancedAppendices.ts';
 import { generateSampoornaLifeChronicle } from '../engine/sampoornaLifeChronicleEngine.ts';
 import { generateKundaliSookshmaNadiReport } from '../engine/kundaliSookshmaNadiEngine.ts';
+import { computeAshtakavargaPhala } from '../engine/ashtakavargaPhalaEngine.ts';
+import { computeAntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
+import { computeGrahaSahayaka, AREAS as SAHAYAKA_AREAS } from '../engine/grahaSahayakaEngine.ts';
 import {
   exportClassicalJathakaToPdf,
   type PdfExportProgress,
@@ -63,6 +66,7 @@ type JathakamChapter =
   | 'life_pillars'
   | 'dwadasha_bhava'
   | 'dasha_kalachakram'
+  | 'phala_vivechana'
   | 'dosha_parihara'
   | 'upaya_pariharas'
   | 'tajika_varshaphala';
@@ -114,6 +118,12 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
   const sookshmaNadiReport = useMemo(
     () => generateKundaliSookshmaNadiReport(chart),
     [chart]
+  );
+  const avPhala = useMemo(() => computeAshtakavargaPhala(chart), [chart]);
+  const adBook = useMemo(() => computeAntardashaPhalaBook(chart), [chart]);
+  const sahayaka = useMemo(() => computeGrahaSahayaka(chart), [chart]);
+  const [openMahaIdx, setOpenMahaIdx] = useState<number>(() =>
+    Math.max(0, adBook.sections.findIndex((sec) => sec.rows.some((r) => r.isRunning)))
   );
 
   const [activeChapter, setActiveChapter] = useState<JathakamChapter>('all');
@@ -217,6 +227,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
     { id: 'life_pillars', labelTe: '7. జీవిత 6 ప్రధాన రంగాలు', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'dwadasha_bhava', labelTe: '8. ద్వాదశ భావ ఫలితాలు (1–12)', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'dasha_kalachakram', labelTe: '9. 120 సం. దశా-భుక్తి కాలచక్రం', icon: <Clock className="w-3.5 h-3.5" /> },
+    { id: 'phala_vivechana', labelTe: '9A. సాముదాయిక అష్టకవర్గ ఫలం, 81 భుక్తి ఫలాలు & గ్రహ సహాయక సూచిక', icon: <BarChart3 className="w-3.5 h-3.5" /> },
     { id: 'dosha_parihara', labelTe: '10. దోష పరీక్ష (కుజ/కాలసర్ప/శని)', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
     { id: 'upaya_pariharas', labelTe: '11. ఉపాయములు & పరిహారాలు (Upaya & Pariharas)', icon: <Flame className="w-3.5 h-3.5" /> },
   ];
@@ -3062,6 +3073,174 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* CHAPTER 8A: PHALA VIVECHANA — SAV PHALA, 81 BHUKTI PHALA & SAHAYAKA INDEX */}
+      {showSection('phala_vivechana') && (
+        <div className="bg-[#0F1326] border border-white/15 rounded-lg p-5 md:p-7 space-y-6 print-page-break">
+          <div className="border-b border-white/10 pb-4">
+            <div className="text-xs uppercase tracking-widest text-[#C9A96E] font-semibold">
+              అధ్యాయం 8A · ఫల విచారణ — బిందు బలం, భుక్తి ఫలం & గ్రహ సహాయక సూచిక
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-[#EDE8E0] mt-1">
+              సాముదాయిక అష్టకవర్గ ఫలితాలు (12 భావాలు), 81 భుక్తి ఫలాలు & 9×7 గ్రహ సహాయక సూచిక
+            </h2>
+            <p className="text-[12px] leading-relaxed text-[#EDE8E0]/60 mt-1.5">
+              116-పుటల ప్రామాణిక పత్రికలోని 108–114 (సాముదాయిక అష్టకవర్గ ఫలం), 67–107 (అంతర దశా ఫల పుస్తకం) మరియు 29 (గ్రహ సహాయక సూచిక) పుటల సరిపడే అధ్యాయం — ప్రతి సంఖ్యతో పాటు సూత్రం కూడా చూపబడింది.
+            </p>
+          </div>
+
+          {/* SAV PHALA */}
+          <section className="space-y-3">
+            <h3 className="text-base font-bold text-[#C9A96E] border-b border-white/10 pb-2">
+              1. సాముదాయిక అష్టకవర్గ ఫలితాలు — 12 భావాల బలం ({avPhala.totalBindus} బిందువులు, సగటు {avPhala.averageBindus})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px] font-mono-tabular">
+                <thead className="text-[#C9A96E]/70 uppercase tracking-wider text-[9px]">
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-1.5 pr-2">భావం</th>
+                    <th className="text-left py-1.5 pr-2">రాశి</th>
+                    <th className="text-left py-1.5 pr-2">బిందువులు</th>
+                    <th className="text-left py-1.5 pr-2">వర్గం</th>
+                    <th className="text-left py-1.5">అధిపతి స్థితి</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {avPhala.rows.map((r) => (
+                    <tr key={r.house} className="border-b border-white/5">
+                      <td className="py-1.5 pr-2 text-[#EDE8E0]/80 whitespace-nowrap">{r.house}. {r.houseNameTe}</td>
+                      <td className="py-1.5 pr-2 text-[#EDE8E0]/60 whitespace-nowrap">{r.signTe}</td>
+                      <td className="py-1.5 pr-2 font-bold text-[#EDE8E0]">{r.bindus}</td>
+                      <td className={'py-1.5 pr-2 whitespace-nowrap ' + (r.band === 'strong' ? 'text-[#5BBFB5]' : r.band === 'moderate' ? 'text-[#C9A96E]' : 'text-[#E08585]')}>
+                        {r.bandLabelTe}
+                      </td>
+                      <td className="py-1.5 text-[#EDE8E0]/55">{r.lordPlacementTe}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              {avPhala.rows.map((r) => (
+                <div key={`p-${r.house}`} className="rounded-lg border border-white/10 bg-[#090C18]/70 px-3 py-2">
+                  <div className="text-[11.5px] font-semibold text-[#C9A96E]">
+                    {r.house}వ భావం · {r.signTe} · {r.bindus} బిందువులు · {r.bandLabelTe}
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-[#EDE8E0]/75 mt-1">{r.phalaTe}</p>
+                  {r.band !== 'strong' && (
+                    <p className="text-[10.5px] leading-relaxed text-[#5BBFB5]/85 mt-1">పరిహారం: {r.pariharaTe}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/[0.06] px-3.5 py-3 space-y-1.5">
+              <p className="text-[11.5px] leading-relaxed text-[#EDE8E0]/85">{avPhala.synthesisTe}</p>
+              <p className="text-[11px] leading-relaxed text-[#EDE8E0]/60">{avPhala.lagnaSeventhNoteTe}</p>
+              <p className="text-[11px] leading-relaxed text-[#EDE8E0]/60">{avPhala.rasiRankingTe}</p>
+              <p className="text-[10px] leading-relaxed text-[#EDE8E0]/40">{avPhala.classicalRuleTe}</p>
+            </div>
+          </section>
+
+          {/* 81 BHUKTI PHALA */}
+          <section className="space-y-3">
+            <h3 className="text-base font-bold text-[#C9A96E] border-b border-white/10 pb-2">
+              2. అంతర దశా ఫల పుస్తకం — 9 మహాదశలు × 9 భుక్తులు = 81 ఫలాలు
+            </h3>
+            <p className="text-[11.5px] leading-relaxed text-[#EDE8E0]/70">{adBook.currentPathTe}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {adBook.sections.map((sec, i) => (
+                <button
+                  key={`${sec.lord}-${i}`}
+                  onClick={() => setOpenMahaIdx(i)}
+                  className={
+                    'px-2.5 py-1 rounded-full text-[10.5px] border cursor-pointer ' +
+                    (i === openMahaIdx
+                      ? 'bg-[#C9A96E]/20 border-[#C9A96E]/60 text-[#C9A96E] font-semibold'
+                      : 'bg-[#090C18]/70 border-white/10 text-[#EDE8E0]/60 hover:border-[#C9A96E]/40')
+                  }
+                >
+                  {sec.lordTe} · {sec.startLocal.slice(0, 4)}
+                </button>
+              ))}
+            </div>
+            {adBook.sections[openMahaIdx] && (
+              <div className="space-y-2">
+                <div className="rounded-lg border border-[#5BBFB5]/25 bg-[#5BBFB5]/[0.06] px-3 py-2">
+                  <div className="text-[11.5px] font-semibold text-[#5BBFB5]">
+                    {adBook.sections[openMahaIdx].lordTe} మహాదశ · {adBook.sections[openMahaIdx].startLocal.slice(0, 10)} → {adBook.sections[openMahaIdx].endLocal.slice(0, 10)} · సగటు అనుకూలత {adBook.sections[openMahaIdx].scoreAvg}/100
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-[#EDE8E0]/70 mt-1">{adBook.sections[openMahaIdx].summaryTe}</p>
+                </div>
+                {adBook.sections[openMahaIdx].rows.map((r) => (
+                  <div key={`${r.mahaLord}-${r.bhuktiLord}`} className={'rounded-lg border px-3 py-2 ' + (r.isRunning ? 'border-[#5BBFB5]/50 bg-[#5BBFB5]/[0.06]' : 'border-white/10 bg-[#090C18]/60')}>
+                    <div className="text-[11px] font-semibold text-[#EDE8E0]">
+                      {r.bhuktiLordTe} భుక్తి · <span className="font-mono-tabular text-[10px] font-normal text-[#EDE8E0]/55">{r.startLocal.slice(0, 10)} → {r.endLocal.slice(0, 10)} ({r.widthTe})</span>
+                      {r.isRunning && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-[#5BBFB5]/25 text-[#5BBFB5] text-[8.5px] font-bold">నడుస్తోంది</span>}
+                    </div>
+                    <div className="text-[10.5px] font-semibold text-[#C9A96E] mt-0.5">{r.headlineTe} · {r.score}/100</div>
+                    <p className="text-[11px] leading-relaxed text-[#EDE8E0]/75 mt-1">{r.phalaTe}</p>
+                    <p className="text-[10px] leading-relaxed text-[#E08585]/80 mt-1">జాగ్రత్త: {r.cautionTe}</p>
+                    <p className="text-[10px] leading-relaxed text-[#5BBFB5]/80 mt-0.5">పరిహారం: {r.remedyTe}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] leading-relaxed text-[#EDE8E0]/45">{adBook.methodNoteTe}</p>
+            <p className="text-[10px] leading-relaxed text-[#EDE8E0]/40">{adBook.sourceNoteTe}</p>
+          </section>
+
+          {/* SAHAYAKA */}
+          <section className="space-y-3">
+            <h3 className="text-base font-bold text-[#C9A96E] border-b border-white/10 pb-2">
+              3. గ్రహ సహాయక సూచిక — 9 గ్రహాలు × 7 జీవితాంశాలు (−100 … +100)
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[10.5px] font-mono-tabular">
+                <thead className="text-[#C9A96E]/70 uppercase tracking-wider text-[8.5px]">
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-1.5 pr-2">గ్రహం</th>
+                    <th className="py-1.5 px-1">భావం</th>
+                    {SAHAYAKA_AREAS.map((a) => (
+                      <th key={a.id} className="py-1.5 px-1 text-center whitespace-nowrap">{a.labelTe}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sahayaka.rows.map((r) => (
+                    <tr key={r.id} className="border-b border-white/5">
+                      <td className="py-1.5 pr-2 text-[#EDE8E0] font-sans font-semibold whitespace-nowrap">
+                        {r.nameTe} <span className="text-[8.5px] text-[#EDE8E0]/35">{r.dignityTe}</span>
+                      </td>
+                      <td className="py-1.5 px-1 text-center text-[#EDE8E0]/50">{r.house}</td>
+                      {SAHAYAKA_AREAS.map((a) => {
+                        const v = r.scores[a.id];
+                        return (
+                          <td key={a.id} className={'py-1.5 px-1 text-center font-bold ' + (v >= 50 ? 'text-[#5BBFB5]' : v >= 20 ? 'text-[#C9A96E]' : v >= 0 ? 'text-[#EDE8E0]/70' : 'text-[#E08585]')}>
+                            {v}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  <tr className="border-t border-[#C9A96E]/30">
+                    <td className="py-1.5 pr-2 text-[#C9A96E] font-sans font-bold">సగటు</td>
+                    <td className="py-1.5 px-1" />
+                    {SAHAYAKA_AREAS.map((a) => (
+                      <td key={a.id} className="py-1.5 px-1 text-center font-bold text-[#C9A96E]">{sahayaka.averages[a.id]}</td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-[#090C18]/70 px-3.5 py-3 space-y-1.5">
+              <p className="text-[11.5px] leading-relaxed text-[#EDE8E0]/85">{sahayaka.synthesisTe}</p>
+              <p className="text-[10.5px] leading-relaxed text-[#EDE8E0]/55">{sahayaka.areaRankingTe}</p>
+              <p className="text-[10.5px] leading-relaxed text-[#EDE8E0]/55">{sahayaka.planetRankingTe}</p>
+              <p className="text-[10px] leading-relaxed text-[#EDE8E0]/40">{sahayaka.methodNoteTe}</p>
+            </div>
+          </section>
         </div>
       )}
 

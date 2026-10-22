@@ -584,3 +584,42 @@
 .grantha-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ── జాతక మహాగ్రంథ పఠన శైలి (Jathakam book reading shell) ───────────── */
+.jathakam-book {
+  /* reading rhythm: chapters breathe, tables stay tight */
+  --book-line: rgba(255, 255, 255, 0.07);
+}
+.jathakam-book > * + * {
+  margin-top: 1.75rem;
+}
+.jathakam-book h2 {
+  scroll-margin-top: 96px;
+  letter-spacing: -0.01em;
+}
+.jathakam-book h3 {
+  scroll-margin-top: 96px;
+}
+.jathakam-book p,
+.jathakam-book li {
+  text-wrap: pretty;
+}
+.jathakam-book table {
+  border-collapse: collapse;
+}
+.jathakam-book table th {
+  letter-spacing: 0.02em;
+}
+/* Subtle chapter separators so the chapters don't blur into one wall */
+.jathakam-book > div > div + div {
+  border-top: 1px solid transparent;
+}
+.jathakam-book .print-page-break {
+  scroll-margin-top: 96px;
+}
+/* Print: the shell chrome disappears, the book flows as a document */
+@media print {
+  .jathakam-book {
+    zoom: 1 !important;
+  }
+}
