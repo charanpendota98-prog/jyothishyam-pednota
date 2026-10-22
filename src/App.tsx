@@ -664,12 +664,6 @@ export default function App() {
                       <span className="text-[10.5px] text-[#EDE8E0]/50">{l}</span>
                     </div>
                   ))}
-<<<<<<< HEAD
-                  <button onClick={() => setActiveTab('jathaka_deep')} className="gold-btn mt-1 cursor-pointer">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    సూక్ష్మ జాతక చక్రం తెరవండి
-                  </button>
-=======
                   <div className="mt-1 flex flex-col gap-2">
                     <button onClick={() => setActiveTab('jathaka_book')} className="gold-btn cursor-pointer">
                       <BookOpen className="w-3.5 h-3.5" />
@@ -680,7 +674,6 @@ export default function App() {
                       సూక్ష్మ జాతక చక్రం
                     </button>
                   </div>
->>>>>>> 8a9dcea (feat(book): dedicated full-jathakam reading page with auto TOC, sticky chapter rail, zoom & progress; new 8A phala-vivechana chapter)
                 </div>
               </div>
             </section>
@@ -1511,8 +1504,6 @@ export default function App() {
 
         {activeTab === 'gochara' && <GocharaView chart={chart} lang={lang} />}
 
-<<<<<<< HEAD
-=======
         {activeTab === 'jathaka_book' && (
           <div className="pt-4">
             <JathakamBookShell
@@ -1530,7 +1521,6 @@ export default function App() {
           </div>
         )}
 
->>>>>>> 8a9dcea (feat(book): dedicated full-jathakam reading page with auto TOC, sticky chapter rail, zoom & progress; new 8A phala-vivechana chapter)
         {activeTab === 'jathaka_deep' && <JathakaDeepView chart={chart} lang={lang} />}
 
         {activeTab === 'granthas' && <GranthaSourcesView lang={lang} />}
@@ -1735,11 +1725,7 @@ export default function App() {
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#090C18]/95 backdrop-blur-md border-t border-[#C9A96E]/35 px-1 py-1.5 no-print shadow-[0_-8px_24px_rgba(0,0,0,0.6)]"
       >
         <div className="grid grid-cols-5 gap-0.5 max-w-md mx-auto">
-<<<<<<< HEAD
-          {(['studio', 'jathaka_deep', 'gochara', 'hindu_calendar'] as ActiveWorkspaceTab[])
-=======
           {(['studio', 'jathaka_book', 'gochara', 'hindu_calendar'] as ActiveWorkspaceTab[])
->>>>>>> 8a9dcea (feat(book): dedicated full-jathakam reading page with auto TOC, sticky chapter rail, zoom & progress; new 8A phala-vivechana chapter)
             .map((id) => navItems.find((n) => n.id === id))
             .filter((n): n is NonNullable<typeof n> => Boolean(n))
             .map((item) => {
