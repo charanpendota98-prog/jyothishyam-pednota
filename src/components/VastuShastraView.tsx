@@ -36,7 +36,7 @@ import {
   type RoomMap,
 } from '../engine/vastuShastraEngine.ts';
 import { localizeVastuReport, ROOM_LABEL_EN, type VastuLang } from '../engine/vastuBilingual.ts';
-import { englishToTeluguSmart, isLatinText } from '../engine/teluguTransliteration.ts';
+import { bilingualName } from '../engine/teluguTransliteration.ts';
 import { buildVastuProjectPlan, pickBi } from '../engine/vastuProjectPlan.ts';
 import { STATE_DISTRICT_ATLAS } from '../engine/teluguJathakam.ts';
 import { SourceStrip } from './SourceStrip.tsx';
@@ -304,14 +304,10 @@ export function VastuShastraView({
    * నామ వాస్తు ఖచ్చితత్వం కోసం పేరును తెలుగు అక్షర రూపంలో ఇంజిన్‌కు ఇస్తాము.
    * ఆంగ్లంలో టైప్ చేసినా ("Charan") తెలుగు అక్షరం ("చ") ఏర్పడుతుంది.
    */
-  const nameForEngine = useMemo(
-    () => (isLatinText(personName) ? englishToTeluguSmart(personName) : personName),
-    [personName]
-  );
-  const nameTeluguPreview = useMemo(
-    () => (isLatinText(personName) ? englishToTeluguSmart(personName) : ''),
-    [personName]
-  );
+  const nameBoth = useMemo(() => bilingualName(personName), [personName]);
+  const nameForEngine = nameBoth.te;
+  const nameDisplay = isTe ? nameBoth.te : nameBoth.en;
+  const nameTeluguPreview = nameBoth.te && nameBoth.en && nameBoth.te !== personName ? nameBoth.te : '';
 
   const rawReport = useMemo(
     () =>
@@ -342,8 +338,8 @@ export function VastuShastraView({
         road: plotRoad,
         lengthFt: plotLen,
         widthFt: plotWidth,
-      }, personName || undefined),
-    [rawReport, isTe, plotShape, plotSlope, plotRoad, plotLen, plotWidth, personName]
+      }, personName ? nameDisplay : undefined),
+    [rawReport, isTe, plotShape, plotSlope, plotRoad, plotLen, plotWidth, personName, nameDisplay]
   );
 
   const { nama, place: placeReport, audit, plot } = report;
@@ -406,7 +402,7 @@ export function VastuShastraView({
             <p className="text-[10.5px] text-[#66CBBF]/80 leading-snug">
               {isTe
                 ? `లిప్యంతరీకరణ: ${personName} → ${nameTeluguPreview}`
-                : `Telugu rendering: ${nameTeluguPreview} (from “${personName}”)`}
+                : `Telugu form used for the nakshatra pada: ${nameTeluguPreview}`}
             </p>
           )}
           <div className="grid grid-cols-2 gap-2 text-[11.5px]">

@@ -283,3 +283,111 @@ export function englishToTeluguSmart(input: string): string {
     })
     .join(' ');
 }
+
+/* ------------------------------------------------------------------ */
+/*  తెలుగు → ఆంగ్లం (romanisation)                                     */
+/* ------------------------------------------------------------------ */
+
+const TE_CONS: Record<string, string> = {
+  క: 'k', ఖ: 'kh', గ: 'g', ఘ: 'gh', ఙ: 'n',
+  చ: 'ch', ఛ: 'chh', జ: 'j', ఝ: 'jh', ఞ: 'n',
+  ట: 't', ఠ: 'th', డ: 'd', ఢ: 'dh', ణ: 'n',
+  త: 't', థ: 'th', ద: 'd', ధ: 'dh', న: 'n',
+  ప: 'p', ఫ: 'ph', బ: 'b', భ: 'bh', మ: 'm',
+  య: 'y', ర: 'r', ల: 'l', వ: 'v', ళ: 'l',
+  శ: 'sh', ష: 'sh', స: 's', హ: 'h', ఱ: 'r',
+};
+
+const TE_MATRA: Record<string, string> = {
+  '': 'a', 'ా': 'aa', 'ి': 'i', 'ీ': 'ee', 'ు': 'u', 'ూ': 'oo',
+  'ృ': 'ri', 'ౄ': 'ru', 'ె': 'e', 'ే': 'e', 'ై': 'ai',
+  'ొ': 'o', 'ో': 'o', 'ౌ': 'au', 'ం': 'm', 'ః': 'h', 'ఁ': 'n',
+};
+
+const TE_VOWEL: Record<string, string> = {
+  అ: 'a', ఆ: 'aa', ఇ: 'i', ఈ: 'ee', ఉ: 'u', ఊ: 'oo',
+  ఋ: 'ri', ఎ: 'e', ఏ: 'e', ఐ: 'ai', ఒ: 'o', ఓ: 'o', ఔ: 'au',
+};
+
+const HALANT_TE = '\u0C4D';
+
+/** పరిచిత తెలుగు పేర్ల సంప్రదాయ ఆంగ్ల రూపాలు */
+const TELUGU_TO_LATIN_OVERRIDES: Record<string, string> = {
+  చరణ్: 'Charan', లక్ష్మి: 'Lakshmi', కృష్ణ: 'Krishna', కృష్ణా: 'Krishna',
+  శ్రీనివాస్: 'Srinivas', వెంకట: 'Venkata', వెంకటేష్: 'Venkatesh',
+  రావు: 'Rao', రమేష్: 'Ramesh', సాయి: 'Sai', అనిత: 'Anitha',
+  శర్మ: 'Sharma', రెడ్డి: 'Reddy', నాయుడు: 'Naidu', చౌదరి: 'Chowdary',
+  ప్రసాద్: 'Prasad', కుమార్: 'Kumar', సురేష్: 'Suresh', మహేష్: 'Mahesh',
+  రవి: 'Ravi', దివ్య: 'Divya', స్వాతి: 'Swathi', కవిత: 'Kavitha',
+  వాణి: 'Vani', వంశీ: 'Vamsi', తేజ: 'Teja', ఆదిత్య: 'Aditya',
+  హైదరాబాద్: 'Hyderabad', విజయవాడ: 'Vijayawada', తిరుపతి: 'Tirupati',
+  విశాఖపట్నం: 'Visakhapatnam', వరంగల్: 'Warangal', గుంటూరు: 'Guntur',
+};
+
+/** తెలుగు పేరును ఆంగ్ల (రోమన్) రూపంలోకి మార్చు — "చరణ్" → "Charan". */
+export function teluguToLatin(input: string): string {
+  const src = (input ?? '').trim();
+  if (!src) return '';
+  if (!/[\u0C00-\u0C7F]/.test(src)) return src;
+  const words = src.split(/\s+/).map((w) => {
+    const over = TELUGU_TO_LATIN_OVERRIDES[w];
+    if (over) return over;
+    const r = romanizeWord(w);
+    return TELUGU_TO_LATIN_OVERRIDES[r.toLowerCase()] ?? r;
+  });
+  return words
+    .map((w) => (/^[a-z]/.test(w) ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
+function romanizeWord(word: string): string {
+  const chars = Array.from(word);
+  let out = '';
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    if (TE_CONS[c]) {
+      const next = chars[i + 1];
+      if (next === HALANT_TE) {
+        out += TE_CONS[c];
+        i += 1;
+      } else if (next && TE_MATRA[next] !== undefined) {
+        out += TE_CONS[c] + TE_MATRA[next];
+        i += 1;
+      } else {
+        out += TE_CONS[c] + 'a';
+      }
+      continue;
+    }
+    if (TE_VOWEL[c]) {
+      out += TE_VOWEL[c];
+      continue;
+    }
+    if (c === 'ం') {
+      const next = chars[i + 1] ?? '';
+      const labial = ['ప', 'ఫ', 'బ', 'భ', 'మ'].includes(next);
+      out += labial ? 'm' : 'n';
+      continue;
+    }
+    if (TE_MATRA[c] !== undefined) {
+      out += TE_MATRA[c];
+      continue;
+    }
+    if (c === HALANT_TE) continue;
+    out += c;
+  }
+  // తెలుగు పేర్ల చివరి 'a' సాధారణంగా మౌనం (చరణ → Charan)
+  return out.replace(/a$/, '') || out;
+}
+
+/**
+ * ఏ భాషలో టైప్ చేసినా రెండు రూపాలను ఇచ్చు.
+ *   { te, en } — "Charan" ⇄ "చరణ్"
+ */
+export function bilingualName(input: string): { te: string; en: string } {
+  const raw = (input ?? '').trim();
+  if (!raw) return { te: '', en: '' };
+  if (/[\u0C00-\u0C7F]/.test(raw)) {
+    return { te: raw, en: teluguToLatin(raw) };
+  }
+  return { te: englishToTeluguSmart(raw), en: raw };
+}

@@ -41,7 +41,7 @@ import { computeLagnaFunctional } from '../src/engine/lagnaFunctionalEngine';
 import { generateVastuReport } from '../src/engine/vastuShastraEngine';
 import { localizeVastuReport } from '../src/engine/vastuBilingual';
 import { buildVastuProjectPlan } from '../src/engine/vastuProjectPlan';
-import { englishToTeluguSmart } from '../src/engine/teluguTransliteration';
+import { bilingualName, englishToTeluguSmart, teluguToLatin } from '../src/engine/teluguTransliteration';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -878,6 +878,16 @@ check(
     englishToTeluguSmart('Lakshmi') === 'లక్ష్మి' &&
     englishToTeluguSmart('Krishna') === 'కృష్ణ',
   `${englishToTeluguSmart('Charan')} · ${englishToTeluguSmart('Lakshmi')} · ${englishToTeluguSmart('Krishna')}`
+);
+check(
+  'తెలుగు → ఆంగ్లం: చరణ్ → Charan, లక్ష్మి → Lakshmi, కృష్ణ → Krishna',
+  teluguToLatin('చరణ్') === 'Charan' && teluguToLatin('లక్ష్మి') === 'Lakshmi' && teluguToLatin('కృష్ణ') === 'Krishna',
+  `${teluguToLatin('చరణ్')} · ${teluguToLatin('లక్ష్మి')} · ${teluguToLatin('కృష్ణ')}`
+);
+check(
+  'ద్విదిశ లిప్యంతరీకరణ (bilingualName) రెండు వైపులా సరైనది',
+  bilingualName('Charan').te === 'చరణ్' && bilingualName('చరణ్').en === 'Charan',
+  `${bilingualName('Charan').te} ⇄ ${bilingualName('చరణ్').en}`
 );
 check(
   'తెలుగు పదం మారదు',
