@@ -36,6 +36,7 @@ import {
   type MonthDayCell,
   type FestivalEntry,
 } from '../engine/hinduCalendarEngine.ts';
+import { SourceStrip } from './SourceStrip.tsx';
 import { STATE_DISTRICT_ATLAS, TELUGU_NAKSHATRAS } from '../engine/teluguJathakam.ts';
 import type { CompleteChartResult } from '../engine/ephemeris.ts';
 import type { AppLanguage } from '../engine/teluguJathakam.ts';
@@ -730,6 +731,8 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           </Card>
         </div>
       )}
+
+      <SourceStrip feature="panchanga" compact />
 
       <div className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-[10.5px] text-[#EDE8E0]/40">
         <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />

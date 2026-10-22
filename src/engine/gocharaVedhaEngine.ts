@@ -284,18 +284,40 @@ export function computeGocharaReport(
 
   /* ---------------- sāḍe-sātī ---------------- */
   const saturn = grahas.find((g) => g.id === 'Saturn')!;
-  const saturnNext = nextSignIngressJd('Saturn', jd, mode);
-  const saturnPrev = previousSignIngressJd('Saturn', jd, mode);
   const saturnHouse = saturn.houseFromMoon;
   const isSadeSati = saturnHouse === 12 || saturnHouse === 1 || saturnHouse === 2;
 
+  const s12 = (natalMoonSignIndex + 11) % 12;
+  const s02 = (natalMoonSignIndex + 1) % 12;
+  const s03 = (natalMoonSignIndex + 2) % 12;
+  const s11 = (natalMoonSignIndex + 10) % 12;
+
+  /** Continuous list of Saturn sign-changes from 11 years back to 11 years ahead. */
+  const saturnIngresses = (() => {
+    const out: { jd: number; signIndex: number }[] = [];
+    let cursor = jd - 11 * 365.25;
+    out.push({ jd: cursor, signIndex: Math.floor(grahaSiderealLongitude('Saturn', cursor, mode) / 30) % 12 });
+    for (let i = 0; i < 40; i++) {
+      const nx = nextSignIngressJd('Saturn', cursor + 0.02, mode);
+      out.push(nx);
+      cursor = nx.jd;
+      if (nx.jd > jd + 11 * 365.25) break;
+    }
+    return out;
+  })();
+
   const sadeSati: SadeSatiInfo = (() => {
     if (!isSadeSati) {
-      const noteTe =
-        'ప్రస్తుతం సాడే సాతి కాలం లేదు. శని జన్మ రాశికి 12, 1, 2 భావాల్లో సంచరించినప్పుడు సాడే సాతి ఏర్పడుతుంది.';
-      return { active: false, phaseIndex: null, phaseTe: null, startISO: null, endISO: null, noteTe };
+      return {
+        active: false,
+        phaseIndex: null,
+        phaseTe: null,
+        startISO: null,
+        endISO: null,
+        noteTe:
+          'ప్రస్తుతం సాడే సాతి కాలం లేదు. శని జన్మ రాశికి 12, 1, 2 భావాల్లో సంచరించినప్పుడు సాడే సాతి ఏర్పడుతుంది.',
+      };
     }
-    // phase 1 = Saturn in 12th, 2 = in 1st, 3 = in 2nd from the Moon
     const phaseIndex = (saturnHouse === 12 ? 1 : saturnHouse === 1 ? 2 : 3) as 1 | 2 | 3;
     const phaseTe =
       phaseIndex === 1
@@ -304,47 +326,32 @@ export function computeGocharaReport(
           ? 'ద్వితీయ దశ (గరిష్ఠ) — జన్మ రాశిపై శని'
           : 'తృతీయ దశ (అంత్య) — 2వ భావం';
 
-    // start = Saturn's entry into the 12th from the Moon; end = exit from the 2nd
-    const signOfTwelfth = (natalMoonSignIndex + 11) % 12;
-    const signOfSecond = (natalMoonSignIndex + 1) % 12;
-    const ingressOf = (targetSign: number): number => {
-      if (phaseIndex === 1) return saturnPrev.jd; // already in the 12th
-      // walk back through previous ingresses until the target sign is found
-      let cursor = saturnPrev.jd - 1;
-      for (let i = 0; i < 4; i++) {
-        const prev = previousSignIngressJd('Saturn', cursor, mode);
-        if ((prev.signIndex + 12) % 12 === targetSign) return prev.jd;
-        cursor = prev.jd - 1;
-      }
-      return saturnPrev.jd;
-    };
-    const startJd = ingressOf(signOfTwelfth);
-    // end: Saturn leaving the 2nd sign → the next ingress after it enters the 2nd
-    let endJd = saturnNext.jd;
-    if (phaseIndex !== 3) {
-      let cursor = saturnNext.jd + 1;
-      for (let i = 0; i < 4; i++) {
-        const nxt = nextSignIngressJd('Saturn', cursor, mode);
-        if ((nxt.signIndex + 12) % 12 === signOfSecond) {
-          endJd = nextSignIngressJd('Saturn', nxt.jd + 1, mode).jd;
-          break;
-        }
-        cursor = nxt.jd + 1;
-      }
-    } else {
-      endJd = saturnNext.jd;
+    // start = most recent 11th → 12th ingress; end = the 2nd → 3rd ingress ahead
+    let startJd: number | null = null;
+    for (let i = 1; i < saturnIngresses.length; i++) {
+      const cur = saturnIngresses[i];
+      if (cur.signIndex === s12 && saturnIngresses[i - 1].signIndex === s11 && cur.jd <= jd) startJd = cur.jd;
     }
+    let endJd: number | null = null;
+    for (let i = 1; i < saturnIngresses.length; i++) {
+      const cur = saturnIngresses[i];
+      if (cur.signIndex === s03 && saturnIngresses[i - 1].signIndex === s02 && cur.jd > jd) {
+        endJd = cur.jd;
+        break;
+      }
+    }
+
     return {
       active: true,
       phaseIndex,
       phaseTe,
-      startISO: civilDateAt(startJd, tz),
-      endISO: civilDateAt(endJd, tz),
+      startISO: startJd === null ? null : civilDateAt(startJd, tz),
+      endISO: endJd === null ? null : civilDateAt(endJd, tz),
       noteTe: `శని ${saturn.signTe}లో సంచరిస్తోంది — జన్మ రాశికి ${saturnHouse}వ భావం. ${
         phaseIndex === 2
           ? 'శని జన్మ రాశిపై ఉన్న కాలం — ఆరోగ్యం, ఉద్యోగ భారం, కుటుంబ బాధ్యతలపై శ్రద్ధ అవసరం; శని శాంతి, హనుమత్ ఆరాధన శ్రేయస్కరం.'
           : phaseIndex === 1
-            ? 'ఆరంభ దశ — వ్యయాలు, నిద్రలోపం, విదేశ/దూర ప్రయాణాలు పెరగవచ్చు; స్థిర నిర్ణయాలు తగ్గించండి.'
+            ? 'ఆరంభ దశ — వ్యయాలు, నిద్రలోపం, దూర ప్రయాణాలు పెరగవచ్చు; దీర్ఘకాలిక నిర్ణయాలు సమీక్షించండి.'
             : 'అంత్య దశ — భారం తగ్గుతుంది, పునర్నిర్మాణానికి అవకాశం; కుటుంబ సంబంధాలపై శ్రద్ధ పెట్టండి.'
       }`,
     };

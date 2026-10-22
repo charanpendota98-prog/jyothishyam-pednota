@@ -633,18 +633,32 @@ const ugadiCache = new Map<number, string>();
  * the same day hosts the pratipada-pravesha). Kshaya (skipped) pratipada cases —
  * e.g. 19 Mar 2026 — are handled correctly by this rule and match Drik Panchang.
  */
-export function ugadiDateISO(gregorianYear: number, mode: SiderealMode = 'lahiri', tz = 5.5): string {
+/**
+ * Ugādi — Caitra śukla pratipadā, resolved with the same sunrise rule as month
+ * starts (so a kṣaya pratipadā keeps the day it begins on).
+ *
+ * `lat`/`lng` matter because the answer depends on the local sunrise; they
+ * default to Hyderabad (the reference location for the Telugu pañcāṅgam).
+ */
+export function ugadiDateISO(
+  gregorianYear: number,
+  mode: SiderealMode = 'lahiri',
+  tz = 5.5,
+  lat = 17.385,
+  lng = 78.4867
+): string {
   const cacheKey = gregorianYear * 1000 + (mode === 'lahiri' ? 1 : 2) + Math.round(tz);
   const cached = ugadiCache.get(cacheKey);
   if (cached) return cached;
 
+  const geo: GeoContext = { lat, lng, tzOffsetHours: tz, placeName: 'ఉగాది స్థానం' };
   let cursorJd = jdFromMs(Date.UTC(gregorianYear, 2, 1, 0, 0, 0)) - tz / 24;
   const limit = jdFromMs(Date.UTC(gregorianYear, 3, 25, 0, 0, 0)) - tz / 24;
   let nm = newMoonAfterJd(cursorJd);
   while (nm < limit) {
-    const dateISO = civilDateAt(nm, tz);
     const masa = resolveMasa(nm + 0.6, mode);
     if (masa.masaIndex === 0) {
+      const dateISO = lunarMonthStartISO(nm, geo);
       ugadiCache.set(cacheKey, dateISO);
       return dateISO;
     }
@@ -691,7 +705,7 @@ export function resolveHinduEra(dateISO: string, geo: GeoContext, mode: Sidereal
   const noonJd = localMidnightJd(dateISO, tz) + 0.5 - tz / 24;
   const sunriseJd = localMidnightJd(dateISO, tz) + 6 / 24;
 
-  const ugadiThisYear = ugadiDateISO(gy, mode, tz);
+  const ugadiThisYear = ugadiDateISO(gy, mode, tz, geo.lat, geo.lng);
   const shakaYear = dateISO >= ugadiThisYear ? gy - 78 : gy - 79;
   const samvatsaraIndex = ((shakaYear + 12) % 60 + 60) % 60;
   const samvatsara = SAMVATSARA_NAMES[samvatsaraIndex === 0 ? 59 : samvatsaraIndex - 1] ?? SAMVATSARA_NAMES[0];
@@ -772,6 +786,8 @@ interface FestivalRule {
   paksha?: 'shukla' | 'krishna';
   tithi?: number; // 1..15
   kala?: 'sunrise' | 'madhyahna' | 'pradosha' | 'nishita';
+  /** Optional solar constraint — the Sun's nirāyaṇa rāśi at sunrise (0 = Meṣa). */
+  sunSign?: number;
   weekday?: number;
   timingNoteTe?: string;
 }
@@ -1043,9 +1059,9 @@ const FESTIVAL_RULES: FestivalRule[] = [
     nameTe: 'వైకుంఠ ఏకాదశి',
     nameEn: 'Vaikunta Ekadashi',
     descriptionTe:
-      'మార్గశిర శుక్ల ఏకాదశి (ధనుర్మాసారంభంలో) — విష్ణు ద్వార దర్శనం, మోక్ష ప్రదాయిని. ధనుర్మాసంలో వచ్చే మార్గశిర ఏకాదశిని వైకుంఠ ఏకాదశిగా ఆచరిస్తారు.',
+      'ధనుర్మాసంలో (సూర్యుడు ధనుస్సు రాశిలో ఉన్నప్పుడు) వచ్చే శుక్ల ఏకాదశి — విష్ణు ద్వార దర్శనం, మోక్ష ప్రదాయిని. ధనుర్మాసం బయట వచ్చే మార్గశిర ఏకాదశిని కాదు; ధనుర్మాసంలోని ఏకాదశినే వైకుంఠ ఏకాదశిగా ఆచరిస్తారు.',
     category: 'major',
-    masa: 8,
+    sunSign: 8,
     paksha: 'shukla',
     tithi: 11,
     kala: 'sunrise',
@@ -1238,6 +1254,7 @@ interface LightPanchanga {
   madhyahnaJd: number;
   pradoshaJd: number;
   nishitaJd: number;
+  sunSignIndex: number;
 }
 
 export function computeLightPanchanga(dateISO: string, geo: GeoContext, mode: SiderealMode): LightPanchanga {
@@ -1262,6 +1279,7 @@ export function computeLightPanchanga(dateISO: string, geo: GeoContext, mode: Si
     madhyahnaJd,
     pradoshaJd,
     nishitaJd,
+    sunSignIndex: Math.floor(siderealLongitude('Sun', sunriseJd, mode) / 30) % 12,
   };
 }
 
@@ -1280,6 +1298,7 @@ function tithiMatches(light: LightPanchanga, rule: FestivalRule): boolean {
           ? light.tithiAtNishita
           : light.tithiAtSunrise;
   if (val !== targetIndex) return false;
+  if (rule.sunSign !== undefined && light.sunSignIndex !== rule.sunSign) return false;
   if (rule.masa !== undefined) {
     if (light.masaIndex !== rule.masa) return false;
     // For adhika months the festival is observed in the nija (normal) month
@@ -1697,7 +1716,7 @@ export function computeDayPanchanga(
   const observances = festivalsForLightPanchanga(dateISO, light);
 
   // ---- Ugadi (computed from the Chaitra new moon, handles kshaya pratipada) ----
-  if (ugadiDateISO(Number(dateISO.slice(0, 4)), mode, tz) === dateISO) {
+  if (ugadiDateISO(Number(dateISO.slice(0, 4)), mode, tz, geo.lat, geo.lng) === dateISO) {
     observances.push({
       id: 'ugadi',
       nameTe: 'ఉగాది (తెలుగు నూతన సంవత్సరం)',
@@ -1999,8 +2018,13 @@ export function getYearOverview(
     mode
   );
 
-  // Ugadi + all sankrantis (solar festivals) are added explicitly
-  const ugadiISO = ugadiDateISO(gregorianYear, mode, tz);
+  // Ugadi + all sankrantis (solar festivals) are added explicitly. The tithi
+  // rule can also fire a day early/late when pratipadā is kṣaya, so the
+  // computed Ugādi replaces any rule-emitted one.
+  const ugadiISO = ugadiDateISO(gregorianYear, mode, tz, geo.lat, geo.lng);
+  const withoutUgadi = festivals.filter((f) => f.id !== 'ugadi');
+  festivals.length = 0;
+  festivals.push(...withoutUgadi);
   festivals.push({
     id: 'ugadi',
     nameTe: 'ఉగాది (తెలుగు నూతన సంవత్సరం)',

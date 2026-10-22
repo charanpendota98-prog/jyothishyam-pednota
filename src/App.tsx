@@ -33,6 +33,7 @@ import { TajikaVarshaphalaView } from './components/TajikaVarshaphalaView.tsx';
 import { VastuShastraView } from './components/VastuShastraView.tsx';
 import { HinduCalendarView } from './components/HinduCalendarView.tsx';
 import { GocharaView } from './components/GocharaView.tsx';
+import { GranthaSourcesView } from './components/GranthaSourcesView.tsx';
 import { RoyalWhatsAppSummaryModal } from './components/RoyalWhatsAppSummaryModal.tsx';
 import {
   Bookmark,
@@ -42,6 +43,7 @@ import {
   Menu,
   Compass,
   Orbit,
+  Library,
   Home,
   Clock,
   Calendar,
@@ -67,7 +69,8 @@ type ActiveWorkspaceTab =
   | 'prashna'
   | 'vastu'
   | 'hindu_calendar'
-  | 'gochara';
+  | 'gochara'
+  | 'granthas';
 
 const INITIAL_PROFILES: BirthInput[] = [
   {
@@ -345,6 +348,13 @@ export default function App() {
       shortTe: 'ప్రశ్న శాస్త్రం',
       labelEn: 'Prashna Shastra',
       icon: <HelpCircle className="w-4 h-4" />,
+    },
+    {
+      id: 'granthas',
+      labelTe: 'గ్రంథ మండలం (మూల ఆధారాలు)',
+      shortTe: 'గ్రంథాలు',
+      labelEn: 'Classical Sources',
+      icon: <Library className="w-4 h-4" />,
     },
     {
       id: 'gochara',
@@ -1377,6 +1387,8 @@ export default function App() {
         )}
 
         {activeTab === 'gochara' && <GocharaView chart={chart} lang={lang} />}
+
+        {activeTab === 'granthas' && <GranthaSourcesView lang={lang} />}
 
         {activeTab === 'vastu' && (
           <VastuShastraView

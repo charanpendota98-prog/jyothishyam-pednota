@@ -63,8 +63,11 @@ All from the true sunrise/sunset of the day:
   Wed 7 · Thu 6,12 · Fri 4,9 · Sat 1,2` — Thursday's 10:04–10:51 / 14:44–15:30 for
   Hyderabad 22 Oct 2026 reproduces Drik exactly.
 * **Nishītha** is centred on true solar midnight, **Godhūli** = sunset → sunset + ½ muhūrta.
-* **Chandrabalam** favourable rāśis = 1, 2, 5, 6, 9, 11 from the Moon's rāśi;
-  **Tārābalam** uses the nine tārā cycle from the native's janma nakṣatra.
+* **Chandrabalam** — favourable rāśis are the **1st, 2nd, 3rd, 5th, 6th, 7th,
+  9th, 10th and 11th** from the Moon's rāśi (4th, 8th and 12th are weak; the 8th
+  is *aṣṭama candra*). **Tārābalam** uses the nine tārā cycle (janma, sampat,
+  vipat, kṣema, pratyari, sādhaka, vadha, mitra, atimitra) counted from the
+  native's janma nakṣatra; tārās 2, 4, 6, 8, 9 are auspicious.
 * Choghadiyā and Horā are generated from the same sunrise/sunset frame.
 
 ### Festivals
@@ -72,7 +75,21 @@ All from the true sunrise/sunset of the day:
 Festivals are **rules**, not tables: `(māsa, pakṣa, tithi, kāla)` where `kāla` is
 one of sunrise / madhyāhna / pradoṣa / niśītha. The engine evaluates each rule
 against the computed tithi *at that kāla* on every day of the requested range.
-Solar events (saṅkrāntis, Kanuma) and eclipses are computed, not looked up.
+Solar events (saṅkrāntis, Kanuma, Bhōgi) and eclipses are computed, not looked up.
+
+Three correctness rules are applied on top of the raw matches:
+
+1. **Tithi spans two sunrises** — when the same rule matches on consecutive
+   days the *later* day is kept, which is the day on which the tithi had fully
+   begun before sunrise. This removes the classic duplicate paurṇamī /
+   pradoṣa / saṅkaṣṭi entries (4 Jan + 5 Apr + 5 May 2026 previously doubled).
+2. **Pradoṣa is bimonthly** — `pradosham-shukla` and `pradosham-krishna` are
+   separate rules, giving 24 pradoṣa vratas a year as in printed pañcāṅgams.
+3. **Vaikuṇṭha Ekādaśī** is the **Mārgaśira** (amānta) śukla ekādaśī — 20 Dec
+   2026, the ekādaśī that opens Dhanurmāsa, not the Kārtika one.
+
+`getYearOverview` clamps both the festival list and the lunar-month table to the
+Gregorian year requested (months are kept only when their span overlaps it).
 
 ---
 
@@ -103,7 +120,43 @@ tradition (81 padas, 45 devatās, Brahmā in the central 3×3).
 
 ---
 
-## 4. Validation
+## 4. `src/engine/gocharaVedhaEngine.ts` — gōcara (transits from the janma rāśi)
+
+Transit results are read **from the natal Moon's rāśi**, house by house, using
+the favourable-house lists of **Bṛhat Saṁhitā 104.4 / Phaladīpikā 26.3–8**:
+
+| Graha | Favourable houses from janma rāśi |
+| --- | --- |
+| Sun | 3, 6, 10, 11 |
+| Moon | 1, 3, 6, 7, 10, 11 |
+| Mars | 3, 6, 11 |
+| Mercury | 2, 4, 6, 8, 10, 11 |
+| Jupiter | 2, 5, 7, 9, 11 |
+| Venus | 1, 2, 3, 4, 5, 8, 9, 11, 12 |
+| Saturn | 3, 6, 11 |
+| Rāhu / Ketu | 3, 6, 10, 11 (as the Sun) |
+
+**Vedha** (obstruction) pairs are 3↔9, 6↔12, 10↔4, 11↔5 (Sun/Rāhu/Ketu);
+1↔5, 3↔9, 6↔12, 7↔2, 10↔4, 11↔8 (Moon); 3↔12, 6↔9, 11↔5 (Mars);
+2↔5, 4↔3, 6↔9, 8↔1, 10↔8, 11↔12 (Mercury); 2↔12, 5↔4, 7↔3, 9↔2, 11↔10
+(Jupiter); 1↔8, 2↔7, 3↔1, 4↔9, 5↔10, 8↔11, 9↔5, 11↔3, 12↔6 (Venus);
+3↔6, 6↔3, 11↔12 (Saturn). **Sun ↔ Saturn** and **Moon ↔ Mercury** never
+obstruct one another. A graha in a favourable house whose vedha house is empty
+gives `good`; with vedha it is `blocked`; otherwise `bad`.
+
+**Sādē-sātī** is active while Saturn occupies the 12th, 1st or 2nd from the
+janma rāśi. Start/end are the *sign-ingress instants* (11th→12th and 2nd→3rd),
+found by a direction-agnostic search on the true sidereal longitude, so the
+retrograde re-entries of Saturn are handled correctly. Checked against Swiss
+Ephemeris: Saturn Kumbha 2023-01-17, Mīna 2025-03-29, Mesha 2027-06-02,
+Vṛṣabha 2029-08-08 — all reproduced within one civil day (IST rounding).
+
+Transit positions use Lahiri nirāyaṇa longitudes of all nine grahas; Rāhu/Ketu
+use the **true** (perturbed) node.
+
+---
+
+## 5. Validation
 
 ### Golden fixture (automated)
 

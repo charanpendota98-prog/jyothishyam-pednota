@@ -21,6 +21,7 @@ import {
 } from '../engine/gocharaVedhaEngine.ts';
 import { computeDayPanchanga } from '../engine/hinduCalendarEngine.ts';
 import { TELUGU_NAKSHATRAS, TELUGU_RASIS } from '../engine/teluguJathakam.ts';
+import { SourceStrip } from './SourceStrip.tsx';
 import type { CompleteChartResult } from '../engine/ephemeris.ts';
 
 interface GocharaViewProps {
@@ -483,25 +484,7 @@ export function GocharaView({ chart, lang = 'te' }: GocharaViewProps) {
         </Card>
       </div>
 
-      <Card>
-        <SectionTitle
-          icon={<Sparkles className="w-4 h-4" />}
-          title={isTe ? 'మూల గ్రంథాలు' : 'Primary sources'}
-        />
-        <ul className="grid gap-1.5 sm:grid-cols-2 text-[11.5px] text-[#EDE8E0]/60">
-          {[
-            'బృహత్ సంహిత (వరాహమిహిరుడు) 104.4 — గోచార శ్లోకాలు',
-            'ఫలదీపిక 26.3–8 (మంత్రేశ్వరుడు) — గోచార ఫలాలు, వేధ',
-            'జాతక పారిజాత — వేధ స్థానాలు, మినహాయింపులు',
-            'ముహూర్త చింతామణి — తారాబలం, చంద్రబలం',
-          ].map((s) => (
-            <li key={s} className="flex gap-1.5">
-              <span className="text-[#C9A96E]/70">•</span>
-              {s}
-            </li>
-          ))}
-        </ul>
-      </Card>
+      <SourceStrip feature="gochara" />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import type { CompleteChartResult } from '../engine/ephemeris.ts';
 import type { CompleteTeluguJathakamReport } from '../engine/teluguJathakam.ts';
 import { TELUGU_PLANETS, TELUGU_RASIS } from '../engine/teluguJathakam.ts';
+import { GRANTHAS } from '../engine/classicalSources.ts';
 import type { CompleteVerificationAndAnalysisReport } from '../engine/jathakaVerifications.ts';
 import type { AstroVisionMasterReport } from '../engine/astroVisionAndTransitEngine.ts';
 import type { SiddhantaAdvancedAppendicesReport } from '../engine/siddhantaAdvancedAppendices.ts';
@@ -267,7 +268,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
   upayaReport,
   lifeChronicle,
 }) => {
-  const TOTAL_PAGES = 13;
+  const TOTAL_PAGES = 14;
   const currentYear = new Date().getFullYear();
   const varshaphalaReport = React.useMemo(
     () => generateTajikaVarshaphalaReport(chart, currentYear),
@@ -1975,6 +1976,73 @@ export const ClassicalJathakaPdfDocument: React.FC<
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE 14: GRANTHA MANDALA — SOURCE APPENDIX                             */}
+      {/* ===================================================================== */}
+      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={14} pageTitleTe="గ్రంథ మండలం — మూల ఆధార గ్రంథములు & సిద్ధాంత ప్రమాణం" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-3 text-[11px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">గ్రంథ ప్రమాణ వాక్యం: </strong>
+          ఈ గ్రంథంలోని ప్రతి గణన — గ్రహ స్ఫుటాలు, భావ చలితం, దశలు, అష్టకవర్గం, గోచారం, ముహూర్తం, వాస్తు దిక్కులు —
+          క్రింది మూల గ్రంథాలపై ఆధారపడి ఉంది. అధ్యాయ సంఖ్యలు ప్రామాణిక ముద్రణలలో ఒకే విధంగా ఉన్నచోట మాత్రమే ఇవ్వబడ్డాయి;
+          మూల సంస్కృత గ్రంథాలు పబ్లిక్ డొమైన్.
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[10px]">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-1 px-2 text-left font-bold w-[26%]">గ్రంథం</th>
+              <th className="py-1 px-2 text-left font-bold w-[20%]">రచయిత / కాలం</th>
+              <th className="py-1 px-2 text-left font-bold w-[30%]">ఈ గ్రంథంలో వాడిన సిద్ధాంతం</th>
+              <th className="py-1 px-2 text-left font-bold w-[24%]">అధ్యాయ / భాగం</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {GRANTHAS.map((g, idx) => (
+              <tr key={g.id} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-1 px-2 border-r border-[#8B6914]/40">
+                  <div className="font-bold text-[#7A1818]">{g.nameTe}</div>
+                  <div className="text-[8.5px] text-[#5C3A21]">{g.nameSanskrit} · {g.nameEn}</div>
+                </td>
+                <td className="py-1 px-2 border-r border-[#8B6914]/40">
+                  {g.authorTe}
+                  <div className="text-[8.5px] text-[#5C3A21]">{g.periodTe}</div>
+                </td>
+                <td className="py-1 px-2 border-r border-[#8B6914]/40 leading-tight">
+                  {g.doctrineTe.slice(0, 2).join(' · ')}
+                </td>
+                <td className="py-1 px-2 leading-tight text-[9px]">
+                  {g.chaptersTe.length > 0 ? g.chaptersTe.join(' · ') : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 text-[10px] leading-relaxed">
+            <div className="font-bold text-[#7A1818] mb-1">గణిత ప్రమాణం (Numerical Standard)</div>
+            గ్రహ స్ఫుటాలు: Swiss Ephemeris (JPL DE431) — జనన స్ఫుటాలు 0.003° లోపు ఖచ్చితం. అయనాంశం: లహిరి
+            (చిత్రపక్ష) — {chart.ayanamsaFormatted}. సూర్యోదయం/అస్తమయం వక్రీభవన సహిత దృగ్గణిత పద్ధతి.
+            పంచాంగ అంగాలు 365 రోజుల స్విస్-ఎఫిమెరిస్ ఫిక్చర్‌తో 100% ధృవీకరించబడ్డాయి.
+          </div>
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 text-[10px] leading-relaxed">
+            <div className="font-bold text-[#7A1818] mb-1">సంప్రదాయ ప్రమాణం (Traditional Standard)</div>
+            అమాంత మాస పద్ధతి (తెలుగు సంప్రదాయం), క్షయ తిథి నియమం, అధిక మాస నిర్ణయం, ఇష్టఘడియలు, ధనుర్మాస
+            వైకుంఠ ఏకాదశి నిర్ణయం — తెలంగాణ & ఆంధ్రప్రదేశ్ పంచాంగ సంప్రదాయం ప్రకారం. నిజ ఉత్తరం సూర్య-నీడ
+            (శంకు) పద్ధతిలో — దిక్సూచి అయస్కాంత దిక్పాతాన్ని సరిచేసి.
+          </div>
+        </div>
+
+        <div className="mt-3 border-t-2 border-[#7A1818] pt-2 text-center text-[9.5px] text-[#5C3A21]">
+          ఓం తత్ సత్ · శుభమస్తు · సర్వే జనాః సుఖినో భవంతు ·{' '}
+          <span className="font-bold text-[#7A1818]">
+            గ్రంథ పుట్టిక సమాప్తం — {TOTAL_PAGES} పుటలు
+          </span>
         </div>
       </section>
     </div>

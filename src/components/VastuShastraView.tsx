@@ -35,6 +35,7 @@ import {
   type RoomMap,
 } from '../engine/vastuShastraEngine.ts';
 import { STATE_DISTRICT_ATLAS } from '../engine/teluguJathakam.ts';
+import { SourceStrip } from './SourceStrip.tsx';
 
 interface VastuShastraViewProps {
   defaultName?: string;
@@ -772,28 +773,7 @@ export function VastuShastraView({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-[#0F1326] p-5">
-        <SectionTitle
-          icon={<ScrollText className="w-4 h-4" />}
-          title={isTe ? 'మూల గ్రంథాలు' : 'Primary sources'}
-          sub={isTe ? 'ఈ విశ్లేషణ ఆధారపడిన శాస్త్ర గ్రంథాలు' : 'Texts underlying this analysis'}
-        />
-        <ul className="grid gap-1.5 sm:grid-cols-2 text-[11.5px] text-[#EDE8E0]/65 leading-relaxed">
-          {[
-            'విశ్వకర్మ ప్రకాశం — 81 పాద పరమశాయిక మండలం, 45 దేవతలు',
-            'మయమతం — 32 దేవతల వైదిక మండలం, బ్రహ్మస్థానం',
-            'సమరాంగణ సూత్రధార (భోజరాజు) — గ్రామ/గృహ వాస్తు, దిక్కుల విభజన',
-            'వాస్తు శాస్త్రం (అపరాజిత పృచ్ఛా) — దోషాలు, పరిహారాలు',
-            'బృహత్ సంహిత (వరాహమిహిరుడు) — దిక్పాలకులు, శంకు (నీడ) పద్ధతి',
-            'మానసార — నగర/గ్రామ నిర్మాణ క్రమం',
-          ].map((s) => (
-            <li key={s} className="flex gap-1.5">
-              <span className="text-[#C9A96E]/70">•</span>
-              {s}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <SourceStrip feature="vastu" />
     </div>
   );
 }
