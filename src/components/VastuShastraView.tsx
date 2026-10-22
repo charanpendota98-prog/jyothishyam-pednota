@@ -36,7 +36,7 @@ import {
   type RoomMap,
 } from '../engine/vastuShastraEngine.ts';
 import { latinSyllable, localizeVastuReport, ROOM_LABEL_EN, type VastuLang } from '../engine/vastuBilingual.ts';
-import { bilingualName } from '../engine/teluguTransliteration.ts';
+import { bilingualName, englishToTeluguSmart, isLatinText } from '../engine/teluguTransliteration.ts';
 import { buildVastuProjectPlan, pickBi } from '../engine/vastuProjectPlan.ts';
 import { STATE_DISTRICT_ATLAS } from '../engine/teluguJathakam.ts';
 import { SourceStrip } from './SourceStrip.tsx';
@@ -297,7 +297,9 @@ export function VastuShastraView({
   const lat = place?.lat ?? manualLat;
   const lng = place?.lng ?? manualLng;
   const placeNameRaw = place ? (isTe ? place.labelTe : place.label) : defaultPlaceName ?? 'హైదరాబాద్';
-  const placeName = placeNameRaw;
+  // తెలుగు మోడ్‌లో ఆంగ్లంలో టైప్ చేసిన స్థలం పేరును తెలుగు లిపిలోకి మారుస్తాము.
+  const placeName =
+    isTe && isLatinText(placeNameRaw) && !place ? englishToTeluguSmart(placeNameRaw) : placeNameRaw;
   const tz = place?.tz ?? defaultTzOffsetHours ?? 5.5;
 
   /**
