@@ -35,7 +35,7 @@ import {
   type RoomKey,
   type RoomMap,
 } from '../engine/vastuShastraEngine.ts';
-import { localizeVastuReport, ROOM_LABEL_EN, type VastuLang } from '../engine/vastuBilingual.ts';
+import { latinSyllable, localizeVastuReport, ROOM_LABEL_EN, type VastuLang } from '../engine/vastuBilingual.ts';
 import { bilingualName } from '../engine/teluguTransliteration.ts';
 import { buildVastuProjectPlan, pickBi } from '../engine/vastuProjectPlan.ts';
 import { STATE_DISTRICT_ATLAS } from '../engine/teluguJathakam.ts';
@@ -77,7 +77,7 @@ const DIK_ELEMENT_ICON: Record<DikId, React.ReactNode> = {
 const PLACE_OPTIONS = STATE_DISTRICT_ATLAS.flatMap((state) =>
   state.districts.map((d) => ({
     id: d.id,
-    label: `${d.nameEn} — ${d.hqTe}`,
+    label: d.nameEn,
     labelTe: d.nameTe,
     lat: d.lat,
     lng: d.lng,
@@ -408,7 +408,9 @@ export function VastuShastraView({
           <div className="grid grid-cols-2 gap-2 text-[11.5px]">
             <div className="rounded-lg bg-white/[0.03] px-2 py-1.5">
               <div className="text-[9.5px] uppercase tracking-wider text-[#EDE8E0]/40">{isTe ? 'అక్షరం' : 'Syllable'}</div>
-              <div className="text-[#EDE8E0]">{nama.matchedSyllable}</div>
+              <div className="text-[#EDE8E0]">
+                {isTe ? nama.matchedSyllable : latinSyllable(nama.nakshatraIndex, nama.pada) || nama.matchedSyllable}
+              </div>
             </div>
             <div className="rounded-lg bg-white/[0.03] px-2 py-1.5">
               <div className="text-[9.5px] uppercase tracking-wider text-[#EDE8E0]/40">{isTe ? 'నామ అంకం' : 'Name number'}</div>
@@ -435,7 +437,7 @@ export function VastuShastraView({
               <option value="">{isTe ? '— మాన్యువల్ నిర్దేశాంశాలు —' : '— manual coordinates —'}</option>
               {PLACE_OPTIONS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {isTe ? `${p.labelTe} — ${p.label}` : `${p.label} — ${p.labelTe}`}
+                  {isTe ? `${p.labelTe} — ${p.label}` : p.label}
                 </option>
               ))}
             </select>
@@ -990,7 +992,7 @@ export function VastuShastraView({
         </div>
       </div>
 
-      <SourceStrip feature="vastu" />
+      <SourceStrip feature="vastu" lang={isTe ? 'te' : 'en'} />
     </div>
   );
 }

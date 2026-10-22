@@ -42,6 +42,9 @@ import { generateVastuReport } from '../src/engine/vastuShastraEngine';
 import { localizeVastuReport } from '../src/engine/vastuBilingual';
 import { buildVastuProjectPlan } from '../src/engine/vastuProjectPlan';
 import { bilingualName, englishToTeluguSmart, teluguToLatin } from '../src/engine/teluguTransliteration';
+import React from 'react';
+import { renderToString } from 'react-dom/server';
+import { VastuShastraView } from '../src/components/VastuShastraView';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -866,6 +869,19 @@ check(
     return plan.rooms.length === 16 && plan.services.length >= 6 && plan.rooms.every((r) => r.remedies.length >= 1);
   })(),
   'గది వారీ + సేవా వారీ ప్లాన్ సిద్ధం'
+);
+
+check(
+  'వాస్తు వ్యూ ఇంగ్లీష్ మోడ్‌లో తెలుగు వాక్యాలు లేవు (SSR ధృవీకరణ)',
+  (() => {
+    const html = renderToString(
+      React.createElement(VastuShastraView, { lang: 'en', defaultName: 'Charan', defaultPlaceName: 'Hyderabad' })
+    );
+    // "Telugu form used for the nakshatra pada" — ఉద్దేశపూర్వక సూచన, మినహాయించాము
+    const cleaned = html.replace(/Telugu form used for the nakshatra pada:[^<]*/g, '');
+    return !/[\u0C00-\u0C7F]/.test(cleaned);
+  })(),
+  'వ్యూ పూర్తిగా ఆంగ్లంలో రెండర్ అయింది'
 );
 
 // ─────────────────────────────────────────────────────────────────────────

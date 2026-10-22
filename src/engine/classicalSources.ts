@@ -634,12 +634,51 @@ export interface SourceChip {
  * A short, curated citation strip for a feature. Order is significant — the
  * first item is the text the feature is primarily built on.
  */
-export function sourceChipsFor(feature: 'panchanga' | 'gochara' | 'vastu' | 'jathaka' | 'muhurta' | 'prashna' | 'varshaphala' | 'jaimini'): SourceChip[] {
+/** English one-liners for the citation strip (Telugu lives in the switch below). */
+const SOURCE_LINES_EN: Record<string, string> = {
+  'surya-siddhanta': 'Pañcāṅga arithmetic, day-length and night-length rules',
+  'drik-ganita': 'Nirayana longitudes and sunrise — 100% match on a 365-day fixture',
+  'muhurta-chintamani': 'Rāhu-kāla, Yama-gaṇḍa, Gulika, Dur-muhūrta, Bhadrā',
+  'sanketa-nidhi': 'Telugu amānta month names, iṣṭa-ghaṭī, Dhanur-māsa rules',
+  phaladeepika: 'Ch. 26 — benefic transit houses and Vēdha pairs',
+  'brihat-samhita': 'Transit chapter — nine-planet results from the janma rāśi',
+  'jataka-parijata': 'Vēdha exemptions (Sun–Saturn, Moon–Mercury)',
+  'vishvakarma-prakasha': '81-pada Paramaśāyika maṇḍala and the 45 devatās',
+  mayamata: '32-devatā maṇḍala, village and house construction sequence',
+  'samarangana-sutradhara': '16-zone directional division and defects',
+  'aparajita-prichha': 'Doorway proportions and room-direction rules',
+  manasara: 'Town and village measurement standards',
+  'brihat-parashara': 'Bhāvas, Viṁśottarī daśā, ṣoḍaśavargas, aṣṭakavarga',
+  saravali: 'Planet-in-house result descriptions',
+  'brihad-jataka': 'Natural significations of the planets',
+  'muhurta-chintamani ': 'Tithi-vāra-nakṣatra-yoga-karaṇa purity, muhūrta lagna',
+  'uttara-kalamrita': 'Sthāna, kāla and dik balas',
+  'prashna-marga': 'Prashna lagna, ārūḍha lagna and the final verdict',
+  shatpanchashika: 'The classical root of prashna śāstra',
+  'tajika-nilakanthi': 'Varṣa-praveśa, munthā, varṣeśvara and sāhams',
+  samjnatantra: 'Tājika technical terms, iththaśāla and muṭhaśāla',
+  'jaimini-sutras': 'Chara daśā, kārakāṁśa and pada-krama results',
+  'brihat-samhita ': 'Shadow (śaṅku) method for true north',
+};
+
+export function sourceChipsFor(
+  feature: 'panchanga' | 'gochara' | 'vastu' | 'jathaka' | 'muhurta' | 'prashna' | 'varshaphala' | 'jaimini',
+  lang: 'te' | 'en' = 'te'
+): SourceChip[] {
   const pick = (ids: string[], lines: Record<string, string>): SourceChip[] =>
     ids
       .map((id) => granthaById(id))
       .filter((g): g is GranthaEntry => Boolean(g))
-      .map((g) => ({ id: g.id, nameTe: g.nameTe, authorTe: g.authorTe, lineTe: lines[g.id] ?? g.doctrineTe[0] ?? '' }));
+      .map((g) =>
+        lang === 'en'
+          ? {
+              id: g.id,
+              nameTe: g.nameEn,
+              authorTe: g.authorEn,
+              lineTe: SOURCE_LINES_EN[g.id] ?? SOURCE_LINES_EN[g.id.trim()] ?? g.doctrineTe[0] ?? '',
+            }
+          : { id: g.id, nameTe: g.nameTe, authorTe: g.authorTe, lineTe: lines[g.id] ?? g.doctrineTe[0] ?? '' }
+      );
 
   switch (feature) {
     case 'panchanga':

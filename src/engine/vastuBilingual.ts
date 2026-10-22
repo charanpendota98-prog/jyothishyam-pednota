@@ -726,7 +726,7 @@ function placeNameEn(name: string): string {
 }
 
 /** తెలుగు పాదాక్షరానికి సమానమైన లాటిన్ అక్షరం (Cha, Kre, …) */
-function latinSyllable(nakshatraIndex: number, pada: number): string {
+export function latinSyllable(nakshatraIndex: number, pada: number): string {
   const found = NAMA_SYLLABLES_EN.find((s) => s.nakshatraIndex === nakshatraIndex && s.pada === pada);
   return found ? found.syllable : '';
 }
