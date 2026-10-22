@@ -785,7 +785,7 @@ interface FestivalRule {
   masa?: number; // amanta masa index
   paksha?: 'shukla' | 'krishna';
   tithi?: number; // 1..15
-  kala?: 'sunrise' | 'madhyahna' | 'pradosha' | 'nishita';
+  kala?: 'sunrise' | 'madhyahna' | 'pradosha' | 'nishita' | 'moonrise';
   /** Optional solar constraint — the Sun's nirāyaṇa rāśi at sunrise (0 = Meṣa). */
   sunSign?: number;
   weekday?: number;
@@ -1177,11 +1177,12 @@ const FESTIVAL_RULES: FestivalRule[] = [
     id: 'sankashti',
     nameTe: 'సంకష్టి చతుర్థి',
     nameEn: 'Sankashti Chaturthi',
-    descriptionTe: 'నెలవారీ కృష్ణ చతుర్థి — గణపతి ఉపవాసం, చంద్ర దర్శనం.',
+    descriptionTe:
+      'నెలవారీ కృష్ణ చతుర్థి — చంద్రోదయ కాలంలో చతుర్థి వ్యాపించిన రోజున గణపతి ఉపవాసం, చంద్ర దర్శనం.',
     category: 'monthly',
     paksha: 'krishna',
     tithi: 4,
-    kala: 'sunrise',
+    kala: 'moonrise',
   },
   {
     id: 'pradosham-shukla',
@@ -1255,10 +1256,14 @@ interface LightPanchanga {
   pradoshaJd: number;
   nishitaJd: number;
   sunSignIndex: number;
+  /** Chandrodaya — needed by Saṅkaṣṭi Caturthī, which is a moonrise rule. */
+  moonriseJd: number | null;
+  tithiAtMoonrise: number | null;
 }
 
 export function computeLightPanchanga(dateISO: string, geo: GeoContext, mode: SiderealMode): LightPanchanga {
   const { sunriseJd, sunsetJd } = approximateSunTimes(dateISO, geo.lat, geo.lng, geo.tzOffsetHours);
+  const moonriseJd = riseSetForLocalDate(dateISO, geo.lat, geo.lng, geo.tzOffsetHours).moonriseJd;
   const dayLen = Math.max(0.25, sunsetJd - sunriseJd);
   const nightLen = Math.max(0.25, 1 - dayLen);
   const madhyahnaJd = sunriseJd + dayLen / 2;
@@ -1280,6 +1285,8 @@ export function computeLightPanchanga(dateISO: string, geo: GeoContext, mode: Si
     pradoshaJd,
     nishitaJd,
     sunSignIndex: Math.floor(siderealLongitude('Sun', sunriseJd, mode) / 30) % 12,
+    moonriseJd: moonriseJd,
+    tithiAtMoonrise: moonriseJd === null ? null : tithiIndex(moonriseJd),
   };
 }
 
@@ -1296,7 +1303,9 @@ function tithiMatches(light: LightPanchanga, rule: FestivalRule): boolean {
         ? light.tithiAtPradosha
         : kala === 'nishita'
           ? light.tithiAtNishita
-          : light.tithiAtSunrise;
+          : kala === 'moonrise'
+            ? (light.tithiAtMoonrise ?? light.tithiAtSunrise)
+            : light.tithiAtSunrise;
   if (val !== targetIndex) return false;
   if (rule.sunSign !== undefined && light.sunSignIndex !== rule.sunSign) return false;
   if (rule.masa !== undefined) {
@@ -1362,6 +1371,12 @@ function collectFestivalsBetween(
   const padStart = addDaysISO(startISO, -3);
   const padEnd = addDaysISO(endISO, 3);
   const raw: FestivalEntry[] = [];
+  /** tithi index → civil day on which that tithi *begins* */
+  const tithiBeginDays = new Map<number, string[]>();
+  /** tithi index → civil days on which that tithi prevails at sunrise */
+  const tithiSunriseDays = new Map<number, Set<string>>();
+  /** tithi index → civil days on which that tithi prevails at moonrise */
+  const tithiMoonriseDays = new Map<number, Set<string>>();
   let [y, m, d] = padStart.split('-').map(Number);
   const cursor = new Date(Date.UTC(y, m - 1, d));
   for (let i = 0; i < 800; i++) {
@@ -1371,7 +1386,89 @@ function collectFestivalsBetween(
     if (dateISO > padEnd) break;
     const light = computeLightPanchanga(dateISO, geo, mode);
     raw.push(...festivalsForLightPanchanga(dateISO, light));
+
+    const sunriseIdx = light.tithiAtSunrise;
+    tithiSunriseDays.set(sunriseIdx, (tithiSunriseDays.get(sunriseIdx) ?? new Set()).add(dateISO));
+    if (light.tithiAtMoonrise !== null) {
+      tithiMoonriseDays.set(light.tithiAtMoonrise, (tithiMoonriseDays.get(light.tithiAtMoonrise) ?? new Set()).add(dateISO));
+    }
+
+    // Walk the tithi boundaries inside this sunrise-to-sunrise day so that a
+    // kṣaya (skipped) tithi — one that never touches a sunrise — is still dated.
+    const nextSunrise = approximateSunTimes(addDaysISO(dateISO, 1), geo.lat, geo.lng, tz).sunriseJd;
+    const win = tithiWindow(light.sunriseJd);
+    let idx = win.index;
+    let start = win.startJd;
+    let end = win.endJd;
+    for (let guard = 0; guard < 4 && start < nextSunrise; guard++) {
+      const beginISO = civilDateAt(start, tz);
+      tithiBeginDays.set(idx, [...(tithiBeginDays.get(idx) ?? []), beginISO]);
+      idx = (idx + 1) % 30;
+      start = end;
+      end = nextTithiBoundaryJd(start + 1e-6);
+    }
     cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  // ---- kṣaya tithis: monthly observances that would otherwise be missing ----
+  const monthlyByTithi = new Map<number, FestivalRule>();
+  for (const rule of FESTIVAL_RULES) {
+    if (rule.category !== 'monthly' || rule.masa !== undefined || rule.tithi === undefined) continue;
+    if (rule.kala && rule.kala !== 'sunrise') continue;
+    const target = rule.paksha === 'shukla' ? rule.tithi - 1 : rule.paksha === 'krishna' ? 15 + rule.tithi - 1 : -1;
+    if (target >= 0) monthlyByTithi.set(target, rule);
+  }
+  // ---- moonrise rules (Saṅkaṣṭi Caturthī): one observance per lunation ----
+  for (const rule of FESTIVAL_RULES) {
+    if (rule.category !== 'monthly' || rule.kala !== 'moonrise' || rule.tithi === undefined) continue;
+    const target = rule.paksha === 'shukla' ? rule.tithi - 1 : rule.paksha === 'krishna' ? 15 + rule.tithi - 1 : -1;
+    if (target < 0) continue;
+    const days = [
+      ...new Set([...(tithiSunriseDays.get(target) ?? []), ...(tithiBeginDays.get(target) ?? [])]),
+    ].sort();
+    const moonriseDays = tithiMoonriseDays.get(target) ?? new Set<string>();
+    // group consecutive dates into lunation occurrences
+    const runs: string[][] = [];
+    for (const day of days) {
+      const run = runs[runs.length - 1];
+      if (run && addDaysISO(run[run.length - 1], 1) === day) run.push(day);
+      else runs.push([day]);
+    }
+    for (const run of runs) {
+      if (run.some((day) => moonriseDays.has(day))) continue; // moonrise match already produced
+      const fallback = run[0];
+      if (raw.some((f) => f.id === rule.id && f.dateISO === fallback)) continue;
+      raw.push({
+        id: rule.id,
+        nameTe: rule.nameTe,
+        nameEn: rule.nameEn,
+        dateISO: fallback,
+        descriptionTe: rule.descriptionTe,
+        category: rule.category,
+        timingNoteTe:
+          'ఈ నెలలో చతుర్థి చంద్రోదయ కాలాన్ని తాకలేదు — తిథి ఆరంభ దినాన్ని ప్రామాణికంగా తీసుకున్నాము',
+      });
+    }
+  }
+
+  for (const [tithiIdx, rule] of monthlyByTithi) {
+    const begins = tithiBeginDays.get(tithiIdx) ?? [];
+    const sunriseDays = tithiSunriseDays.get(tithiIdx) ?? new Set<string>();
+    for (const beginISO of begins) {
+      const alsoNextSunrise = sunriseDays.has(addDaysISO(beginISO, 1));
+      if (sunriseDays.has(beginISO) || alsoNextSunrise) continue; // normal or vṛddhi
+      // kṣaya: the tithi begins after sunrise and ends before the next sunrise
+      if (raw.some((f) => f.id === rule.id && f.dateISO === beginISO)) continue;
+      raw.push({
+        id: rule.id,
+        nameTe: rule.nameTe,
+        nameEn: rule.nameEn,
+        dateISO: beginISO,
+        descriptionTe: rule.descriptionTe,
+        category: rule.category,
+        timingNoteTe: 'క్షయ తిథి — తిథి ఆరంభ దినం ప్రకారం నిర్ణయించబడింది',
+      });
+    }
   }
 
   // group by rule id → keep the last day of each consecutive run

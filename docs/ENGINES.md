@@ -210,6 +210,32 @@ tithi/nakshatra/yoga  : ALL MATCH ✓
 max sunrise delta     : 1 min
 ```
 
+`npm run verify:calendar` (also part of `npm run verify`) guards the rule layer
+above the aṅgas — 103 checks over 2024–2028:
+
+```
+checks run : 103
+RESULT      : ALL MATCH ✓
+```
+
+* **Invariants** — no observance outside its Gregorian year, no observance on two
+  consecutive days (tithi-span duplicates), no exact duplicates, ekādaśī 11–13,
+  pūrṇimā 12–13, amāvāsyā 12–13, saṅkaṣṭi 12–13, pradoṣa 22–26 (both pakṣas),
+  lunar months contiguous and at most one adhika māsa.
+* **Named dates from published Telugu pañcāṅgams** — Ugādi 2024–2028, Deepāvalī
+  2024–2027, Mahā Śivarātri 2024–2027, Vaikuṇṭha Ekādaśī 2025–2026, Vināyaka
+  Caturthī, Vijayadaśamī, Kṛṣṇa Janmāṣṭamī, Rākhī.
+
+Two classical conventions this gate forced into the engine:
+
+* **Kṣaya tithi dating** — when a tithi begins after sunrise and ends before the
+  next sunrise it never reaches a sunrise. The engine now dates it on the day it
+  *begins* (the same rule that makes Ugādi 2026 = 19 Mar), so a lunar year never
+  loses a pūrṇimā/amāvāsyā/ekādaśī.
+* **Saṅkaṣṭi is a chandrodaya rule** — Kṛṣṇa Caturthī is matched at **moonrise**
+  rather than sunrise; when the caturthī touches no moonrise in a lunation, the
+  day it begins is used and the row says so.
+
 ### Cross-checks performed by hand
 
 * **Drik Pañcāṅga, Hyderabad 22 Oct 2026** — sunrise 06:11, sunset 17:50,

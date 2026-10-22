@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "verify:panchanga": "tsx scripts/verify-panchanga.ts"
+    "verify:panchanga": "tsx scripts/verify-panchanga.ts",
+    "verify:calendar": "tsx scripts/verify-calendar.ts",
+    "verify": "npm run verify:panchanga && npm run verify:calendar"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
