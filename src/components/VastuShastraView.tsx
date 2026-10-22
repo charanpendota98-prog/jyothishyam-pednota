@@ -37,6 +37,7 @@ import {
 } from '../engine/vastuShastraEngine.ts';
 import { latinSyllable, localizeVastuReport, ROOM_LABEL_EN, type VastuLang } from '../engine/vastuBilingual.ts';
 import { bilingualName, englishToTeluguSmart, isLatinText } from '../engine/teluguTransliteration.ts';
+import { latinAkshara } from '../engine/namaAksharaEngine.ts';
 import { buildVastuProjectPlan, pickBi } from '../engine/vastuProjectPlan.ts';
 import { STATE_DISTRICT_ATLAS } from '../engine/teluguJathakam.ts';
 import { SourceStrip } from './SourceStrip.tsx';
@@ -400,6 +401,13 @@ export function VastuShastraView({
               className="w-full rounded-lg border border-white/15 bg-[#141932] px-2.5 py-1.5 text-[12.5px] text-[#EDE8E0] outline-none focus:border-[#C9A96E]/60"
             />
           </Field>
+          {nama.aksharaNormalized && nama.inputAkshara !== nama.matchedSyllable && (
+            <p className="text-[10.5px] text-[#C9A96E]/90 leading-snug">
+              {isTe
+                ? `పేరు మొదటి అక్షరం “${nama.inputAkshara}” — నామాక్షర జాబితాలో అది లేనందున వర్ణ సామ్యం ప్రకారం “${nama.matchedSyllable}” గ్రహించబడింది.`
+                : `First sound “${nama.inputAkshara}” is not one of the 108 pada syllables; by phonetic class it resolves to “${nama.matchedSyllable}” (${latinAkshara(nama.matchedSyllable)}).`}
+            </p>
+          )}
           {nameTeluguPreview && (
             <p className="text-[10.5px] text-[#66CBBF]/80 leading-snug">
               {isTe
@@ -411,7 +419,7 @@ export function VastuShastraView({
             <div className="rounded-lg bg-white/[0.03] px-2 py-1.5">
               <div className="text-[9.5px] uppercase tracking-wider text-[#EDE8E0]/40">{isTe ? 'అక్షరం' : 'Syllable'}</div>
               <div className="text-[#EDE8E0]">
-                {isTe ? nama.matchedSyllable : latinSyllable(nama.nakshatraIndex, nama.pada) || nama.matchedSyllable}
+                {isTe ? nama.matchedSyllable : latinAkshara(nama.matchedSyllable)}
               </div>
             </div>
             <div className="rounded-lg bg-white/[0.03] px-2 py-1.5">
@@ -980,6 +988,68 @@ export function VastuShastraView({
               </ul>
             </div>
           ))}
+        </div>
+
+        {/* ప్రాధాన్యత క్రమంలో చర్యలు — ఖర్చు వర్గంతో */}
+        <div className="rounded-xl border border-[#66CBBF]/25 bg-[#66CBBF]/5 px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+            <div className="text-[10px] uppercase tracking-wider text-[#EDE8E0]/40">
+              {isTe ? 'ప్రాధాన్యత క్రమంలో చర్యలు (శ్రేణి ప్రభావం ప్రకారం)' : 'Priority actions (ranked by estimated impact)'}
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-mono-tabular">
+              <span className="text-[#EDE8E0]/50">{isTe ? 'ఇప్పుడు' : 'now'}</span>
+              <span className="text-[#C9A96E]">{plan.scoreProjection.current}</span>
+              <span className="text-[#EDE8E0]/30">→</span>
+              <span className="text-[#66CBBF]">{plan.scoreProjection.afterPhase1}</span>
+              <span className="text-[#EDE8E0]/30">→</span>
+              <span className="text-[#5BBFB5]">{plan.scoreProjection.afterPhase2}</span>
+              <span className="text-[#EDE8E0]/50">/100</span>
+            </div>
+          </div>
+          {plan.actionPlan.length === 0 ? (
+            <p className="text-[10.5px] text-[#5BBFB5] leading-snug">
+              {isTe ? 'ప్రతి గది అనుకూల దిక్కులో ఉంది — కొత్త చర్యలు అవసరం లేదు.' : 'Every room already sits in its favourable direction — no corrective action needed.'}
+            </p>
+          ) : (
+            <ol className="space-y-1">
+              {plan.actionPlan.map((a) => (
+                <li key={a.priority} className="flex gap-2 text-[10.5px] leading-snug">
+                  <span className="shrink-0 w-5 h-5 rounded-md bg-[#66CBBF]/15 text-[#66CBBF] grid place-items-center font-mono-tabular text-[10px]">{a.priority}</span>
+                  <div className="min-w-0">
+                    <div className="text-[#EDE8E0]/85">{pickBi(a.action, planLang)}</div>
+                    <div className="text-[9.5px] text-[#EDE8E0]/45">
+                      <span className="text-[#C9A96E]">+{a.impact}</span> ·{' '}
+                      {a.costBand === 'high' ? (isTe ? 'ఖర్చు ఎక్కువ' : 'high cost') : a.costBand === 'medium' ? (isTe ? 'మధ్యస్థ ఖర్చు' : 'medium cost') : (isTe ? 'తక్కువ/శూన్య ఖర్చు' : 'low / no cost')}
+                      {' · '}
+                      {pickBi(a.rationale, planLang)}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+
+        {/* NBC/IS సమ్మతి తనిఖీలు */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-[#EDE8E0]/40 mb-1">
+            {isTe ? 'నిర్మాణ & వాస్తు సమ్మతి తనిఖీలు' : 'Build-code & Vastu compliance checks'}
+          </div>
+          <div className="grid gap-1 md:grid-cols-2">
+            {plan.compliance.map((c) => {
+              const tone = c.status === 'ok' ? '#5BBFB5' : c.status === 'warn' ? '#C9A96E' : '#D46B5E';
+              const glyph = c.status === 'ok' ? '✓' : c.status === 'warn' ? '!' : '✕';
+              return (
+                <div key={c.id} className="flex gap-2 text-[10px] leading-snug">
+                  <span className="shrink-0 w-4 h-4 rounded grid place-items-center text-[9px]" style={{ background: `${tone}22`, color: tone }}>{glyph}</span>
+                  <div>
+                    <div style={{ color: tone }}>{pickBi(c.label, planLang)}</div>
+                    <div className="text-[#EDE8E0]/50">{pickBi(c.detail, planLang)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">

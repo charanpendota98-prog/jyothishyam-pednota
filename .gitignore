@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# generated vastu plan export
+vastu-full-plan*.html

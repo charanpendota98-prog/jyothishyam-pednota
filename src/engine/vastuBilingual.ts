@@ -10,6 +10,7 @@
  * `vastuShastraEngine.ts`; edit both when content changes.
  */
 
+import { latinAkshara } from './namaAksharaEngine.ts';
 import {
   DIK_BY_ID,
   NAMA_SYLLABLES_EN,
@@ -684,7 +685,7 @@ export function localizeVastuReport(
   ];
 
   const summaryTe =
-    `${displayName ?? report.nama.name} — first syllable “${latinSyllable(report.nama.nakshatraIndex, report.nama.pada)}” → ${nama.nakshatraTe} nakshatra, pada ${report.nama.pada} → ${nama.rasiTe} (name number ${report.nama.nameNumber}). ` +
+    `${displayName ?? report.nama.name} — first syllable “${latinAkshara(nama.matchedSyllable)}” → ${nama.nakshatraTe} nakshatra, pada ${report.nama.pada} → ${nama.rasiTe} (name number ${report.nama.nameNumber}). ` +
     `For ${placeNameEn(report.place.placeName)}, true north must be fixed by the sun-and-shadow method (estimated magnetic declination ${report.place.magneticDeclinationDeg}°). ` +
     `Current house Vastu score ${report.audit.totalScore}/100 — ${audit.gradeTe}. Strongest part: ${audit.strongestRoomTe}. To be corrected: ${audit.weakestRoomTe}. Site inspection score ${report.plot.score}/100.`;
 

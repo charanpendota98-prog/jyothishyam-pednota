@@ -42,6 +42,8 @@ import { generateVastuReport } from '../src/engine/vastuShastraEngine';
 import { localizeVastuReport } from '../src/engine/vastuBilingual';
 import { buildVastuProjectPlan } from '../src/engine/vastuProjectPlan';
 import { bilingualName, englishToTeluguSmart, teluguToLatin } from '../src/engine/teluguTransliteration';
+import { resolveNamaAkshara } from '../src/engine/namaAksharaEngine';
+import { TELUGU_NAKSHATRAS as NAMA_NAKSHATRAS } from '../src/engine/teluguJathakam';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { VastuShastraView } from '../src/components/VastuShastraView';
@@ -845,7 +847,8 @@ const leftover: string[] = [];
 const walkStrings = (v: unknown, path: string) => {
   // స్వంత పేర్లు (నామం, అక్షరం) సహజంగానే ఆయా లిపిలో ఉంటాయి — అవి మినహాయించాము
   const isProperNoun =
-    path.endsWith('nama.name') || path.endsWith('nama.matchedSyllable') || path.endsWith('place.placeName');
+    path.endsWith('nama.name') || path.endsWith('nama.matchedSyllable') ||
+    path.endsWith('nama.inputAkshara') || path.endsWith('place.placeName');
   if (typeof v === 'string') {
     if (!isProperNoun && /[\u0C00-\u0C7F]/.test(v)) leftover.push(`${path}: ${v.slice(0, 40)}`);
   } else if (Array.isArray(v)) v.forEach((x, i) => walkStrings(x, `${path}[${i}]`));
@@ -869,6 +872,52 @@ check(
     return plan.rooms.length === 16 && plan.services.length >= 6 && plan.rooms.every((r) => r.remedies.length >= 1);
   })(),
   'గది వారీ + సేవా వారీ ప్లాన్ సిద్ధం'
+);
+
+check(
+  'తెలుగు వాస్తు నివేదికలో ఆంగ్ల వాక్యం అంతా ఒక్కటి కూడా లేదు (deep walk)',
+  (() => {
+    const bad: string[] = [];
+    const walk = (v: unknown, path: string) => {
+      const properNoun =
+        path.endsWith('nama.name') || path.endsWith('nama.matchedSyllable') ||
+        path.endsWith('nama.nakshatraEn') || path.endsWith('place.placeName');
+      if (typeof v === 'string') {
+        if (!properNoun && /[A-Za-z]{3,}\s+[A-Za-z]{3,}\s+[A-Za-z]{3,}/.test(v) && !/[\u0C00-\u0C7F]/.test(v)) {
+          bad.push(`${path}: ${v.slice(0, 40)}`);
+        }
+      } else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`));
+      else if (v && typeof v === 'object') for (const k of Object.keys(v as object)) walk((v as never)[k], `${path}.${k}`);
+    };
+    walk(vastuRaw, 'report');
+    return bad.length === 0;
+  })(),
+  'తెలుగు నివేదిక పూర్తిగా తెలుగులో'
+);
+
+check(
+  'వాస్తు + ఇంజనీరింగ్ ప్లాన్ ద్విభాషా పరిపూర్ణత (ప్రతి వాక్యానికి te & en)',
+  (() => {
+    const plan = buildVastuProjectPlan({ rooms: {}, lengthFt: 40, widthFt: 30 });
+    const bad: string[] = [];
+    const walk = (v: unknown, path: string) => {
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        const o = v as Record<string, unknown>;
+        if (typeof o.te === 'string' && typeof o.en === 'string') {
+          if (!o.te.trim() || !o.en.trim()) bad.push(path);
+          if (/[\u0C00-\u0C7F]/.test(o.en)) bad.push(`${path}.en`);
+          if (/[A-Za-z]{3,}\s+[A-Za-z]{3,}\s+[A-Za-z]{3,}/.test(o.te) && !/[\u0C00-\u0C7F]/.test(o.te)) bad.push(`${path}.te`);
+          return;
+        }
+        for (const k of Object.keys(o)) walk(o[k], `${path}.${k}`);
+        return;
+      }
+      if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`));
+    };
+    walk(plan, 'plan');
+    return bad.length === 0;
+  })(),
+  'ప్రతి ప్లాన్ వాక్యానికి తెలుగు + ఆంగ్లం రెండూ ఉన్నాయి'
 );
 
 check(
@@ -905,6 +954,64 @@ check(
   bilingualName('Charan').te === 'చరణ్' && bilingualName('చరణ్').en === 'Charan',
   `${bilingualName('Charan').te} ⇄ ${bilingualName('చరణ్').en}`
 );
+// ─────────────────────────────────────────────────────────────────────────
+//  నామాక్షరం — 108 పాదాక్షరాల స్వీయ స్థిరత్వం
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── నామాక్షర నిర్ణయం (108 పాదాలు) ──');
+const allPadas = NAMA_NAKSHATRAS.flatMap((n) => n.padasTe.map((s, i) => ({ s, nak: n.index, pada: i + 1 })));
+const roundTrip = allPadas.filter((p) => {
+  const r = resolveNamaAkshara(p.s);
+  return !r || r.nakshatraIndex !== p.nak || r.pada !== p.pada;
+});
+check(
+  '108 పాదాక్షరాలు అన్నీ తమ స్వంత నక్షత్ర-పాదానికే పరిష్కరిస్తాయి (స్వీయ స్థిరత్వం)',
+  allPadas.length === 108 && roundTrip.length === 0,
+  roundTrip.length ? roundTrip.slice(0, 3).map((p) => `${p.s}→${p.nak}:${p.pada}`).join(' ') : '108/108 సరైనవి'
+);
+const uniquePadas = new Set(allPadas.map((p) => p.s));
+check(
+  '108 పాదాక్షరాలలో పునరావృత్తి లేదు (ఒకే అక్షరం ఒకే పాదానికి)',
+  uniquePadas.size === 108,
+  `${uniquePadas.size} ప్రత్యేక అక్షరాలు`
+);
+const NAME_CASES: [string, string, number, number][] = [
+  // పేరు, ఆశించిన అక్షరం, నక్షత్ర సూచిక, పాదం
+  ['Charan', 'చ', 26, 3],     // రేవతి 3
+  ['Lakshmi', 'లా', 0, 4],    // అశ్విని 4
+  ['Krishna', 'కూ', 5, 1],    // ఆర్ద్ర 1
+  ['Sai', 'సా', 23, 2],       // శతభిష 2
+  ['Srinivas', 'ష', 12, 2],   // హస్త 3 — "శ్రీ" లేదు, వర్ణ సామ్యం శ→ష
+  ['Omkar', 'ఓ', 3, 1],       // రోహిణి 1
+  ['Ishaan', 'ఈ', 2, 2],      // కృత్తిక 2
+  ['Eshwar', 'ఏ', 2, 4],      // కృత్తిక 4
+  ['Kavitha', 'కా', 4, 3],    // మృగశిర 3
+];
+const nameFails = NAME_CASES.filter(([name, syl, nak, pada]) => {
+  const r = resolveNamaAkshara(name);
+  return !r || r.syllable !== syl || r.nakshatraIndex !== nak || r.pada !== pada;
+});
+check(
+  'ఆంగ్ల పేర్లు → ఖచ్చితమైన పాదాక్షరం (Charan, Lakshmi, Srinivas, Ishaan …)',
+  nameFails.length === 0,
+  nameFails.length
+    ? nameFails.map(([n]) => {
+        const r = resolveNamaAkshara(n);
+        return `${n}→${r?.syllable ?? '—'}`;
+      }).join(' ')
+    : `${NAME_CASES.length}/${NAME_CASES.length} సరైనవి`
+);
+check(
+  'శ/ష/స వేర్వేరు వర్ణాలు — స (“Sa”) శతభిషకు, శ (“Sh”) హస్తకు (పాత “అన్ని S పేర్లూ ఒకటే” లోపం పోయింది)',
+  (() => {
+    const sa = resolveNamaAkshara('Saritha');
+    const sha = resolveNamaAkshara('Shwetha');
+    return sa?.nakshatraIndex === 23 && sha?.nakshatraIndex === 12;
+  })(),
+  ['Saritha', 'Sai', 'Shwetha', 'Sravani']
+    .map((n) => `${n}→${resolveNamaAkshara(n)?.syllable ?? '—'}`)
+    .join(' ')
+);
+
 check(
   'తెలుగు పదం మారదు',
   englishToTeluguSmart('చరణ్') === 'చరణ్',

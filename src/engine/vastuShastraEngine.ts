@@ -20,6 +20,7 @@
 
 import { sunHorizontal, jdFromMs, formatLocalHM, riseSetForLocalDate } from './astroCore.ts';
 import { TELUGU_NAKSHATRAS, TELUGU_RASIS } from './teluguJathakam.ts';
+import { latinAkshara, resolveNamaAkshara } from './namaAksharaEngine.ts';
 
 /* ================================================================== *
  *  Directions (Dik)
@@ -357,22 +358,23 @@ export const VASTU_DEVATAS: VastuDevata[] = [
  * ================================================================== */
 
 /** Standard 108 nakshatra-pada name syllables (English transliteration). */
-export const NAMA_SYLLABLES_EN: { nakshatraIndex: number; pada: number; syllable: string }[] = [
-  ...[['Chu', 'Che', 'Cho', 'La'], ['Li', 'Lu', 'Le', 'Lo'], ['A', 'I', 'U', 'E'], ['O', 'Va', 'Vi', 'Vu'],
-    ['Ve', 'Vo', 'Ka', 'Ki'], ['Ku', 'Gha', 'Nga', 'Chha'], ['Ke', 'Ko', 'Ha', 'Hi'], ['Hu', 'He', 'Ho', 'Da'],
-    ['Di', 'Du', 'De', 'Do'], ['Ma', 'Mi', 'Mu', 'Me'], ['Mo', 'Ta', 'Ti', 'Tu'], ['Te', 'To', 'Pa', 'Pi'],
-    ['Pu', 'Sha', 'Na', 'Tha'], ['Pe', 'Po', 'Ra', 'Ri'], ['Ru', 'Re', 'Ro', 'Ta'], ['Ti', 'Tu', 'Te', 'To'],
-    ['Na', 'Ni', 'Nu', 'Ne'], ['No', 'Ya', 'Yi', 'Yu'], ['Ye', 'Yo', 'Bha', 'Bhi'], ['Bhu', 'Dha', 'Pha', 'Dha'],
-    ['Bhe', 'Bho', 'Ja', 'Ji'], ['Khi', 'Khu', 'Khe', 'Kho'], ['Ga', 'Gi', 'Gu', 'Ge'], ['Go', 'Sa', 'Si', 'Su'],
-    ['Se', 'So', 'Da', 'Di'], ['Du', 'Tha', 'Jha', 'Na'], ['De', 'Do', 'Cha', 'Chi'],
-  ].flatMap((syllables, nakIdx) =>
-    syllables.map((s, padaIdx) => ({ nakshatraIndex: nakIdx, pada: padaIdx + 1, syllable: s }))
-  ),
-];
+/**
+ * 108 పాదాక్షరాలు — ఆంగ్ల రూపంతో. ఇది ఇక హస్తలిఖిత జాబితా కాదు:
+ * `TELUGU_NAKSHATRAS.padasTe` (ఏకైక మూలం) నుంచి `latinAkshara()` ద్వారా ఉత్పన్నమవుతుంది.
+ * అందువల్ల తెలుగు పాదాక్షరం సరిచేసినప్పుడల్లా ఆంగ్ల జాబితా కూడా తనకుతాను సరైనదవుతుంది.
+ */
+export const NAMA_SYLLABLES_EN: { nakshatraIndex: number; pada: number; syllable: string }[] =
+  TELUGU_NAKSHATRAS.flatMap((n) =>
+    n.padasTe.map((s, p) => ({ nakshatraIndex: n.index, pada: p + 1, syllable: latinAkshara(s) }))
+  );
 
 export interface NamaVastuResult {
   name: string;
   matchedSyllable: string;
+  /** పేరు నుంచి నేరుగా వచ్చిన మొదటి అక్షరం (ఉదా: "శ" → ప్రామాణికం "ష") */
+  inputAkshara: string;
+  /** వర్ణ సామ్యంతో ప్రామాణిక అక్షరానికి కుదించబడిందా */
+  aksharaNormalized: boolean;
   nakshatraIndex: number;
   nakshatraTe: string;
   nakshatraEn: string;
@@ -477,6 +479,16 @@ export function analyseNamaVastu(name: string): NamaVastuResult {
   const baseChar = Array.from(akshara)[0] ?? '';
   let matched: { nakshatraIndex: number; pada: number; syllable: string } | null = null;
 
+  // 0) ప్రామాణిక పరిష్కారం — ఇంగ్లీషు పేరు అయినా తెలుగు అక్షరం అయినా ఒకే సూత్రం.
+  const canonical = resolveNamaAkshara(trimmed);
+  if (canonical) {
+    matched = {
+      nakshatraIndex: canonical.nakshatraIndex,
+      pada: canonical.pada,
+      syllable: canonical.syllable,
+    };
+  }
+
   // 1) Exact Telugu akshara match (చ, చూ, చే …) against the 108 pada syllables
   for (let n = 0; n < TELUGU_NAKSHATRAS.length && !matched; n++) {
     const padas = TELUGU_NAKSHATRAS[n].padasTe;
@@ -533,6 +545,8 @@ export function analyseNamaVastu(name: string): NamaVastuResult {
   return {
     name: trimmed,
     matchedSyllable: matched.syllable,
+    inputAkshara: canonical?.inputAkshara ?? akshara,
+    aksharaNormalized: canonical?.normalized ?? false,
     nakshatraIndex: matched.nakshatraIndex,
     nakshatraTe: nak?.nameTe ?? '',
     nakshatraEn: nak?.nameEn ?? '',

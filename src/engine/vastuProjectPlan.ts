@@ -47,6 +47,22 @@ export interface ServicePlan {
   risks: Bi[];
 }
 
+export interface ActionItem {
+  room: Bi;
+  priority: number; // 1 = అత్యధిక ప్రాధాన్యం
+  impact: number; // 0-100 స్కోరు మెరుగుదల అంచనా
+  costBand: 'no-cost' | 'low' | 'medium' | 'high';
+  action: Bi;
+  rationale: Bi;
+}
+
+export interface ComplianceCheck {
+  id: string;
+  label: Bi;
+  status: 'ok' | 'warn' | 'fail';
+  detail: Bi;
+}
+
 export interface ProjectPlan {
   rooms: RoomPlan[];
   services: ServicePlan[];
@@ -60,6 +76,9 @@ export interface ProjectPlan {
     note: Bi;
   };
   engineeringSummary: Bi[];
+  actionPlan: ActionItem[];
+  compliance: ComplianceCheck[];
+  scoreProjection: { current: number; afterPhase1: number; afterPhase2: number };
 }
 
 /* ------------------------------------------------------------------ */
@@ -765,6 +784,97 @@ export function buildVastuProjectPlan(input: {
     },
   ];
 
+  // ── ప్రాధాన్యత క్రమంలో చర్యలు (impact × room weight) ──────────────
+  const weights: Record<RoomKey, number> = {
+    entrance: 22, kitchen: 18, masterBed: 14, pooja: 12, toilet: 10,
+    staircase: 8, waterTank: 6, borewell: 5, safe: 6, study: 5,
+    living: 5, guest: 3, children: 4, dining: 3, septic: 5, balcony: 2,
+  };
+  const actionPlan: ActionItem[] = rooms
+    .filter((r) => r.compliance !== 'best')
+    .map((r) => {
+      const bad = r.compliance === 'bad';
+      const impact = Math.round((bad ? 100 : 45) * (weights[r.key] / 22));
+      const costBand: ActionItem['costBand'] = bad
+        ? ['kitchen', 'toilet', 'waterTank', 'septic', 'borewell', 'staircase', 'entrance'].includes(r.key)
+          ? 'high'
+          : 'medium'
+        : 'low';
+      return {
+        room: r.label,
+        priority: 0,
+        impact,
+        costBand,
+        action: bi(
+          `${r.label.te}: ${DIK_BY_ID[r.currentDik].nameTe} నుండి ${DIK_BY_ID[r.idealDik].nameTe} వైపు మార్చండి — ${r.remedies[0].text.te}`,
+          `${r.label.en}: move from ${DIK_BY_ID[r.currentDik].nameEn} towards ${DIK_BY_ID[r.idealDik].nameEn} — ${r.remedies[0].text.en}`
+        ),
+        rationale: bi(
+          `ప్రస్తుత స్థానం "${bad ? 'దోషం' : 'మధ్యమం'}" — ${bad ? 'తీవ్ర' : 'స్వల్ప'} ప్రభావం; భావ భారం ${weights[r.key]}/22.`,
+          `Current placement is ${bad ? 'defective' : 'merely acceptable'} — ${bad ? 'high' : 'low'} severity; weight ${weights[r.key]}/22.`
+        ),
+      };
+    })
+    .sort((a, b) => b.impact - a.impact)
+    .map((a, i) => ({ ...a, priority: i + 1 }));
+
+  const totalWeight = rooms.reduce((sum, r) => sum + weights[r.key], 0);
+  const currentScore = Math.round(
+    (rooms.reduce((sum, r) => sum + (r.compliance === 'best' ? 100 : r.compliance === 'ok' ? 70 : 30) * weights[r.key], 0) /
+      totalWeight)
+  );
+  const p1Gain = Math.min(100 - currentScore, Math.round(actionPlan.filter((a) => a.costBand !== 'high').reduce((s, a) => s + a.impact, 0) * 0.35));
+  const p2Gain = Math.min(
+    100 - currentScore - p1Gain,
+    Math.round(actionPlan.filter((a) => a.costBand === 'high').reduce((s, a) => s + a.impact, 0) * 0.6)
+  );
+
+  // ── NBC 2016 / IS ఆధారిత సాధారణ సమ్మతి తనిఖీలు ─────────────────
+  const compliance: ComplianceCheck[] = [
+    {
+      id: 'height',
+      label: bi('గది ఎత్తు 2.75 మీ (NBC 2016)', 'Room height 2.75 m (NBC 2016)'),
+      status: 'ok',
+      detail: bi('నివాస గదులకు కనీసం 2.75 మీ; వంటగది/స్నాన గది 2.4 మీ.', 'Minimum 2.75 m for habitable rooms; 2.4 m for kitchen and bath.'),
+    },
+    {
+      id: 'daylight',
+      label: bi('సహజ వెలుతురు — కిటికీ వైశాల్యం 15–20%', 'Daylight — window area 15–20% of floor'),
+      status: 'ok',
+      detail: bi('ప్రతి నివాస గదికి కనీసం ఒక కిటికీ + క్రాస్ వెంటిలేషన్.', 'At least one window per habitable room plus cross-ventilation.'),
+    },
+    {
+      id: 'stair',
+      label: bi('మెట్ల వెడల్పు ≥ 0.9 మీ, రైజర్ ≤ 190 మ్మీ', 'Stair width ≥ 0.9 m, riser ≤ 190 mm'),
+      status: rooms.some((r) => r.key === 'staircase' && r.compliance === 'bad') ? 'warn' : 'ok',
+      detail: bi('రైజర్ 150–165 మ్మీ, ట్రెడ్ 280–300 మ్మీ, హెడ్‌రూమ్ 2.1 మీ.', 'Riser 150–165 mm, tread 280–300 mm, headroom 2.1 m.'),
+    },
+    {
+      id: 'wet',
+      label: bi('తడి గదుల వాటర్ ప్రూఫింగ్ (IS 3370)', 'Wet-area waterproofing (IS 3370)'),
+      status: 'ok',
+      detail: bi('24-గంటల పాండింగ్ టెస్ట్ + 1:80 వాలు + 25 మ్మీ థ్రెషోల్డ్.', '24-hour ponding test, 1:80 fall and a 25 mm threshold.'),
+    },
+    {
+      id: 'brahma',
+      label: bi('బ్రహ్మస్థానం ఖాళీ (వాస్తు)', 'Brahmasthan kept open (Vastu)'),
+      status: rooms.some((r) => r.compliance === 'bad' && r.key === 'staircase') ? 'fail' : 'ok',
+      detail: bi('మధ్య 3×3 పాదాలలో మెట్లు/మరుగుదొడ్డి/భారీ నిర్మాణం ఉండకూడదు.', 'No staircase, toilet or heavy structure within the central 3×3 padas.'),
+    },
+    {
+      id: 'ne',
+      label: bi('ఈశాన్యం తేలిక & శుభ్రం', 'North-east light and clean'),
+      status: ['kitchen', 'toilet', 'septic', 'borewell'].some((k) => rooms.some((r) => r.key === k && r.compliance === 'bad')) ? 'fail' : 'ok',
+      detail: bi('ఈశాన్యంలో వంటగది/మరుగుదొడ్డి/సెప్టిక్ ఉంటే తీవ్ర దోషం — తక్షణ పరిహారం అవసరం.', 'A kitchen, toilet or septic tank in the north-east is severe — remedy immediately.'),
+    },
+  ];
+
+  const scoreProjection = {
+    current: currentScore,
+    afterPhase1: Math.min(100, currentScore + Math.max(0, p1Gain)),
+    afterPhase2: Math.min(100, currentScore + Math.max(0, p1Gain) + Math.max(0, p2Gain)),
+  };
+
   return {
     rooms,
     services: SERVICES,
@@ -784,5 +894,8 @@ export function buildVastuProjectPlan(input: {
       bi('వెంటిలేషన్: ప్రతి గదికి కనీసం 2 కిటికీలు/ద్వారం + కిటికీ (క్రాస్ వెంటిలేషన్)', 'Ventilation: at least two openings per room for cross-flow'),
       bi('సహజ వెలుతురు: కిటికీ వైశాల్యం = నేల వైశాల్యంలో 15–20%', 'Daylight: window area = 15–20% of the floor area'),
     ],
+    actionPlan,
+    compliance,
+    scoreProjection,
   };
 }
