@@ -325,12 +325,12 @@ the UI, the PDF and the verification harness cannot drift apart.
 
 ### 6.3 Pin-to-pin gate — `npm run verify:jathaka`
 
-`scripts/verify-jathaka.ts` runs **170 checks** against the three reference
+`scripts/verify-jathaka.ts` runs **238 checks** against the three reference
 PDFs supplied by the user:
 
 | Reference | Chart | What is pinned |
 | --- | --- | --- |
-| 116-page jathakam | 2026-10-22 22:55, Hyderabad | 9 grahas + lagna (sign, degree, house, nakshatra-pada), 15 varga rows, Sun/Moon bhinna-ashtakavarga, sarvashtakavarga (337), avakahada, ghata chakra, panchanga, dig bala, kala bala (fixed parts), paksha, hora/dina lords, shadbala ratios, vimshopaka invariants |
+| 116-page jathakam | 2026-10-22 22:55, Hyderabad | 9 grahas + lagna (sign, degree, house, nakshatra-pada), all 16 varga rows × 8 bodies (128 cells), Sun/Moon bhinna-ashtakavarga, sarvashtakavarga (337), avakahada, ghata chakra, panchanga, ṣrīpati bhāva-sandhi (36 values), 13 upagrahas, 5-level vimśottarī (balance + bhukti + pratyantar dates), dig bala (7 exact), naiśargika (7 exact), kāla bala (5 exact / 2 by convention), pakṣa, hora/dina lords |
 | 62-page nadi report | 1947-08-15 00:00, Delhi | lagna, 9 grahas (sign, degree to 3′, house), janma rasi & nakshatra |
 | 49-page year forecast | 1988-09-21 10:18, Hansi | lagna + 9 grahas to 1.2′ (including retrograde flags) |
 
@@ -401,6 +401,6 @@ with the pratyantaras 2026-06-30 … 2027-04-05; the app lands within 2 days).
 | Naiśargika | exact (60, 51.43, 17.14, 25.71, 34.29, 42.86, 8.57) |
 | Ayana (Parāśara khaṇḍa) | exact (Sun 15.34, Moon 37.31, Mercury 52.63) |
 | Pakṣa / tribhāga / nathonnata | exact (nathonnata from civil clock: diurnal 5.48, nocturnal 54.53, Mercury 60) |
-| Kāla total | exact for Mercury, Venus, Jupiter; ±15/±30 virūpas for Sun/Moon/Mars/Saturn because the reference awards varṣa bala to the Sun and māsa bala to the Moon, while this engine uses the classical weekday lords of the Meṣa-saṅkrānti (Mars) and the solar-month start (Saturn) |
+| Kāla total | exact for Mercury (157.98), Venus (125.17 vs 125.23), Jupiter (203.30 vs 203.36); ±15/±30 virūpas for Sun/Moon/Mars/Saturn because the reference awards varṣa bala to the Sun and māsa bala to the Moon, while this engine uses the classical weekday lords of the Meṣa-saṅkrānti (Mars) and the solar-month start (Saturn) |
 | Cheṣṭā | discrete eight-motion classification (Saravali); the reference uses a continuous formula |
 | Sthāna, Dṛk | computed from BPHS ch. 27 / ch. 26 but not yet pinned cell-by-cell |

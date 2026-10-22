@@ -468,6 +468,59 @@ for (const [id, sign, dms, retro] of YF_EXPECT) {
 }
 
 
+
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n— షడ్బలం — ఘటకాలు (PDF పేజీ 26) —');
+{
+  const sb: any = computeShadbalaDeep(KUNDALI);
+  const byId = (id: string) => sb.rows.find((r: any) => (r.grahaId ?? r.id) === id);
+  const S = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
+  const DIG_REF = [5.84, 8.82, 19.33, 18.68, 47.92, 53.4, 32.31];
+  const NAIS_REF = [60, 51.43, 17.14, 25.71, 34.29, 42.86, 8.57];
+  const KALA_REF = [110.47, 167.19, 120.11, 157.98, 203.36, 125.23, 94.22];
+  const CHESHTA_REF = [15.34, 45.35, 33.82, 51.16, 24.94, 59.56, 53.87];
+  S.forEach((id, i) => {
+    const row = byId(id);
+    checkNum(`${id} దిగ్ బలం`, row.dig, DIG_REF[i], 0.02);
+    checkNum(`${id} నైసర్గిక బలం`, row.naisargika, NAIS_REF[i], 0.02);
+  });
+  // Kala bala — Mercury, Jupiter and Venus have no varṣa/māsa component in either
+  // convention, so they must match exactly.
+  for (const id of ['Mercury', 'Jupiter', 'Venus']) {
+    const i = S.indexOf(id);
+    checkNum(`${id} కాల బలం`, byId(id).kalaTotal, KALA_REF[i], 0.1);
+  }
+  // Sun / Moon / Mars / Saturn differ only by the 15/30 varṣa-māsa virūpas.
+  for (const id of ['Sun', 'Moon', 'Mars', 'Saturn']) {
+    const i = S.indexOf(id);
+    const delta = Math.abs(byId(id).kalaTotal - KALA_REF[i]);
+    check(`${id} కాల బలం (వర్ష/మాస ఆధిపతి భేదంతో)`, delta <= 30.5, `Δ ${delta.toFixed(2)} విరూపాలు — సంప్రదాయ భేదం నమోదు చేయబడింది`);
+  }
+  checkNum('సూర్య చేష్టా (= అయన బలం)', byId('Sun').cheshta, CHESHTA_REF[0], 0.05);
+  checkNum('చంద్ర చేష్టా (= పక్ష బలం)', byId('Moon').cheshta, CHESHTA_REF[1], 0.05);
+  check(
+    'పక్ష బలం 45.35 (శుక్ల)',
+    Math.abs(sb.paksha.pakshaBala - 45.35) < 0.05,
+    `app ${sb.paksha.pakshaBala.toFixed(2)} · శేషం ${sb.paksha.elongDeg.toFixed(2)}°`
+  );
+  check(
+    'హోరా అధిపతి — సూర్యుడు (17వ హోరా)',
+    sb.hora.lordId === 'Sun',
+    `${sb.hora.index}వ హోరా → ${sb.hora.lordTe}`
+  );
+  check('దినాధిపతి — గురువు (గురువారం)', sb.dinaLordTe === 'గురువు', sb.dinaLordTe);
+  check(
+    'వర్ష/మాస ఆధిపతులు',
+    Boolean(sb.varsha?.lordId && sb.masa?.lordId),
+    `వర్షం ${sb.varsha.lordTe} (${sb.varsha.startISO}) · మాసం ${sb.masa.lordTe} (${sb.masa.startISO})`
+  );
+  // Ishta / kashta (BPHS: √(uchcha × cheshta) and √((60−uchcha)(60−cheshta)))
+  const ishtaOk = sb.rows.every(
+    (r: any) => r.ishtaPhala >= 0 && r.ishtaPhala <= 60 && r.kashtaPhala >= 0 && r.kashtaPhala <= 60
+  );
+  check('ఇష్ట/కష్ట ఫలాలు 0–60 పరిధిలో', ishtaOk, sb.rows.map((r: any) => `${r.ishtaPhala.toFixed(1)}/${r.kashtaPhala.toFixed(1)}`).join(' '));
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 console.log('\n— శ్రీపతి భావ సంధి చక్రం (PDF పేజీ 7) —');
 {
