@@ -148,7 +148,7 @@ const NAKSHATRA_DEITY_DETAILS: {
   },
   {
     deityTe: 'యమధర్మరాజు (ధర్మ దేవత)',
-    deityBlessingTe: 'సత్యనిষ্ঠ, ధర్మపాలన, క్రమశిక్షణ మరియు అచంచలమైన మనోబలం',
+    deityBlessingTe: 'సత్యనిష్ఠ, ధర్మపాలన, క్రమశిక్షణ మరియు అచంచలమైన మనోబలం',
     boyAshrayaThemesTe: 'ధర్మం, సత్యం, లక్ష్మీనారాయణ, శివ-శక్తి ఆశ్రయ నామాలు',
     girlAshrayaThemesTe: 'శ్రీ మహాలక్ష్మి, లలితా దేవి, కళాత్మకత మరియు సౌభాగ్య నామాలు',
   },
@@ -208,7 +208,7 @@ const NAKSHATRA_DEITY_DETAILS: {
   },
   {
     deityTe: 'అర్యముడు (నియమ & మిత్ర ఆదిత్యుడు)',
-    deityBlessingTe: 'স্থిరమైన బంధాలు, పరోపకారం, రాజయోగం మరియు సమాజంలో శాశ్వత కీర్తి',
+    deityBlessingTe: 'స్థిరమైన బంధాలు, పరోపకారం, రాజయోగం మరియు సమాజంలో శాశ్వత కీర్తి',
     boyAshrayaThemesTe: 'తేజోమయ, తోషిత్, పార్థసారథి, పవన్, పద్మనాభ ఆశ్రయ నామాలు',
     girlAshrayaThemesTe: 'తేజస్వి, పావని, పద్మావతి, ప్రియదర్శిని ఆశ్రయ నామాలు',
   },
@@ -216,7 +216,7 @@ const NAKSHATRA_DEITY_DETAILS: {
     deityTe: 'సవితృడు (గాయత్రీ సూర్య భగవానుడు)',
     deityBlessingTe: 'హస్తవాసి, కౌశలం, బుద్ధి ప్రచోదనం, వ్యాపార దక్షత మరియు కీర్తి',
     boyAshrayaThemesTe: 'పురుషోత్తమ, శంకర, నరసింహ, నందగోపాల, సూర్య ఆశ్రయ నామాలు',
-    girlAshrayaThemesTe: 'পূజిత, శారద, నందిని, నవ్యశ్రీ, గాయత్రీ ఆశ్రయ నామాలు',
+    girlAshrayaThemesTe: 'పూజిత, శారద, నందిని, నవ్యశ్రీ, గాయత్రీ ఆశ్రయ నామాలు',
   },
   {
     deityTe: 'త్వష్ట / విశ్వకర్మ (దేవ శిల్పి)',
@@ -262,14 +262,14 @@ const NAKSHATRA_DEITY_DETAILS: {
   },
   {
     deityTe: 'విశ్వేదేవతలు (సమస్త ధర్మ దేవతలు)',
-    deityBlessingTe: 'శాశ్వత విజయం, నాయకత్వం, ధార్మిక నిষ্ঠ మరియు విశ్వজনీన ఆదరణ',
+    deityBlessingTe: 'శాశ్వత విజయం, నాయకత్వం, ధార్మిక నిష్ఠ మరియు విశ్వజనీన ఆదరణ',
     boyAshrayaThemesTe: 'భోగేశ్వర, జగదీశ్వర, జితేంద్ర, జయరామ, సూర్య-గురు ఆశ్రయ నామాలు',
     girlAshrayaThemesTe: 'భ్రమరాంబ, జానకి, జయలక్ష్మి, జీవిత ఆశ్రయ నామాలు',
   },
   {
     deityTe: 'శ్రీ మహావిష్ణువు (వామన / నారాయణ మూర్తి)',
     deityBlessingTe: 'శ్రవణ జ్ఞానం, విద్యా వైదుష్యం, విష్ణు కటాక్షం, సకల సంపదలు మరియు కీర్తి',
-    boyAshrayaThemesTe: 'జయదేవ్, జিতేశ్, జోగేశ్వర, ఘనశ్యామ్, వేంకటరమణ ఆశ్రయ నామాలు',
+    boyAshrayaThemesTe: 'జయదేవ్, జితేష్, జోగేశ్వర, ఘనశ్యామ్, వేంకటరమణ ఆశ్రయ నామాలు',
     girlAshrayaThemesTe: 'జ్యోత్స్న, జయశ్రీ, జాహ్నవి, శ్రీదేవి ఆశ్రయ నామాలు',
   },
   {
@@ -292,7 +292,7 @@ const NAKSHATRA_DEITY_DETAILS: {
   },
   {
     deityTe: 'అహిర్బుధ్న్యుడు (లోతైన జల-శివ తత్వ దేవుడు)',
-    deityBlessingTe: 'স্থిర ప్రజ్ఞ, శాంతి, అపార ధన-ధాన్య వృద్ధి, యోగసిద్ధి మరియు ఆయుర్దాయం',
+    deityBlessingTe: 'స్థిర ప్రజ్ఞ, శాంతి, అపార ధన-ధాన్య వృద్ధి, యోగసిద్ధి మరియు ఆయుర్దాయం',
     boyAshrayaThemesTe: 'దుష్యంత్, ఝాన్సీరామ్, త్రివిక్రమ్, జ్ఞానేశ్వర్ ఆశ్రయ నామాలు',
     girlAshrayaThemesTe: 'దుర్గాభవాని, ఝాన్సీ, జ్ఞానప్రసూన, త్రివేణి ఆశ్రయ నామాలు',
   },
@@ -400,7 +400,7 @@ const SYLLABLE_NAMES_DB: Record<string, RawNameSeed[]> = {
     { te: 'విద్యుల్లత', en: 'Vidyullata', g: 'female', m: 'మెరుపు తీగ వంటి కాంతి కలిగినది', cat: 'ప్రకృతి & తేజో ఆశ్రయం (Nature/Radiance)' },
   ],
   'వు': [
-    { te: 'వుల్లేశ్వర్', en: 'Vulleshwar', g: 'male', m: 'ఆనందాতিరేకమును కలిగించే ఈశ్వరుడు', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
+    { te: 'వుల్లేశ్వర్', en: 'Vulleshwar', g: 'male', m: 'ఆనందాతిరేకమును కలిగించే ఈశ్వరుడు', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
     { te: 'వుషశ్రీ', en: 'Vushasri', g: 'female', m: 'ఉషోదయ కాంతి మరియు సంపద', cat: 'ప్రకృతి & తేజో ఆశ్రయం (Nature/Radiance)' },
   ],
   'వే': [
@@ -455,7 +455,7 @@ const SYLLABLE_NAMES_DB: Record<string, RawNameSeed[]> = {
     { te: 'కోదండరామ్', en: 'Kodandaram', g: 'male', m: 'కోదండ ధనుస్సు ధరించిన శ్రీరామచంద్రుడు', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
     { te: 'కోటేశ్వర రావు', en: 'Koteshwara Rao', g: 'male', m: 'కోటి లింగాల స్వరూపుడైన శివుడు', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
     { te: 'కోమలవల్లి', en: 'Komalavalli', g: 'female', m: 'శ్రీ రంగనాథుని దేవేరి, మృదువైన లక్ష్మి', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
-    { te: 'కోకిల వాణి', en: 'Kokila Vani', g: 'female', m: 'కోయిల వంటి మధుర కంఠস্বరం కలది', cat: 'ప్రకృతి & తేజో ఆశ్రయం (Nature/Radiance)' },
+    { te: 'కోకిల వాణి', en: 'Kokila Vani', g: 'female', m: 'కోయిల వంటి మధుర కంఠస్వరం కలది', cat: 'ప్రకృతి & తేజో ఆశ్రయం (Nature/Radiance)' },
   ],
   'హ': [
     { te: 'హరిహర నందన్', en: 'Harihara Nandan', g: 'male', m: 'శివకేశవుల తేజోమూర్తి అయ్యప్ప/ధర్మశాస్త', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
@@ -590,7 +590,7 @@ const SYLLABLE_NAMES_DB: Record<string, RawNameSeed[]> = {
   'రా': [
     { te: 'రామచంద్ర మూర్తి', en: 'Ramachandra Murthy', g: 'male', m: 'సత్యధర్మ స్వరూపుడైన శ్రీ సీతారామచంద్రుడు', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
     { te: 'రాఘవేంద్ర స్వామి', en: 'Raghavendra Swamy', g: 'male', m: 'మంత్రాలయ కామధేనువు శ్రీ గురు రాఘవేంద్రులు', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
-    { te: 'రాజరాజేశ్వరి', en: 'Rajarajeshwari', g: 'female', m: 'శ్రీచక్ర అధిষ্ঠాన దేవత లలితా త్రిపురసుందరి', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
+    { te: 'రాజరాజేశ్వరి', en: 'Rajarajeshwari', g: 'female', m: 'శ్రీచక్ర అధిష్ఠాన దేవత లలితా త్రిపురసుందరి', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
     { te: 'రాధికా కృష్ణ', en: 'Radhika Krishna', g: 'female', m: 'శ్రీకృష్ణుని ఆత్మస్వరూపిణియైన రాధాదేవి', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
   ],
   'రి': [
@@ -656,7 +656,7 @@ const SYLLABLE_NAMES_DB: Record<string, RawNameSeed[]> = {
     { te: 'నేత్రావతి', en: 'Netravathi', g: 'female', m: 'సుందరమైన నేత్రములు గల పవిత్ర నది', cat: 'ప్రకృతి & తేజో ఆశ్రయం (Nature/Radiance)' },
   ],
   'నో': [
-    { te: 'నోమేశ్వర రావు', en: 'Nomeshwara Rao', g: 'male', m: 'నియమ నిষ্ঠలతో పూజింపబడే ఈశ్వరుడు', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
+    { te: 'నోమేశ్వర రావు', en: 'Nomeshwara Rao', g: 'male', m: 'నియమ నిష్ఠలతో పూజింపబడే ఈశ్వరుడు', cat: 'దేవతా ఆశ్రయం (Divine/Deity)' },
     { te: 'నోమిక శ్రీ', en: 'Nomika Sri', g: 'female', m: 'ధార్మిక వర్తన మరియు దివ్య శోభ కలది', cat: 'వేద & ఇతిహాస ఆశ్రయం (Vedic/Epic)' },
   ],
   'య': [

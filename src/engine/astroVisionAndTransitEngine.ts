@@ -187,7 +187,7 @@ const NUMEROLOGY_PLANET_MAP: Record<
     luckyNums: '3, 1, 2, 9',
     friendlyNums: '1, 2, 9',
     avoidNums: '5, 6',
-    natureTe: 'ఉన్నత విద్యాబుద్ధులు, ధర్మ నిষ্ঠ, గురుత్వం మరియు ఆర్థిక క్రమశిక్షణ.',
+    natureTe: 'ఉన్నత విద్యాబుద్ధులు, ధర్మ నిష్ఠ, గురుత్వం మరియు ఆర్థిక క్రమశిక్షణ.',
   },
   4: {
     planetId: 'Rahu',
@@ -257,7 +257,7 @@ const PLANET_GEM_COLORS_DIRECTIONS: Record<
     metalTe: 'బంగారం / రాగి (Gold / Copper)',
   },
   Moon: {
-    gemTe: 'স্বచ్ఛమైన ముత్యం (Natural Pearl - 4–6 క్యారెట్లు)',
+    gemTe: 'స్వచ్ఛమైన ముత్యం (Natural Pearl - 4–6 క్యారెట్లు)',
     dayTe: 'సోమవారం',
     colorTe: 'తెలుపు, వెండి, లేత క్రీమ్ (White & Silver)',
     directionTe: 'వాయువ్యం (North-West)',

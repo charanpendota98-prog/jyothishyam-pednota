@@ -529,7 +529,7 @@ export function generateUpayaPariharaReport(chart: CompleteChartResult): UpayaPa
       } else if (rulesTrikona) {
         functionalRoleTe = `త్రికోణాధిపతి (${ruledHouses.join(', ')} స్థానాధిపతి — శుభుడు)`;
       } else if (rulesDusthana) {
-        functionalRoleTe = `దుస్థానాధిపతి (${ruledHouses.join(', ')} స్థానాధిపతి — పాప ఫలదাতা)`;
+        functionalRoleTe = `దుస్థానాధిపతి (${ruledHouses.join(', ')} స్థానాధిపతి — పాప ఫలదాత)`;
       } else {
         functionalRoleTe = `${ruledHouses.join(', ')} భావాధిపతి`;
       }

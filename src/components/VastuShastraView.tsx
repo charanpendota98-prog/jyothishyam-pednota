@@ -21,6 +21,7 @@ import {
   Info,
   ScrollText,
   Building2,
+  Hammer,
 } from 'lucide-react';
 import {
   DEFAULT_ROOM_MAP,
@@ -34,6 +35,9 @@ import {
   type RoomKey,
   type RoomMap,
 } from '../engine/vastuShastraEngine.ts';
+import { localizeVastuReport, ROOM_LABEL_EN, type VastuLang } from '../engine/vastuBilingual.ts';
+import { englishToTeluguSmart, isLatinText } from '../engine/teluguTransliteration.ts';
+import { buildVastuProjectPlan, pickBi } from '../engine/vastuProjectPlan.ts';
 import { STATE_DISTRICT_ATLAS } from '../engine/teluguJathakam.ts';
 import { SourceStrip } from './SourceStrip.tsx';
 
@@ -86,9 +90,10 @@ const PLACE_OPTIONS = STATE_DISTRICT_ATLAS.flatMap((state) =>
 /*  16-zone compass                                                     */
 /* ------------------------------------------------------------------ */
 
-const VastuCompass: React.FC<{ highlight?: DikId | null; size?: number }> = ({
+const VastuCompass: React.FC<{ highlight?: DikId | null; size?: number; lang?: VastuLang }> = ({
   highlight,
   size = 340,
+  lang = 'te',
 }) => {
   const cx = size / 2;
   const cy = size / 2;
@@ -141,22 +146,22 @@ const VastuCompass: React.FC<{ highlight?: DikId | null; size?: number }> = ({
               opacity={isMain ? 0.95 : 0.7}
               fontWeight={isMain ? 600 : 400}
             >
-              {mid.nameTe}
+              {lang === 'te' ? mid.nameTe : mid.nameEn}
             </text>
           </g>
         );
       })}
       <circle cx={cx} cy={cy} r={inner} fill="#0B1020" stroke="rgba(201,169,110,0.35)" />
       <text x={cx} y={cy - 8} textAnchor="middle" fontSize={11} fill="#C9A96E" fontWeight={700}>
-        బ్రహ్మ
+        {lang === 'te' ? 'బ్రహ్మ' : 'Brahma'}
       </text>
       <text x={cx} y={cy + 8} textAnchor="middle" fontSize={8} fill="#EDE8E0" opacity={0.6}>
-        స్థానం
+        {lang === 'te' ? 'స్థానం' : 'sthana'}
       </text>
       <line x1={cx} y1={cy - outer} x2={cx} y2={cy + outer} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 4" />
       <line x1={cx - outer} y1={cy} x2={cx + outer} y2={cy} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 4" />
       <text x={cx} y={cy - outer - 6} textAnchor="middle" fontSize={9} fill="#C9A96E">
-        ఉత్తరం (నిజ ఉత్తరం)
+        {lang === 'te' ? 'ఉత్తరం (నిజ ఉత్తరం)' : 'North (true north)'}
       </text>
     </svg>
   );
@@ -169,7 +174,8 @@ const VastuCompass: React.FC<{ highlight?: DikId | null; size?: number }> = ({
 const MandalaGrid: React.FC<{
   cells: ReturnType<typeof buildMandalaGrid>;
   onHover?: (row: number, col: number) => void;
-}> = ({ cells, onHover }) => {
+  lang?: VastuLang;
+}> = ({ cells, onHover, lang = 'te' }) => {
   return (
     <div className="grid grid-cols-9 gap-[2px] rounded-xl overflow-hidden bg-white/5 p-[2px]">
       {cells.map((c) => {
@@ -180,7 +186,7 @@ const MandalaGrid: React.FC<{
           <div
             key={`${c.row}-${c.col}`}
             onMouseEnter={() => onHover?.(c.row, c.col)}
-            title={`${c.devata?.nameTe ?? 'బ్రహ్మ'} — ${c.ringTe} · ${c.zoneNameTe}`}
+            title={`${c.devata?.nameTe ?? (lang === 'te' ? 'బ్రహ్మ' : 'Brahma')} — ${c.ringTe} · ${c.zoneNameTe}`}
             className={`aspect-square flex items-center justify-center text-center px-[1px] ${
               isCenter
                 ? 'bg-[#C9A96E]/70 text-[#090C18] font-bold'
@@ -191,7 +197,7 @@ const MandalaGrid: React.FC<{
                     : 'bg-white/[0.04] text-[#EDE8E0]/70'
             }`}
           >
-            <span className="text-[6.5px] leading-[1.05]">{c.devata?.nameTe ?? 'బ్రహ్మ'}</span>
+            <span className="text-[6.5px] leading-[1.05]">{c.devata?.nameTe ?? (lang === 'te' ? 'బ్రహ్మ' : 'Brahma')}</span>
           </div>
         );
       })}
@@ -290,13 +296,27 @@ export function VastuShastraView({
   const place = PLACE_OPTIONS.find((p) => p.id === placeId);
   const lat = place?.lat ?? manualLat;
   const lng = place?.lng ?? manualLng;
-  const placeName = place?.labelTe ?? defaultPlaceName ?? 'హైదరాబాద్';
+  const placeNameRaw = place ? (isTe ? place.labelTe : place.label) : defaultPlaceName ?? 'హైదరాబాద్';
+  const placeName = placeNameRaw;
   const tz = place?.tz ?? defaultTzOffsetHours ?? 5.5;
 
-  const report = useMemo(
+  /**
+   * నామ వాస్తు ఖచ్చితత్వం కోసం పేరును తెలుగు అక్షర రూపంలో ఇంజిన్‌కు ఇస్తాము.
+   * ఆంగ్లంలో టైప్ చేసినా ("Charan") తెలుగు అక్షరం ("చ") ఏర్పడుతుంది.
+   */
+  const nameForEngine = useMemo(
+    () => (isLatinText(personName) ? englishToTeluguSmart(personName) : personName),
+    [personName]
+  );
+  const nameTeluguPreview = useMemo(
+    () => (isLatinText(personName) ? englishToTeluguSmart(personName) : ''),
+    [personName]
+  );
+
+  const rawReport = useMemo(
     () =>
       generateVastuReport({
-        name: personName,
+        name: nameForEngine,
         placeName,
         lat,
         lng,
@@ -310,10 +330,32 @@ export function VastuShastraView({
           widthFt: plotWidth,
         },
       }),
-    [personName, placeName, lat, lng, tz, rooms, plotShape, plotSlope, plotRoad, plotLen, plotWidth]
+    [nameForEngine, placeName, lat, lng, tz, rooms, plotShape, plotSlope, plotRoad, plotLen, plotWidth]
+  );
+
+  /** ఒకే ఆకారం, కానీ ఎంచుకున్న భాషలో — తెలుగు ⇄ ఇంగ్లీష్ పరిపూర్ణ మార్పిడి. */
+  const report = useMemo(
+    () =>
+      localizeVastuReport(rawReport, isTe ? 'te' : 'en', {
+        shape: plotShape,
+        slope: plotSlope,
+        road: plotRoad,
+        lengthFt: plotLen,
+        widthFt: plotWidth,
+      }, personName || undefined),
+    [rawReport, isTe, plotShape, plotSlope, plotRoad, plotLen, plotWidth, personName]
   );
 
   const { nama, place: placeReport, audit, plot } = report;
+
+  /** వాస్తు + ఇంజనీరింగ్ సమన్విత ప్రాజెక్ట్ ప్లాన్ */
+  const plan = useMemo(
+    () => buildVastuProjectPlan({ rooms, lengthFt: plotLen, widthFt: plotWidth }),
+    [rooms, plotLen, plotWidth]
+  );
+  const planLang: 'te' | 'en' = isTe ? 'te' : 'en';
+  const okCount = plan.rooms.filter((r) => r.compliance !== 'bad').length;
+  const badCount = plan.rooms.length - okCount;
 
   const T = {
     title: isTe ? 'వాస్తు శాస్త్రం — నామ వాస్తు & గృహ విశ్లేషణ' : 'Vastu Shastra — Nama & Griha Analysis',
@@ -360,6 +402,13 @@ export function VastuShastraView({
               className="w-full rounded-lg border border-white/15 bg-[#141932] px-2.5 py-1.5 text-[12.5px] text-[#EDE8E0] outline-none focus:border-[#C9A96E]/60"
             />
           </Field>
+          {nameTeluguPreview && (
+            <p className="text-[10.5px] text-[#66CBBF]/80 leading-snug">
+              {isTe
+                ? `లిప్యంతరీకరణ: ${personName} → ${nameTeluguPreview}`
+                : `Telugu rendering: ${nameTeluguPreview} (from “${personName}”)`}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2 text-[11.5px]">
             <div className="rounded-lg bg-white/[0.03] px-2 py-1.5">
               <div className="text-[9.5px] uppercase tracking-wider text-[#EDE8E0]/40">{isTe ? 'అక్షరం' : 'Syllable'}</div>
@@ -390,7 +439,7 @@ export function VastuShastraView({
               <option value="">{isTe ? '— మాన్యువల్ నిర్దేశాంశాలు —' : '— manual coordinates —'}</option>
               {PLACE_OPTIONS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.labelTe} — {p.label}
+                  {isTe ? `${p.labelTe} — ${p.label}` : `${p.label} — ${p.labelTe}`}
                 </option>
               ))}
             </select>
@@ -426,7 +475,7 @@ export function VastuShastraView({
 
         <div className="rounded-2xl border border-white/10 bg-[#0F1326] p-4">
           <SectionTitle icon={<Compass className="w-4 h-4" />} title={isTe ? '16-జోన్ దిక్ చక్రం' : '16-zone Dik Chakra'} />
-          <VastuCompass highlight={activeDik} size={300} />
+          <VastuCompass highlight={activeDik} size={300} lang={isTe ? 'te' : 'en'} />
         </div>
       </div>
 
@@ -458,7 +507,7 @@ export function VastuShastraView({
                 className="rounded-full border px-2 py-0.5 text-[10.5px]"
                 style={{ borderColor: `${DIK_COLOR[d]}55`, color: DIK_COLOR[d] }}
               >
-                {DIK_BY_ID[d].nameTe}
+                {isTe ? DIK_BY_ID[d].nameTe : DIK_BY_ID[d].nameEn}
               </span>
             ))}
           </div>
@@ -508,7 +557,7 @@ export function VastuShastraView({
           title={isTe ? '8 దిక్కులు — దిక్పాలకులు & శాస్త్రీయ సూచనలు' : 'Eight directions — dikpalas and prescriptions'}
         />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {DIK_INFO.map((d) => (
+          {report.dikList.map((d) => (
             <div
               key={d.id}
               onMouseEnter={() => setActiveDik(d.id)}
@@ -552,7 +601,7 @@ export function VastuShastraView({
                 : 'Keep the Brahmasthan (centre 3×3) open; 45 devatas occupy the 81 padas.'
             }
           />
-          <MandalaGrid cells={report.mandala} />
+          <MandalaGrid cells={report.mandala} lang={isTe ? 'te' : 'en'} />
           <button
             onClick={() => setShowAllDevatas((v) => !v)}
             className="no-print mt-2 text-[11px] text-[#C9A96E]/80 hover:text-[#C9A96E] inline-flex items-center gap-1"
@@ -580,7 +629,7 @@ export function VastuShastraView({
             sub={isTe ? 'ప్రతి 22.5° సెక్టార్ ఒక జీవిత క్షేత్రానికి అధిపతి.' : 'Each 22.5° sector governs a life area.'}
           />
           <div className="max-h-[420px] overflow-y-auto space-y-1.5 pr-1">
-            {ZONE_INFO.map((z) => (
+            {report.zones.map((z) => (
               <div key={z.nameEn} className="rounded-lg bg-white/[0.03] px-2.5 py-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[12px] text-[#EDE8E0]">
@@ -633,7 +682,7 @@ export function VastuShastraView({
             return (
               <div key={rule.key} className="rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] text-[#EDE8E0]">{rule.labelTe}</span>
+                  <span className="text-[12px] text-[#EDE8E0]">{isTe ? rule.labelTe : ROOM_LABEL_EN[rule.key]}</span>
                   <span className="text-[9.5px] rounded px-1.5 py-0.5" style={{ color, backgroundColor: `${color}1A` }}>
                     {assessment?.verdictTe ?? '—'}
                   </span>
@@ -645,14 +694,14 @@ export function VastuShastraView({
                   }
                   className="no-print mt-1 w-full rounded border border-white/15 bg-[#141932] px-1.5 py-1 text-[11px] text-[#EDE8E0]"
                 >
-                  {DIK_INFO.map((d) => (
+                  {report.dikList.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.nameTe}
+                      {isTe ? d.nameTe : d.nameEn}
                     </option>
                   ))}
                 </select>
                 <div className="mt-1 text-[10px] text-[#EDE8E0]/50 leading-snug">
-                  {isTe ? 'ఉత్తమం' : 'Best'}: {rule.bestDiks.map((d) => DIK_BY_ID[d as DikId]?.nameTe ?? d).join(', ')}
+                  {isTe ? 'ఉత్తమం' : 'Best'}: {rule.bestDiks.map((d) => (isTe ? DIK_BY_ID[d as DikId]?.nameTe : DIK_BY_ID[d as DikId]?.nameEn) ?? d).join(', ')}
                 </div>
                 {assessment?.adviceTe && (
                   <p className="mt-0.5 text-[10px] text-[#EDE8E0]/60 leading-snug">{assessment.adviceTe}</p>
@@ -740,9 +789,9 @@ export function VastuShastraView({
               onChange={(e) => setPlotRoad(e.target.value as DikId)}
               className="w-full rounded-lg border border-white/15 bg-[#141932] px-2 py-1.5 text-[12px] text-[#EDE8E0]"
             >
-              {DIK_INFO.map((d) => (
+              {report.dikList.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.nameTe} ({d.id})
+                  {isTe ? d.nameTe : d.nameEn} ({d.id})
                 </option>
               ))}
             </select>
@@ -770,6 +819,178 @@ export function VastuShastraView({
               ? 'గమనిక: ఇది శాస్త్రీయ-జ్యోతిష్య మార్గదర్శనం; నిర్మాణానికి ముందు స్థానిక సర్వేయర్ & నిజ ఉత్తర ధృవీకరణ తప్పనిసరి.'
               : 'Note: this is jyotisha-based guidance; a local survey and true-north verification are required before construction.'}
           </p>
+        </div>
+      </div>
+
+
+      {/* Advanced engineering + Vastu plan */}
+      <div className="rounded-2xl border border-[#66CBBF]/25 bg-gradient-to-br from-[#0C1A1E] to-[#0B0F1E] p-5 space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle
+            icon={<Hammer className="w-4 h-4" />}
+            title={isTe ? 'అడ్వాన్స్‌డ్ వాస్తు + ఇంజనీరింగ్ ప్లాన్' : 'Advanced Vastu + Engineering plan'}
+            sub={
+              isTe
+                ? 'గది వారీగా కొలతలు, కిటికీ/గాలి, MEP, పదార్థాలు, వాస్తు నియమాలు మరియు 3-దశల పరిహారాలు — NBC 2016 / IS 456 / IS 732 ప్రమాణాలతో.'
+                : 'Per-room dimensions, ventilation, MEP, materials, Vastu rules and three-phase remedies — aligned with NBC 2016 / IS 456 / IS 732.'
+            }
+          />
+          <div className="flex gap-2 text-[11px]">
+            <span className="rounded-full bg-[#5BBFB5]/15 px-2.5 py-1 text-[#5BBFB5]">
+              {isTe ? 'అనుకూలం' : 'Aligned'} {okCount}/{plan.rooms.length}
+            </span>
+            <span className="rounded-full bg-[#D46B5E]/15 px-2.5 py-1 text-[#D46B5E]">
+              {isTe ? 'సరిదిద్దాలి' : 'To fix'} {badCount}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-lg bg-white/[0.03] px-3 py-2">
+            <div className="text-[10px] uppercase tracking-wider text-[#EDE8E0]/40">
+              {isTe ? 'ఆయాది (చుట్టుకొలత గణితం)' : 'Ayadi (perimeter arithmetic)'}
+            </div>
+            <div className="font-mono-tabular text-[12px] text-[#EDE8E0] mt-0.5">
+              {plan.ayadi.perimeterFt}′ · {isTe ? 'ఆయం' : 'ayam'} {plan.ayadi.aya} · {isTe ? 'వ్యయం' : 'vyayam'}{' '}
+              {plan.ayadi.vyaya}
+            </div>
+            <p className="text-[10.5px] text-[#EDE8E0]/55 leading-snug mt-1">{pickBi(plan.ayadi.note, planLang)}</p>
+          </div>
+          {plan.engineeringSummary.map((e, i) => (
+            <div key={i} className="rounded-lg bg-white/[0.03] px-3 py-2 text-[11px] text-[#EDE8E0]/75 leading-snug">
+              <span className="text-[#66CBBF]">▸ </span>
+              {pickBi(e, planLang)}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-2">
+          {plan.rooms.map((r) => {
+            const tone =
+              r.compliance === 'best' ? '#5BBFB5' : r.compliance === 'ok' ? '#C9A96E' : '#D46B5E';
+            return (
+              <details
+                key={r.key}
+                className="rounded-xl border bg-white/[0.02] px-3 py-2"
+                style={{ borderColor: `${tone}33` }}
+              >
+                <summary className="cursor-pointer list-none">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12.5px] text-[#EDE8E0] flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tone }} />
+                      {pickBi(r.label, planLang)}
+                    </span>
+                    <span className="text-[10px] rounded px-1.5 py-0.5" style={{ color: tone, backgroundColor: `${tone}1A` }}>
+                      {isTe ? DIK_BY_ID[r.currentDik].nameTe : DIK_BY_ID[r.currentDik].nameEn}
+                      {r.currentDik !== r.idealDik &&
+                        ` → ${isTe ? DIK_BY_ID[r.idealDik].nameTe : DIK_BY_ID[r.idealDik].nameEn}`}
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] text-[#EDE8E0]/55 mt-0.5">{pickBi(r.size, planLang)}</div>
+                </summary>
+                <div className="mt-2 space-y-1.5 text-[10.5px] leading-snug">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="rounded bg-white/[0.03] px-2 py-1">
+                      <span className="text-[#C9A96E]">{isTe ? 'ద్వారం' : 'Door'}: </span>
+                      {pickBi(r.door, planLang)}
+                    </div>
+                    <div className="rounded bg-white/[0.03] px-2 py-1">
+                      <span className="text-[#C9A96E]">{isTe ? 'కిటికీ' : 'Window'}: </span>
+                      {pickBi(r.window, planLang)}
+                    </div>
+                    <div className="rounded bg-white/[0.03] px-2 py-1">
+                      <span className="text-[#C9A96E]">{isTe ? 'వెలుతురు' : 'Daylight'}: </span>
+                      {pickBi(r.daylight, planLang)}
+                    </div>
+                    <div className="rounded bg-white/[0.03] px-2 py-1">
+                      <span className="text-[#C9A96E]">ACH: </span>
+                      {pickBi(r.ach, planLang)}
+                    </div>
+                  </div>
+                  {[
+                    { titleTe: 'వాస్తు నియమాలు', titleEn: 'Vastu rules', items: r.vastu, color: 'text-[#C9A96E]' },
+                    { titleTe: 'ఇంజనీరింగ్ తనిఖీలు', titleEn: 'Engineering checks', items: r.engineering, color: 'text-[#66CBBF]' },
+                    { titleTe: 'MEP', titleEn: 'MEP', items: r.mep, color: 'text-[#8FBFA0]' },
+                    { titleTe: 'పదార్థాలు', titleEn: 'Materials', items: r.materials, color: 'text-[#9B8FD4]' },
+                  ].map((grp) => (
+                    <div key={grp.titleEn}>
+                      <div className={`text-[9.5px] uppercase tracking-wider ${grp.color}`}>
+                        {isTe ? grp.titleTe : grp.titleEn}
+                      </div>
+                      <ul className="mt-0.5 space-y-0.5">
+                        {grp.items.map((it, i) => (
+                          <li key={i} className="text-[#EDE8E0]/70">• {pickBi(it, planLang)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                  <div>
+                    <div className="text-[9.5px] uppercase tracking-wider text-[#D46B5E]">
+                      {isTe ? 'పరిహారాలు (దశల వారీగా)' : 'Remedies (by phase)'}
+                    </div>
+                    {r.remedies.map((rem) => (
+                      <div key={rem.level} className="text-[#EDE8E0]/70">
+                        <span className="text-[#D46B5E]">P{rem.level}</span> {pickBi(rem.text, planLang)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            );
+          })}
+        </div>
+
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-[#66CBBF] mb-1.5">
+            {isTe ? 'సేవా వారీగా ప్లాన్ (Services)' : 'Per-service plan'}
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+            {plan.services.map((s) => (
+              <div key={s.key} className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12px] text-[#EDE8E0]">{pickBi(s.title, planLang)}</span>
+                  <span className="text-[9.5px] rounded bg-[#C9A96E]/15 px-1.5 py-0.5 text-[#C9A96E]">
+                    {isTe ? DIK_BY_ID[s.primaryDik].nameTe : DIK_BY_ID[s.primaryDik].nameEn}
+                  </span>
+                </div>
+                <ul className="mt-1 space-y-0.5">
+                  {s.spec.map((x, i) => (
+                    <li key={i} className="text-[10px] text-[#EDE8E0]/70 leading-snug">• {pickBi(x, planLang)}</li>
+                  ))}
+                </ul>
+                <div className="mt-1 text-[9.5px] uppercase tracking-wider text-[#D46B5E]">
+                  {isTe ? 'ప్రమాదాలు' : 'Risks'}
+                </div>
+                {s.risks.map((x, i) => (
+                  <div key={i} className="text-[10px] text-[#D46B5E]/80 leading-snug">⚠ {pickBi(x, planLang)}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-3">
+          {plan.phases.map((ph) => (
+            <div key={ph.level} className="rounded-xl border border-[#C9A96E]/25 bg-[#C9A96E]/5 px-3 py-2">
+              <div className="text-[11.5px] text-[#C9A96E] leading-snug">{pickBi(ph.title, planLang)}</div>
+              <ul className="mt-1 space-y-0.5">
+                {ph.items.map((it, i) => (
+                  <li key={i} className="text-[10px] text-[#EDE8E0]/70 leading-snug">• {pickBi(it, planLang)}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-[#EDE8E0]/40 mb-1">
+            {isTe ? 'నిర్మాణ గ్రిడ్ & లోడ్' : 'Structural grid & loads'}
+          </div>
+          <ul className="grid gap-1 md:grid-cols-2">
+            {plan.grid.map((g, i) => (
+              <li key={i} className="text-[10.5px] text-[#EDE8E0]/70 leading-snug">▸ {pickBi(g, planLang)}</li>
+            ))}
+          </ul>
         </div>
       </div>
 

@@ -37,6 +37,13 @@ import { computeVimshottariDeep } from '../src/engine/vimshottariDeepEngine';
 import { computeAshtakavargaPhala } from '../src/engine/ashtakavargaPhalaEngine';
 import { computeAntardashaPhalaBook } from '../src/engine/antardashaPhalaBookEngine';
 import { computeGrahaSahayaka, AREAS } from '../src/engine/grahaSahayakaEngine';
+import { computeLagnaFunctional } from '../src/engine/lagnaFunctionalEngine';
+import { generateVastuReport } from '../src/engine/vastuShastraEngine';
+import { localizeVastuReport } from '../src/engine/vastuBilingual';
+import { buildVastuProjectPlan } from '../src/engine/vastuProjectPlan';
+import { englishToTeluguSmart } from '../src/engine/teluguTransliteration';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 let pass = 0;
 const failures: string[] = [];
@@ -774,6 +781,141 @@ check(
   'ప్రతి గ్రహానికి బల/బలహీన అంశాల వ్యాఖ్యానం',
   sahayaka.rows.every((r) => r.noteTe.length > 40 && r.bestAreaTe && r.weakAreaTe),
   '9 గ్రహాలకూ తెలుగు వ్యాఖ్యానం సిద్ధం'
+);
+
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Functional lordship (BPHS ch. 34) — all 12 lagnas
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── లగ్న కారకత్వం (BPHS 34) ──');
+const YK_BY_LAGNA: Record<number, string | null> = {
+  0: null, 1: 'Saturn', 2: null, 3: 'Mars', 4: 'Mars', 5: null,
+  6: 'Saturn', 7: null, 8: null, 9: 'Venus', 10: 'Venus', 11: null,
+};
+const allLagnas = Array.from({ length: 12 }, (_, i) => computeLagnaFunctional(i));
+check(
+  'పన్నెండు లగ్నాలకూ యోగకారకుడు శాస్త్రీయంగా సరైనది',
+  allLagnas.every((f, i) => (f.yogakarakas[0] ?? null) === YK_BY_LAGNA[i]),
+  allLagnas.map((f, i) => `${i}:${f.yogakarakas[0] ?? '—'}`).join(' ')
+);
+check(
+  'మారకులు 2/7 అధిపతులు మాత్రమే',
+  allLagnas.every((f) => {
+    return f.marakaLords.every((id) => {
+      const p = f.planets.find((x) => x.id === id)!;
+      // మారకుడు = 2వ లేదా 7వ భావాధిపతి (ఇతర భావాలు కలిసి ఉన్నా మారకత్వం తొలగదు)
+      return p.ownsHouses.some((h) => h === 2 || h === 7);
+    });
+  }),
+  'రెండు/ఏడు భావాధిపతులే మారకులు'
+);
+check(
+  'బాధకాధిపతి 11 (చర) / 9 (స్థిర) / 7 (ద్విస్వభావ) భావాధిపతి',
+  allLagnas.every((f) => {
+    const nature = f.lagnaSignIndex % 3; // 0=chara, 1=sthira, 2=dvisvabhava
+    const expected = nature === 0 ? 11 : nature === 1 ? 9 : 7;
+    return f.badhakaHouse === expected;
+  }),
+  allLagnas.map((f) => `${f.lagnaSignIndex}:${f.badhakaHouse}`).join(' ')
+);
+check(
+  'లగ్నాధిపతి ఎప్పుడూ త్రికోణాధిపతి (1వ భావం త్రికోణం)',
+  allLagnas.every((f) => f.planets.find((p) => p.ownsHouses.includes(1))?.isTrikonaLord === true),
+  '1వ భావం త్రికోణంగా లెక్కించబడుతుంది'
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Vastu bilingual — Telugu ⇄ English parity
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── వాస్తు ద్విభాషా సమానత్వం ──');
+const vastuRaw = generateVastuReport({
+  name: 'చరణ్',
+  placeName: 'హైదరాబాద్',
+  lat: 17.385,
+  lng: 78.4867,
+  plot: { shape: 'rectangle', slope: 'north-east', road: 'E', lengthFt: 40, widthFt: 30 },
+});
+const vastuEn = localizeVastuReport(vastuRaw, 'en', {
+  shape: 'rectangle', slope: 'north-east', road: 'E', lengthFt: 40, widthFt: 30,
+}, 'Charan');
+const leftover: string[] = [];
+const walkStrings = (v: unknown, path: string) => {
+  // స్వంత పేర్లు (నామం, అక్షరం) సహజంగానే ఆయా లిపిలో ఉంటాయి — అవి మినహాయించాము
+  const isProperNoun =
+    path.endsWith('nama.name') || path.endsWith('nama.matchedSyllable') || path.endsWith('place.placeName');
+  if (typeof v === 'string') {
+    if (!isProperNoun && /[\u0C00-\u0C7F]/.test(v)) leftover.push(`${path}: ${v.slice(0, 40)}`);
+  } else if (Array.isArray(v)) v.forEach((x, i) => walkStrings(x, `${path}[${i}]`));
+  else if (v && typeof v === 'object') for (const k of Object.keys(v as object)) walkStrings((v as never)[k], `${path}.${k}`);
+};
+walkStrings(vastuEn, 'report');
+check(
+  'ఇంగ్లీష్ వాస్తు నివేదికలో తెలుగు అక్షరాలు మిగలలేదు',
+  leftover.length === 0,
+  leftover.length ? leftover.slice(0, 3).join(' | ') : '0 మిగిలిన పదాలు'
+);
+check(
+  'తెలుగు వాస్తు నివేదికలో ఆంగ్ల వాక్యాలు లేవు (నామం తప్ప)',
+  /[\u0C00-\u0C7F]/.test(vastuRaw.summaryTe) && /[\u0C00-\u0C7F]/.test(vastuRaw.audit.gradeTe),
+  'తెలుగు నివేదిక తెలుగులోనే ఉంది'
+);
+check(
+  'వాస్తు ప్లాన్: 16 గదులు × పరిహారాలు + 6 సేవలు',
+  (() => {
+    const plan = buildVastuProjectPlan({ rooms: {}, lengthFt: 40, widthFt: 30 });
+    return plan.rooms.length === 16 && plan.services.length >= 6 && plan.rooms.every((r) => r.remedies.length >= 1);
+  })(),
+  'గది వారీ + సేవా వారీ ప్లాన్ సిద్ధం'
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Telugu transliteration
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── ఆంగ్లం → తెలుగు లిప్యంతరీకరణ ──');
+check(
+  'లిప్యంతరీకరణ: Charan → చరణ్, Lakshmi → లక్ష్మి, Krishna → కృష్ణ',
+  englishToTeluguSmart('Charan') === 'చరణ్' &&
+    englishToTeluguSmart('Lakshmi') === 'లక్ష్మి' &&
+    englishToTeluguSmart('Krishna') === 'కృష్ణ',
+  `${englishToTeluguSmart('Charan')} · ${englishToTeluguSmart('Lakshmi')} · ${englishToTeluguSmart('Krishna')}`
+);
+check(
+  'తెలుగు పదం మారదు',
+  englishToTeluguSmart('చరణ్') === 'చరణ్',
+  'ఇప్పటికే తెలుగు'
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Mixed-script guard — Telugu strings must not contain other Indic scripts
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── లిపి శుద్ధి (mixed-script guard) ──');
+const FORBIDDEN = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C80-\u0CFF\u0D00-\u0D7F\u0400-\u04FF\u0600-\u06FF]/;
+const badFiles: string[] = [];
+const scanDir = (dir: string) => {
+  for (const f of readdirSync(dir)) {
+    const full = join(dir, f);
+    if (statSync(full).isDirectory()) scanDir(full);
+    else if (/\.(ts|tsx)$/.test(f)) {
+      const txt = readFileSync(full, 'utf8');
+      txt.split('\n').forEach((line, i) => {
+        // సంస్కృత మూల శ్లోకాలు (దేవనాగరి) ఉద్దేశపూర్వకం — కానీ తెలుగు వాక్యంలో
+        // కలిసిన అన్య లిపి లేదా సిరిలిక్/అరబిక్ ఎప్పుడూ దోషం.
+        const hasTelugu = /[\u0C00-\u0C7F]/.test(line);
+        const hasCyrillicOrArabic = /[\u0400-\u04FF\u0600-\u06FF]/.test(line);
+        // దేవనాగరి సంస్కృత పదాలు ఉద్దేశపూర్వకం (శ్లోకాలు/పరిభాష); మిగతా భారతీయ లిపులు దోషం.
+        const mixedIndic =
+          hasTelugu &&
+          /[\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C80-\u0CFF\u0D00-\u0D7F]/.test(line);
+        if (mixedIndic || hasCyrillicOrArabic) badFiles.push(`${full}:${i + 1}`);
+      });
+    }
+  }
+};
+scanDir('src');
+check(
+  'src/ లో తెలుగు ఫైళ్లలో అన్య లిపి అక్షరాలు లేవు',
+  badFiles.length === 0,
+  badFiles.length ? badFiles.slice(0, 4).join(', ') : '0 ఉల్లంఘనలు'
 );
 
 

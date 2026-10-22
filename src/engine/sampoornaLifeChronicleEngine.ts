@@ -1,4 +1,6 @@
 import type { CompleteChartResult } from './ephemeris.ts';
+import { computeLagnaFunctional, type PlanetId9 } from './lagnaFunctionalEngine.ts';
+import { lagnaLordHousePhalaTe } from './lagnaLordHousePhala.ts';
 import {
   TELUGU_PLANETS,
   TELUGU_RASIS,
@@ -184,7 +186,7 @@ const HOUSE_SIMPLE_MEANING_TE: Record<number, string> = {
   2: 'కుటుంబ వృద్ధి, ధన సంపాదన మరియు చక్కని వాక్చాతుర్యం సిద్ధిస్తాయి.',
   3: 'ధైర్య సాహసాలు, సొంత ప్రయత్న విజయం మరియు సహోదర సహకారం లభిస్తాయి.',
   4: 'సొంత ఇల్లు, వాహన యోగం, తల్లి ఆశీస్సులు మరియు మానసిక ప్రశాంతత కలుగుతాయి.',
-  5: 'উన్నత తెలివితేటలు, సంతాన సౌఖ్యం మరియు పూర్వజన్మ పుణ్య ఫలం లభిస్తాయి.',
+  5: 'ఉన్నత తెలివితేటలు, సంతాన సౌఖ్యం మరియు పూర్వజన్మ పుణ్య ఫలం లభిస్తాయి.',
   6: 'పోటీలలో విజయం, శత్రు జయం మరియు వృత్తిలో కష్టపడి ఎదిగే శక్తి లభిస్తాయి.',
   7: 'మంచి జీవిత భాగస్వామి, వ్యాపార అనుకూలత మరియు సామాజిక గౌరవం లభిస్తాయి.',
   8: 'దీర్ఘాయుష్షు, పరిశోధనా శక్తి మరియు ఆకస్మిక ధన లాభాలు కలుగుతాయి.',
@@ -212,6 +214,7 @@ export function generateSampoornaLifeChronicle(
   advancedAppendices: SiddhantaAdvancedAppendicesReport
 ): SampoornaLifeChronicleReport {
   const jaiminiCharaDashaReport = calculateJaiminiCharaDasha(chart, 'kn_rao');
+  const functional = computeLagnaFunctional(chart.ascendant.signIndex);
   const birthYear = parseInt(chart.input.date.split('-')[0], 10) || 1995;
   const lagnaSign = chart.ascendant.signIndex;
   const lagnaRasiTe = pureTe(TELUGU_RASIS[lagnaSign]?.nameTe) || 'మేష రాశి';
@@ -244,15 +247,20 @@ export function generateSampoornaLifeChronicle(
 
   const swaroopaTitleTe = `${lagnaRasiTe} లగ్నం · ${janmaRasiClean} · ${nakshatraClean} (${jathakam.janmaPadam}వ పాదం) — జాతక ముఖ్యాంశాలు`;
 
-  const physicalAndMentalConstitutionTe = `మీరు ${lagnaRasiTe} లగ్నంలో జన్మించారు. లగ్నాధిపతి ${lagnaLordTe} ${lagnaHouseOfLord}వ భావంలో ఉండటం వల్ల స్వశక్తిపై ఎదిగే పట్టుదల, ఆత్మగౌరవం, నిజాయితీ మీ సహజ లక్షణాలు. ${janmaRasiClean}లో ${nakshatraClean} నక్షత్రం (${pureTe(moonNakshatraObj.ganaTe)}) వల్ల లోతైన ఆలోచనా శక్తి, కుటుంబానికి అండగా నిలిచే బాధ్యత మరియు సమయానుకూల నిర్ణయాలు తీసుకునే నేర్పు ఉంటాయి.`;
+  const physicalAndMentalConstitutionTe = `మీరు ${lagnaRasiTe} లగ్నంలో జన్మించారు. ${lagnaLordHousePhalaTe(lagnaHouseOfLord)} జన్మ రాశి ${janmaRasiClean}, ${nakshatraClean} నక్షత్రం (${pureTe(moonNakshatraObj.ganaTe)}) — మనస్సు స్వభావానికి ఇది కూడా స్పష్టమైన ముద్ర వేస్తుంది.`;
 
   const atmakarakaAndSoulMissionTe = `మీ జాతకంలో ఆత్మకారకుడు "${akNameClean}" మరియు అమాత్యకారకుడు "${amkNameClean}". దీనివల్ల జీవితంలో ధర్మబద్ధంగా సంపాదించడం, వృత్తిలో ఉన్నత స్థానానికి చేరుకోవడం మరియు కుటుంబ గౌరవాన్ని నిలబెట్టడం మీ ప్రధాన జీవన లక్ష్యం. 30 సంవత్సరాల వయస్సు నుండి ఆర్థిక స్థిరత్వం, సొంత ఆస్తులు మరియు సమాజంలో ప్రత్యేక గుర్తింపు లభిస్తాయి.`;
 
-  const lagnaAndChandraSynthesisTe = `లగ్నం (${lagnaRasiTe}), జన్మ రాశి (${janmaRasiClean}) మరియు సూర్య స్థితి (${sunObj.house}వ భావం) సమన్వయం ప్రకారం — ${pureTe(jathakam.lagnaShastraPramanam.yogakarakaGrahaTe)} మీకు అత్యంత శుభ ఫలితాలను ఇచ్చే రాజయోగ గ్రహాలు.`;
+  const beneficNames = functional.benefics.map((id: PlanetId9) => pureTe(TELUGU_PLANETS[id]?.nameTe) || id);
+  const lagnaAndChandraSynthesisTe =
+    `లగ్నం ${lagnaRasiTe}, జన్మ రాశి ${janmaRasiClean}, సూర్యుడు ${sunObj.house}వ భావంలో — ఈ మూడింటి సమన్వయమే మీ వ్యక్తిత్వపు మూలం. ` +
+    (functional.yogakarakas.length
+      ? `${beneficNames.join(', ')} మీ లగ్నానికి క్రియాత్మక శుభులు; వీరిలో ${pureTe(TELUGU_PLANETS[functional.yogakarakas[0]]?.nameTe)} ఏకగ్ర యోగకారకుడు — ఈయన దశలలో ఉన్నతి స్పష్టంగా కనిపిస్తుంది.`
+      : `${beneficNames.join(', ')} మీ లగ్నానికి క్రియాత్మక శుభులు. ${lagnaRasiTe} లగ్నానికి ఒకే గ్రహం కేంద్ర-త్రికోణాలు రెండూ పాలించనందున శాస్త్రీయంగా ఏకగ్ర యోగకారకుడు లేడు — అత్యుత్తమ శుభుడు ${pureTe(TELUGU_PLANETS[functional.bestBenefic]?.nameTe)}; ఈయన బలమైన దశలలో ఫలితాలు మెరుగ్గా ఉంటాయి.`);
 
   const keyLifeStrengthsTe = [
     `లగ్నాధిపతి ${lagnaLordTe} ${lagnaHouseOfLord}వ భావ బలం వల్ల స్వయంకృషితో ఉన్నత స్థాయికి ఎదిగే సంకల్ప బలం.`,
-    `ఆత్మకారకుడు ${akNameClean} అనుగ్రహంతో చురుకైన మేధస్సు, దూరదృష్టి మరియు సత్యనిষ্ঠ.`,
+    `ఆత్మకారకుడు ${akNameClean} అనుగ్రహంతో చురుకైన మేధస్సు, దూరదృష్టి మరియు సత్యనిష్ఠ.`,
     `అమాత్యకారకుడు ${amkNameClean} మరియు దశాంశ (D10) బలం వల్ల ఉద్యోగ/వ్యాపార రంగాలలో స్థిరమైన పురోగతి.`,
     `శుభ గ్రహాల దశా-భుక్తి కాలాలలో సొంత ఇల్లు, వాహనం మరియు ఆర్థిక వృద్ధి.`,
   ];
@@ -453,16 +461,16 @@ export function generateSampoornaLifeChronicle(
       const isDusthanaLord = ownedHouses.some((h) => [6, 8, 12].includes(h));
 
       let functionalRoleTe = 'సమ ఫలదాత';
-      if (isKendraLord && isTrikonaLord) {
-        functionalRoleTe = 'రాజయోగకారకుడు';
-      } else if (isTrikonaLord) {
-        functionalRoleTe = 'శుభ కోణాధిపతి';
-      } else if (isKendraLord && !isDusthanaLord) {
-        functionalRoleTe = 'కేంద్రాధిపతి';
-      } else if (isDusthanaLord) {
-        functionalRoleTe = 'విపరీత యోగ / దుస్థానాధిపతి';
-      } else if (ng.id === 'Rahu' || ng.id === 'Ketu') {
+      if (ng.id === 'Rahu' || ng.id === 'Ketu') {
         functionalRoleTe = 'కర్మ ఛాయా గ్రహం';
+      } else {
+        const fn = functional.planets.find((p) => p.id === (ng.id as PlanetId9));
+        if (fn?.isYogakaraka) functionalRoleTe = 'యోగకారకుడు (కేంద్ర + త్రికోణ)';
+        else if (fn?.isKendradhipatiDosha) functionalRoleTe = 'కేంద్రాధిపత్య దోష గ్రహం';
+        else if (fn?.isTrikonaLord) functionalRoleTe = 'త్రికోణాధిపతి — శుభుడు';
+        else if (fn?.nature === 'papa') functionalRoleTe = 'క్రియాత్మక పాపగ్రహం';
+        else if (fn?.isMaraka) functionalRoleTe = 'మారకాధిపతి (2/7)';
+        else if (fn?.nature === 'shubha') functionalRoleTe = 'క్రియాత్మక శుభుడు';
       }
 
       const careerSectors = PLANET_CAREER_SECTORS_TE[ng.id] ?? PLANET_CAREER_SECTORS_TE.Sun;
