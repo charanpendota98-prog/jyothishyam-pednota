@@ -434,7 +434,7 @@ export const NUMEROLOGY_EN: Record<number, { planet: string; nature: string }> =
 };
 
 export const NAMA_NOTE_EN =
-  'First letter of the name → nakshatra pada → birth rasi → direction (Nama Vastu). If the birth nakshatra is known, that is authoritative; the name-based analysis is supportive guidance only.';
+  'First letter of the name → the nakshatra of that pada syllable → name rasi → direction (Nama Vastu). If the birth nakshatra is known, it is authoritative; the name-based reading is supportive guidance only.';
 
 /* ------------------------------------------------------------------ */
 /*  Place / site text                                                  */

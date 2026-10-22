@@ -91,7 +91,7 @@ const roomRows = plan.rooms
     return `<tr>
       <td class="room">${T(r.label)}<div class="sub">${both(r.size)}</div></td>
       <td style="color:${tone};font-weight:600">${label}</td>
-      <td>${dikName(r.currentDik)} → <b>${dikName(r.idealDik)}</b></td>
+      <td>${r.currentDik === r.idealDik ? `<b>${dikName(r.idealDik)}</b> ✓` : `${dikName(r.currentDik)} → <b>${dikName(r.idealDik)}</b>`}</td>
       <td>${both(r.door)}</td>
       <td>${both(r.window)}</td>
       <td class="num">${both(r.daylight)}</td>
@@ -253,7 +253,7 @@ const html = `<!doctype html>
   <div style="height:10px"></div>
   ${roomDetails}
 
-  <h2>${lang === 'te' ? '5. సేవల ప్లాన్ (MEP · నీరు · మంటి · సోలార్ · అగ్ని)' : '5. Service plan (MEP · water · sewage · solar · fire)'}</h2>
+  <h2>${lang === 'te' ? '5. సేవల ప్లాన్ (విద్యుత్ · ప్లంబింగ్ · HVAC · సోలార్ · అగ్ని · అకౌస్టిక్స్ · నీరు · మురుగు · నిర్మాణం)' : '5. Service plan (electrical · plumbing · HVAC · solar · fire · acoustics · water · sewage · structure)'}</h2>
   ${serviceCards}
 
   <h2>${lang === 'te' ? '6. ప్రాధాన్యత క్రమంలో చర్యలు' : '6. Priority actions'}</h2>

@@ -665,6 +665,54 @@ const SERVICES: ServicePlan[] = [
       bi('నైరుతిలో పడక గది + రోడ్డు శబ్దం → నిద్ర లోపం', 'A south-west bedroom next to road noise disturbs sleep'),
     ],
   },
+  {
+    key: 'water',
+    title: bi('వర్షపు నీరు, సంప్ & రీచార్జ్', 'Rainwater, sump and recharge'),
+    primaryDik: 'NE',
+    spec: [
+      bi('పైకప్పు వర్షపు నీరు → ఫిల్టర్ → 5,000 L భూగర్భ ట్యాంక్ (ఈశాన్యం/ఉత్తరం)', 'Roof runoff → first-flush filter → 5,000 L underground tank in the north-east or north'),
+      bi('అధిక నీరు → రీచార్జ్ పిట్ 1.5 × 1.5 × 3 మీ, ఈశాన్యం; ఇసుక-జల్లి పొరలు', 'Overflow → a 1.5 × 1.5 × 3 m recharge pit in the north-east, layered with sand and gravel'),
+      bi('తాగునీరు 25 L/వ్యక్తి/రోజు; ఓవర్‌హెడ్ ట్యాంక్ పశ్చిమ/నైరుతి (నీటి భారం)', 'Potable water at 25 L per person per day; overhead tank to the west or south-west, where a water load belongs'),
+      bi('బోర్‌వెల్ రీచార్జ్: 100 mm బోరింగ్ → ఫిల్టర్ → డిశ్చార్జ్ పైపు', 'Borewell recharge: 100 mm bore, filter media, discharge pipe'),
+      bi('ట్యాంక్ లైనింగ్: 20 mm సిమెంట్ ప్లాస్టర్ + వాటర్‌ప్రూఫింగ్; 20 L/మీ² పరీక్ష', 'Tank lining: 20 mm cement plaster plus waterproofing; test at 20 L/m²'),
+    ],
+    risks: [
+      bi('సంప్/సెప్టిక్ ఈశాన్యంలో → ఆర్థిక, ఆరోగ్య దోషం (అత్యంత వర్జనీయం)', 'A sump or septic tank in the north-east is the gravest Vastu and health defect'),
+      bi('రీచార్జ్ లేకపోతే భూగర్భ జల మట్టం పడిపోతుంది; పునాది దగ్గర ఊట', 'No recharge lowers the water table and can waterlog the foundation'),
+    ],
+  },
+  {
+    key: 'sewage',
+    title: bi('మురుగు, చెత్త & సెప్టిక్', 'Sewage, waste and septic'),
+    primaryDik: 'NW',
+    spec: [
+      bi('సెప్టిక్ ట్యాంక్ / STP పశ్చిమ-వాయవ్యం; అంచు నుంచి 1 మీ లోపల ఉండకూడదు', 'Septic tank or STP to the west or north-west, never within 1 m of the boundary'),
+      bi('మురుగు వాలు 1:60 నుంచి 1:100; ఇన్‌స్పెక్షన్ చాంబర్ ప్రతి 6 మీ', 'Drainage gradient 1:60 to 1:100 with an inspection chamber every 6 m'),
+      bi('వంటగది గ్రీజ్ ట్రాప్; తడి చెత్త → కంపోస్ట్ పిట్ (దక్షిణం/పశ్చిమం)', 'A grease trap for the kitchen; wet waste to a compost pit in the south or west'),
+      bi('STP శుద్ధి నీరు తోటకు — 5-రోజుల BOD < 10 mg/L', 'Treated STP water goes to the garden with BOD under 10 mg/L over five days'),
+      bi('చెత్త విభజన: ఆకుపచ్చ/నీలం/ఎరుపు; నైరుతిలో చెత్త గది కాదు', 'Segregate waste into green, blue and red; never a garbage room in the south-west'),
+    ],
+    risks: [
+      bi('ఈశాన్యంలో సెప్టిక్ → దోషం; నైరుతిలో చెత్త → ధన నష్టం', 'A septic tank in the north-east or garbage in the south-west both drain prosperity'),
+      bi('వాలు తప్పితే బ్యాక్‌ఫ్లో → నీరు నిలిచి తేమ, అచ్చు', 'A wrong gradient causes backflow, standing water and mould'),
+    ],
+  },
+  {
+    key: 'structure',
+    title: bi('నిర్మాణం, పునాది & భూమి', 'Structure, foundation and soil'),
+    primaryDik: 'SW',
+    spec: [
+      bi('SBC పరీక్ష (IS 1888); ≥ 150 kN/m² ఉంటే isolated footing, తక్కువైతే raft', 'Test the safe bearing capacity to IS 1888: isolated footings above 150 kN/m², a raft below that'),
+      bi('M25 కాంక్రీట్, Fe 500D స్టీల్; కవర్: పునాది 50 mm, స్లాబ్ 20 mm', 'M25 concrete with Fe 500D steel; 50 mm cover at footings, 20 mm in slabs'),
+      bi('సీస్మిక్ జోన్ III (హైదరాబాద్) — IS 13920 డక్టైల్ వివరాలు', 'Seismic Zone III at Hyderabad — IS 13920 ductile detailing'),
+      bi('ప్లింత్ కనీసం 450 mm; DPC + ఆంటీ-టెర్మైట్ చికిత్స', 'Plinth at least 450 mm high, with a DPC and anti-termite treatment'),
+      bi('నైరుతి భాగం 25–50 mm ఎత్తు — శాస్త్రీయ వాలు, వర్షపు నీరు ఈశాన్యానికి', 'Keep the south-west 25–50 mm higher — the classical slope, with runoff to the north-east'),
+    ],
+    risks: [
+      bi('నైరుతి కట్టడం తక్కువ ఎత్తులో → వాస్తు దోషం + నీరు నిలవడం', 'A lower south-west mass is both a Vastu defect and a water trap'),
+      bi('SBC పరీక్ష లేకుండా నిర్మాణం → అసమ డిఫరెన్షియల్ సెటిల్‌మెంట్, పగుళ్లు', 'Building without an SBC test risks differential settlement and cracks'),
+    ],
+  },
 ];
 
 /* ------------------------------------------------------------------ */

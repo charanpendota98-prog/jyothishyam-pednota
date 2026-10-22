@@ -866,10 +866,10 @@ check(
   'తెలుగు నివేదిక తెలుగులోనే ఉంది'
 );
 check(
-  'వాస్తు ప్లాన్: 16 గదులు × పరిహారాలు + 6 సేవలు',
+  'వాస్తు ప్లాన్: 16 గదులు × పరిహారాలు + 9 సేవలు (విద్యుత్…నిర్మాణం)',
   (() => {
     const plan = buildVastuProjectPlan({ rooms: {}, lengthFt: 40, widthFt: 30 });
-    return plan.rooms.length === 16 && plan.services.length >= 6 && plan.rooms.every((r) => r.remedies.length >= 1);
+    return plan.rooms.length === 16 && plan.services.length >= 9 && plan.rooms.every((r) => r.remedies.length >= 1);
   })(),
   'గది వారీ + సేవా వారీ ప్లాన్ సిద్ధం'
 );
