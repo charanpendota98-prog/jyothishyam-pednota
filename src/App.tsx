@@ -1595,9 +1595,12 @@ export default function App() {
       <footer className="border-t border-white/8 py-7 px-4 sm:px-5 lg:px-7 text-xs text-[#EDE8E0]/45 no-print">
         <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4">
           <span className="flex items-center gap-2">
-            <span className="brand-sigil !w-6 !h-6 !rounded-lg">
+            <span
+              className="grid place-items-center rounded-lg border border-[#C9A96E]/40 text-[#E4C68C]"
+              style={{ width: 22, height: 22 }}
+            >
               <svg viewBox="0 0 40 40" className="w-3 h-3" aria-hidden="true">
-                <circle cx="20" cy="20" r="13" stroke="currentColor" strokeWidth="1.6" fill="none" />
+                <circle cx="20" cy="20" r="13" stroke="currentColor" strokeWidth="1.8" fill="none" />
                 <circle cx="20" cy="20" r="4" fill="currentColor" />
               </svg>
             </span>
