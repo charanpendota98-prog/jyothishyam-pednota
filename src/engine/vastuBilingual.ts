@@ -595,7 +595,7 @@ export function localizeVastuReport(
     const matched = report.audit.rooms.find((r) => d.nameTe.startsWith(r.labelTe));
     const en = matched ? ROOM_EN[matched.key] : undefined;
     const nameEn = matched ? `${en?.label ?? matched.labelTe} — ${DIK_BY_ID[matched.dik].nameEn}` : d.nameTe;
-    const severeKeys: RoomKey[] = ['toilet', 'entrance', 'pooja'];
+    const severeKeys: RoomKey[] = ['entrance', 'kitchen', 'pooja', 'toilet', 'waterTank', 'septic', 'borewell'];
     return {
       nameTe: nameEn,
       severityTe: matched && severeKeys.includes(matched.key) ? SEVERITY_EN.severe : SEVERITY_EN.medium,

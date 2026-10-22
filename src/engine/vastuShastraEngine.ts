@@ -1016,7 +1016,11 @@ export function auditHouse(rooms: RoomMap): VastuAuditResult {
 
   const doshas = bad.map((b) => ({
     nameTe: `${b.labelTe} — ${b.dikNameTe}`,
-    severityTe: b.key === 'toilet' || b.key === 'entrance' || b.key === 'pooja' ? 'తీవ్రం' : 'మధ్యమం',
+    // నిర్మాణాత్మక/ఆరోగ్య సంబంధ గదులు తప్పు దిక్కులో ఉంటే తీవ్ర దోషం;
+    // తరలించదగిన (furniture-level) గదులు మధ్యమం.
+    severityTe: ['entrance', 'kitchen', 'pooja', 'toilet', 'waterTank', 'septic', 'borewell'].includes(b.key)
+      ? 'తీవ్రం'
+      : 'మధ్యమం',
     effectTe: b.adviceTe,
     remedyTe: b.remedyTe,
   }));
@@ -1270,7 +1274,7 @@ export function generateVastuReport(params: {
     },
   ];
 
-  const summaryTe = `శ్రీ ${params.name} గారి పేరు మొదటి అక్షరం "${nama.matchedSyllable}" → ${nama.nakshatraTe} నక్షత్రం ${nama.pada}వ పాదం → ${nama.rasiTe} రాశి (నామ అంకం ${nama.nameNumber}). ${params.placeName} వాస్తు ప్రకారం నిజ ఉత్తరాన్ని సూర్య-నీడ పద్ధతిలో నిర్ణయించాలి (అయస్కాంత దిక్పాతం అంచనా ${place.magneticDeclinationDeg}°). ప్రస్తుత గృహ వాస్తు స్కోరు ${audit.totalScore}/100 — ${audit.gradeTe}. బలమైన భాగం: ${audit.strongestRoomTe}. సరిదిద్దవలసిన భాగం: ${audit.weakestRoomTe}. స్థల పరిశీలన స్కోరు ${plot.score}/100.`;
+  const summaryTe = `శ్రీ ${params.name} గారి పేరు మొదటి అక్షరం "${nama.matchedSyllable}" → ${nama.nakshatraTe} నక్షత్రం ${nama.pada}వ పాదం → ${nama.rasiTe} (నామ అంకం ${nama.nameNumber}). ${params.placeName} వాస్తు ప్రకారం నిజ ఉత్తరాన్ని సూర్య-నీడ పద్ధతిలో నిర్ణయించాలి (అయస్కాంత దిక్పాతం అంచనా ${place.magneticDeclinationDeg}°). ప్రస్తుత గృహ వాస్తు స్కోరు ${audit.totalScore}/100 — ${audit.gradeTe}. బలమైన భాగం: ${audit.strongestRoomTe}. సరిదిద్దవలసిన భాగం: ${audit.weakestRoomTe}. స్థల పరిశీలన స్కోరు ${plot.score}/100.`;
 
   return {
     nama,
