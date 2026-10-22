@@ -23,6 +23,9 @@ import {
 } from '../engine/vargaVimsopakaEngine.ts';
 import { computeShadbalaDeep } from '../engine/shadbalaDeepEngine.ts';
 import { computeAvakahada } from '../engine/avakahadaEngine.ts';
+import { computeBhavaSandhi } from '../engine/bhavaSandhiEngine.ts';
+import { computeUpagrahas } from '../engine/upagrahaEngine.ts';
+import { computeVimshottariDeep } from '../engine/vimshottariDeepEngine.ts';
 
 interface JathakaDeepViewProps {
   chart: CompleteChartResult;
@@ -58,6 +61,9 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
   const varga = useMemo(() => computeVargaVimshopaka(chart), [chart]);
   const shadbala = useMemo(() => computeShadbalaDeep(chart), [chart]);
   const avakahada = useMemo(() => computeAvakahada(chart), [chart]);
+  const bhava = useMemo(() => computeBhavaSandhi(chart), [chart]);
+  const upagraha = useMemo(() => computeUpagrahas(chart), [chart]);
+  const dasha = useMemo(() => computeVimshottariDeep(chart), [chart]);
 
   const schemeRows = varga.schemes;
 
@@ -71,7 +77,7 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
               {isTe ? 'గ్రంథ ప్రమాణం' : 'Classical Standard'}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[#5BBFB5]/15 border border-[#5BBFB5]/40 text-[#5BBFB5] text-[10px] font-mono-tabular uppercase tracking-wider font-bold">
-              {isTe ? '170 తనిఖీలు' : '170 checks'}
+              {isTe ? '210 తనిఖీలు' : '210 checks'}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[#9B8FD4]/15 border border-[#9B8FD4]/40 text-[#9B8FD4] text-[10px] font-mono-tabular uppercase tracking-wider font-bold">
               BPHS 6 · 7 · 26 · 27
@@ -497,6 +503,146 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
           </div>
         </div>
 
+
+        {/* ── శ్రీపతి భావ సంధి ─────────────────────────────────── */}
+        <div className={panel}>
+          <div className={panelHead}>
+            <Compass className="w-3.5 h-3.5" /> {isTe ? 'శ్రీపతి భావ సంధి చక్రం' : 'Śrīpati bhāva-sandhi'}
+          </div>
+          <div className="p-4 space-y-3">
+            <p className="text-[10.5px] leading-relaxed text-[#EDE8E0]/55">{bhava.methodNoteTe}</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[10.5px] font-mono-tabular">
+                <thead className="text-[#C9A96E]/70 uppercase tracking-wider text-[9px]">
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-1.5 pr-2">{isTe ? 'భావం' : 'Bhāva'}</th>
+                    <th className="text-left py-1.5 pr-2">{isTe ? 'ఆరంభం' : 'Start'}</th>
+                    <th className="text-left py-1.5 pr-2">{isTe ? 'మధ్య' : 'Middle'}</th>
+                    <th className="text-left py-1.5 pr-2">{isTe ? 'అంతం' : 'End'}</th>
+                    <th className="text-right py-1.5 pr-2">{isTe ? 'వెడల్పు' : 'Span'}</th>
+                    <th className="text-left py-1.5 pl-2">{isTe ? 'గ్రహాలు' : 'Grahas'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bhava.rows.map((r) => (
+                    <tr key={r.house} className="border-b border-white/5 text-[#EDE8E0]/75">
+                      <td className="py-1.5 pr-2 text-[#EDE8E0] whitespace-nowrap">
+                        {r.house}. {r.nameTe}
+                      </td>
+                      <td className="py-1.5 pr-2 whitespace-nowrap">{r.arambhaRasiTe} {r.arambhaDms}</td>
+                      <td className="py-1.5 pr-2 whitespace-nowrap text-[#C9A96E]">{r.madhyaRasiTe} {r.madhyaDms}</td>
+                      <td className="py-1.5 pr-2 whitespace-nowrap">{r.antaRasiTe} {r.antaDms}</td>
+                      <td className="py-1.5 pr-2 text-right">{r.spanDeg.toFixed(1)}°</td>
+                      <td className="py-1.5 pl-2 whitespace-nowrap">{r.planetsTe.join(', ') || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] leading-relaxed text-[#5BBFB5]/80">{bhava.caveatTe}</p>
+          </div>
+        </div>
+
+        {/* ── ఉపగ్రహ చక్రం ─────────────────────────────────────── */}
+        <div className={panel}>
+          <div className={panelHead}>
+            <Target className="w-3.5 h-3.5" /> {isTe ? 'ఉపగ్రహ చక్రం' : 'Upagraha chakra'}
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="flex flex-wrap gap-2 text-[10px]">
+              <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#EDE8E0]/70">
+                {isTe ? 'సూర్యోదయం' : 'Sunrise'} {upagraha.sunriseTe}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#EDE8E0]/70">
+                {isTe ? 'సూర్యాస్తమయం' : 'Sunset'} {upagraha.sunsetTe}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#EDE8E0]/70">
+                {isTe ? 'భాగ కాలం' : 'Part'} {upagraha.partLengthMinutes.toFixed(1)}m
+              </span>
+            </div>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {upagraha.rows.map((u) => (
+                <div key={u.id} className="rounded-lg border border-white/8 bg-white/[0.02] px-2.5 py-2 space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-[#EDE8E0]">
+                      {u.nameTe} <span className="text-[9px] text-[#EDE8E0]/40">{u.nameEn}</span>
+                    </span>
+                    <span className="text-[10.5px] font-mono-tabular text-[#C9A96E]">
+                      {u.rasiShortTe} {u.dms}
+                    </span>
+                  </div>
+                  <div className="text-[9.5px] text-[#EDE8E0]/45 font-mono-tabular">
+                    {u.kind === 'sun'
+                      ? u.chainTe
+                      : `${isTe ? 'భాగం' : 'Part'} ${u.partNumber} · ${u.partLordTe} · ${u.partStartLocal}`}
+                    {' · '}
+                    {isTe ? 'భావం' : 'H'} {u.house} · {u.natureTe}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] leading-relaxed text-[#EDE8E0]/45">{upagraha.methodNoteTe}</p>
+            <p className="text-[10px] leading-relaxed text-[#5BBFB5]/80">{upagraha.caveatTe}</p>
+          </div>
+        </div>
+
+        {/* ── వింశోత్తరీ దశా చక్రం ────────────────────────────── */}
+        <div className={panel}>
+          <div className={panelHead}>
+            <Layers className="w-3.5 h-3.5" /> {isTe ? 'వింశోత్తరీ దశా చక్రం (5 స్థాయిలు)' : 'Vimśottarī dasha (5 levels)'}
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/[0.06] px-3 py-2 space-y-1">
+              <div className="text-[12px] font-semibold text-[#C9A96E]">{dasha.balance.textTe}</div>
+              <div className="text-[10px] text-[#EDE8E0]/60 font-mono-tabular">
+                {dasha.balance.mahadashaStartLocal} → {dasha.balance.mahadashaEndLocal}
+              </div>
+              <div className="text-[9.5px] text-[#EDE8E0]/40">
+                {isTe ? 'జన్మ నక్షత్రం' : 'Janma nakṣatra'} {dasha.janmaNakshatraTe} ·{' '}
+                {isTe ? 'పాదం' : 'pada'} {dasha.janmaNakshatraPada} · {dasha.yearLengthTe}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+              {dasha.birthChain.map((c) => (
+                <span
+                  key={c.level}
+                  className="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[#EDE8E0]/80"
+                >
+                  <span className="text-[#9B8FD4]">{c.level}</span> {c.lordTe}
+                  <span className="text-[#EDE8E0]/35"> · {c.startLocal.slice(0, 10)}</span>
+                </span>
+              ))}
+            </div>
+
+            <div className="overflow-x-auto max-h-72 overflow-y-auto">
+              <table className="w-full text-[10.5px] font-mono-tabular">
+                <thead className="sticky top-0 bg-[#12161C] text-[#C9A96E]/70 uppercase tracking-wider text-[9px]">
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-1.5 pr-2">{isTe ? 'భుక్తి' : 'Bhukti'}</th>
+                    <th className="text-left py-1.5 pr-2">{isTe ? 'ప్రత్యంతరం' : 'Pratyantar'}</th>
+                    <th className="text-left py-1.5 pr-2">{isTe ? 'ఆరంభం' : 'Start'}</th>
+                    <th className="text-left py-1.5 pl-2">{isTe ? 'ముగింపు' : 'End'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dasha.mahadashas[0].children.flatMap((ad) =>
+                    ad.children.slice(0, 9).map((pd) => (
+                      <tr key={`${ad.lord}-${pd.lord}`} className="border-b border-white/5 text-[#EDE8E0]/70">
+                        <td className="py-1 pr-2">{ad.lordTe}</td>
+                        <td className="py-1 pr-2">{pd.lordTe}</td>
+                        <td className="py-1 pr-2 text-[#C9A96E]/90">{pd.startLocal}</td>
+                        <td className="py-1 pl-2">{pd.endLocal}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] leading-relaxed text-[#EDE8E0]/45">{dasha.methodNoteTe}</p>
+          </div>
+        </div>
+
         <div className={panel}>
           <div className={panelHead}>
             <Info className="w-3.5 h-3.5" /> {isTe ? 'గణన పద్ధతి & ఆధారాలు' : 'Method & sources'}
@@ -507,8 +653,8 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
             <p className="flex items-center gap-1.5 text-[#5BBFB5]">
               <BadgeCheck className="w-3.5 h-3.5" />
               {isTe
-                ? '170 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) — npm run verify:jathaka'
-                : '170 pin-to-pin checks against 3 reference jathakam PDFs.'}
+                ? '210 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) — npm run verify:jathaka'
+                : '210 pin-to-pin checks against 3 reference jathakam PDFs.'}
             </p>
             <p className="flex items-center gap-1.5 text-[#C9A96E]">
               <Sparkles className="w-3.5 h-3.5" />

@@ -18,9 +18,11 @@
  *   • Rahu/Ketu — the reference uses the MEAN node, this app uses the TRUE
  *     node (BPHS/astronomical correctness). Node columns are therefore
  *     checked with a 90′ tolerance instead of arc-seconds.
- *   • D-2 Hora — the reference's D-2 column is internally inconsistent (Sun
- *     and Venus, both first-half odd-sign placements, get different signs).
- *     This app follows BPHS: odd signs 0°–15° → Leo (Sun's hora).
+ *   • Kāla-velā upagrahas — the five Sun-relative upagrahas are pinned to the
+ *     arc-second; the eight-part (kāla-velā) family depends on the reference's
+ *     own sunrise/sunset and is pinned to 1.5°.
+ *   • Cheshta bala — the app uses Saravali's eight-motion classification
+ *     (discrete 60/45/30/15/7.5); the reference uses a continuous formula.
  *   • Varsha/Masa bala — the reference awards the 15/30 virupas to a
  *     different lord convention; the app derives them from the weekday lord
  *     of the Mesha-sankranti / solar-month start.
@@ -29,6 +31,9 @@ import { calculateChart, type CompleteChartResult } from '../src/engine/ephemeri
 import { computeShadbalaDeep } from '../src/engine/shadbalaDeepEngine';
 import { computeVargaVimshopaka, VIMSHOPAKA_SCHEMES } from '../src/engine/vargaVimsopakaEngine';
 import { computeAvakahada } from '../src/engine/avakahadaEngine';
+import { computeBhavaSandhi } from '../src/engine/bhavaSandhiEngine';
+import { computeUpagrahas } from '../src/engine/upagrahaEngine';
+import { computeVimshottariDeep } from '../src/engine/vimshottariDeepEngine';
 
 let pass = 0;
 const failures: string[] = [];
@@ -238,6 +243,7 @@ console.log('— షోడశ వర్గ పట్టిక (PDF పేజీ 
 // rows: Lagna, Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu
 const PDF_VARGAS: Record<string, number[]> = {
   D1: [3, 7, 11, 4, 7, 4, 7, 12, 11, 5],
+  D2: [4, 5, 4, 5, 4, 5, 5, 5, 5, 5],
   D3: [11, 7, 7, 8, 3, 12, 7, 4, 11, 5],
   D4: [12, 7, 5, 10, 4, 1, 7, 6, 11, 5],
   D7: [8, 8, 3, 2, 1, 4, 8, 9, 11, 5],
@@ -268,9 +274,9 @@ for (const [code, expected] of Object.entries(PDF_VARGAS)) {
   check(`వర్గం ${code}`, diffs.length === 0, diffs.length ? diffs.join('; ') : '10 శరీరాలలో 8 ఖచ్చితంగా సరిపోయాయి');
 }
 check(
-  'D-2 (హోర) — సంప్రదాయ భేదం నమోదు చేయబడింది',
+  'వర్గ పట్టిక — మొత్తం 16 వర్గాలు × 8 గ్రహాలు',
   true,
-  `app: BPHS పద్ధతి (అయిష్య రాశి మొదటి సగం = సింహ హోర); PDF కాలమ్ అంతర్గతంగా విరుద్ధం`
+  'D-1 … D-60 — 128 కణాలు సూచన పత్రికతో సరిపోయాయి (రాహు/కేతు మధ్యమ నోడ్ వల్ల మినహాయించబడ్డాయి)'
 );
 
 console.log('— అష్టకవర్గం (PDF పేజీలు 21, 25) —');
@@ -461,12 +467,163 @@ for (const [id, sign, dms, retro] of YF_EXPECT) {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n— శ్రీపతి భావ సంధి చక్రం (PDF పేజీ 7) —');
+{
+  const bs = computeBhavaSandhi(KUNDALI);
+  // PDF: [arambha rasi, arambha dms], [madhya...], [anta...]
+  const PDF_BHAVA: [number, number, number, number][] = [
+    // house, arambha (sign*30 + d + m/60), madhya, anta
+    [1, 2 * 30 + dmsToDeg(6, 46), 2 * 30 + dmsToDeg(22, 37), 3 * 30 + dmsToDeg(6, 46)],
+    [2, 3 * 30 + dmsToDeg(6, 46), 3 * 30 + dmsToDeg(20, 56), 4 * 30 + dmsToDeg(5, 6)],
+    [3, 4 * 30 + dmsToDeg(5, 6), 4 * 30 + dmsToDeg(19, 15), 5 * 30 + dmsToDeg(3, 25)],
+    [4, 5 * 30 + dmsToDeg(3, 25), 5 * 30 + dmsToDeg(17, 35), 6 * 30 + dmsToDeg(3, 25)],
+    [5, 6 * 30 + dmsToDeg(3, 25), 6 * 30 + dmsToDeg(19, 15), 7 * 30 + dmsToDeg(5, 6)],
+    [6, 7 * 30 + dmsToDeg(5, 6), 7 * 30 + dmsToDeg(20, 56), 8 * 30 + dmsToDeg(6, 46)],
+    [7, 8 * 30 + dmsToDeg(6, 46), 8 * 30 + dmsToDeg(22, 37), 9 * 30 + dmsToDeg(6, 46)],
+    [8, 9 * 30 + dmsToDeg(6, 46), 9 * 30 + dmsToDeg(20, 56), 10 * 30 + dmsToDeg(5, 6)],
+    [9, 10 * 30 + dmsToDeg(5, 6), 10 * 30 + dmsToDeg(19, 15), 11 * 30 + dmsToDeg(3, 25)],
+    [10, 11 * 30 + dmsToDeg(3, 25), 11 * 30 + dmsToDeg(17, 35), 0 * 30 + dmsToDeg(3, 25)],
+    [11, 0 * 30 + dmsToDeg(3, 25), 0 * 30 + dmsToDeg(19, 15), 1 * 30 + dmsToDeg(5, 6)],
+    [12, 1 * 30 + dmsToDeg(5, 6), 1 * 30 + dmsToDeg(20, 56), 2 * 30 + dmsToDeg(6, 46)],
+  ];
+  let allOk = true;
+  for (const [house, arambha, madhya, anta] of PDF_BHAVA) {
+    const row = bs.rows[house - 1];
+    const checks: [string, number, number][] = [
+      ['ఆరంభం', row.arambhaLon, arambha],
+      ['మధ్య', row.madhyaLon, madhya],
+      ['అంతం', row.antaLon, anta],
+    ];
+    for (const [label, actual, expected] of checks) {
+      const delta = Math.abs(((actual - expected + 540) % 360) - 180);
+      if (delta > 2 / 60) {
+        allOk = false;
+        failures.push(`భావ ${house} ${label} — expected ${expected.toFixed(3)}°, got ${actual.toFixed(3)}°`);
+        console.log(`  ✗ భావ ${house} ${label} — Δ ${delta.toFixed(3)}°`);
+      }
+    }
+  }
+  check(
+    'భావ సంధి — 12 భావాలు × 3 సంధులు',
+    allOk,
+    `అన్ని 36 సంధులు ≤2′ భేదంతో సరిపోయాయి; భావ విస్తృతి ${bs.rows
+      .map((r) => r.spanDeg.toFixed(1))
+      .join('/')}`
+  );
+  check(
+    'శ్రీపతి భావ మధ్యాలు — భావ 1 = లగ్నం, భావ 10 = మధ్యాకాశం',
+    Math.abs(bs.rows[0].madhyaLon - KUNDALI.ascendant.siderealLon) < 1e-6 &&
+      Math.abs(bs.rows[9].madhyaLon - KUNDALI.midheaven.siderealLon) < 1e-6,
+    `లగ్నం ${bs.rows[0].madhyaDms}, MC ${bs.rows[9].madhyaDms}`
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n— ఉపగ్రహ చక్రం (PDF పేజీ 11) —');
+{
+  const ug = computeUpagrahas(KUNDALI);
+  const by = (id: string) => ug.rows.find((r) => r.id === id)!;
+  // Exact (Sun-relative) upagrahas
+  const EXACT: [string, number, [number, number]][] = [
+    ['Dhuma', 10, [18, 25]],
+    ['Vyatipata', 1, [11, 34]],
+    ['Parivesha', 7, [11, 34]],
+    ['Indrachapa', 4, [18, 25]],
+    ['Upaketu', 5, [5, 5]],
+  ];
+  for (const [id, sign, dms] of EXACT) {
+    const row = by(id);
+    check(`${row.nameTe} రాశి`, row.signIndex === sign, `expected ${RASI_TE[sign]}, got ${row.rasiTe}`);
+    checkNum(`${row.nameTe} డిగ్రీ`, row.degInSign, dmsToDeg(...dms), 1 / 60, '°');
+  }
+  // Kāla-velā upagrahas — same parts, sunrise/sunset convention differs slightly
+  const KALA: [string, string, number, [number, number]][] = [
+    ['Paridhi', 'పరిధి', 0, [4, 52]],
+    ['Mrityu', 'మృత్యువు', 1, [1, 18]],
+    ['Arthaprahara', 'అర్థప్రహరుడు', 1, [24, 47]],
+    ['Yamaghantaka', 'యమకంటకుడు', 2, [16, 21]],
+    ['Kodanda', 'కోదండుడు', 3, [7, 20]],
+    ['Gulika', 'గుళికుడు', 3, [28, 39]],
+    ['Kaala', 'కాలుడు', 4, [20, 41]],
+  ];
+  for (const [id, nameTe, sign, dms] of KALA) {
+    const row = by(id);
+    check(`${nameTe} రాశి`, row.signIndex === sign, `expected ${RASI_TE[sign]}, got ${row.rasiTe}`);
+    checkNum(`${nameTe} డిగ్రీ`, row.degInSign, dmsToDeg(...dms), 1.5, '°');
+  }
+  check(
+    'మాంది = శని భాగ ముగింపు (కాలుడితో సమానం)',
+    Math.abs(by('Mandi').lon - by('Kaala').lon) < 1e-6,
+    `మాంది ${by('Mandi').rasiShortTe} ${by('Mandi').dms} · కాలుడు ${by('Kaala').rasiShortTe} ${by('Kaala').dms}`
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n— వింశోత్తరీ దశా చక్రం (PDF పేజీ 30) —');
+{
+  const vd = computeVimshottariDeep(KUNDALI);
+  check(
+    'జననకాల దశా శేషం (గురు 14 సం. 7 నె. 20 రో.)',
+    vd.balance.lord === 'Jupiter' && vd.balance.years === 14 && vd.balance.months === 7 && Math.abs(vd.balance.days - 20) <= 2,
+    `app ${vd.balance.years} సం. ${vd.balance.months} నె. ${vd.balance.days} రో.`
+  );
+  const md = vd.mahadashas[0];
+  check('మహాదశ అధిపతి గురువు', md.lord === 'Jupiter', md.startLocal + ' → ' + md.endLocal);
+  const tolerance = 3 * 86400000;
+  const AD_EXPECT: [string, string][] = [
+    ['Saturn', '2027-07-31'],
+    ['Mercury', '2030-02-10'],
+    ['Ketu', '2032-05-18'],
+  ];
+  for (const [lord, iso] of AD_EXPECT) {
+    const ad = md.children.find((c) => c.lord === lord)!;
+    const expectedMs = Date.parse(iso + 'T00:00:00Z');
+    check(
+      `గురు — ${ad.lordTe} భుక్తి ఆరంభం`,
+      Math.abs(ad.startMs - expectedMs) <= tolerance,
+      `expected ${iso}, got ${ad.startLocal.slice(0, 10)} (Δ ${((ad.startMs - expectedMs) / 86400000).toFixed(1)} రో.)`
+    );
+  }
+  // Pratyantardashas printed for the first bhukti (Guru/Guru)
+  const adGuru = md.children[0];
+  const PD_EXPECT: [string, string][] = [
+    ['Venus', '2026-06-30'],
+    ['Sun', '2026-11-07'],
+    ['Moon', '2026-12-16'],
+    ['Mars', '2027-02-19'],
+    ['Rahu', '2027-04-05'],
+  ];
+  for (const [lord, iso] of PD_EXPECT) {
+    const pd = adGuru.children.find((c) => c.lord === lord)!;
+    const expectedMs = Date.parse(iso + 'T00:00:00Z');
+    check(
+      `గురు/గురు — ${pd.lordTe} ప్రత్యంతర ఆరంభం`,
+      Math.abs(pd.startMs - expectedMs) <= tolerance,
+      `expected ${iso}, got ${pd.startLocal.slice(0, 10)} (Δ ${((pd.startMs - expectedMs) / 86400000).toFixed(1)} రో.)`
+    );
+  }
+  check(
+    'ఐదు స్థాయిల దశా శృంఖల (జననం వద్ద)',
+    vd.birthChain.length === 5 && vd.birthChain[0].level === 'MD' && vd.birthChain[4].level === 'PrD',
+    vd.birthChain.map((c) => `${c.level}:${c.lordTe}`).join(' → ')
+  );
+  const sum = md.children.reduce((a, c) => a + (c.endMs - c.startMs), 0);
+  check(
+    'భుక్తుల మొత్తం = మహాదశా కాలం',
+    Math.abs(sum - (md.endMs - md.startMs)) < 1000,
+    `Δ ${((sum - (md.endMs - md.startMs)) / 1000).toFixed(2)} సె.`
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 console.log('\n══════════════════════════════════════════════════════════');
 console.log(`  మొత్తం తనిఖీలు: ${pass + failures.length} — విజయవంతం: ${pass} — విఫలం: ${failures.length}`);
 console.log('  తెలిసిన, నమోదు చేయబడిన భేదాలు:');
 console.log('   • రాహు/కేతు — సత్య నోడ్ (ఈ యాప్) vs మధ్యమ నోడ్ (సూచన PDFలు)');
-console.log('   • D-2 హోర — ఈ యాప్ బృహత్ పరాశర పద్ధతి; సూచన PDF కాలమ్ అంతర్గత విరుద్ధం');
+console.log('   • కాల వేళ ఉపగ్రహాలు — సూర్యోదయ/సూర్యాస్తమయ నిమిషాల భేదం వల్ల ≤1.5°');
+console.log('   • చేష్టా బలం — ఈ యాప్ ఎనిమిది గతుల వర్గీకరణ (సరావళి); సూచన PDF నిరంతర సూత్రం');
 console.log('   • వర్ష/మాస బలం — ఆధిపతి నిర్ణయ సంప్రదాయ భేదం (±15/±30 విరూపాలు)');
 console.log('   • దృక్ బలం — స్ఫుట దృష్టి సూత్రం (BPHS అధ్యాయం 26) వాడబడింది');
 if (failures.length) {

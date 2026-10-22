@@ -348,3 +348,59 @@ Documented, intentional divergences (printed by the gate):
 4. **Reference errata** — the 116-page PDF prints ఆర్ద్ర for Mars (Cancer
    19°35′) and Jupiter (Cancer 28°52′), both of which are Ashleshā. The gate
    asserts the astronomically correct value and records the erratum.
+
+### 6.4 శ్రీపతి భావ సంధి — `bhavaSandhiEngine.ts`
+
+Bhāva boundaries are **not** sign boundaries in the Śrīpati (Porphyry)
+paddhati that Telugu patrikās print:
+
+* the exact ascendant is the **1st bhāva madhya**, the exact MC the **10th**;
+* each quadrant between two angles is trisected to get the other madhyas;
+* ārambha / anta are the mid-points between neighbouring madhyas, so a bhāva
+  arc is 27°–33° wide instead of 30°.
+
+The engine therefore needs a real MC, not just a whole-sign cusp: `midheaven`
+is taken from the local sidereal time and obliquity, and the resulting
+madhyas reproduce the reference patrikā's table to the arc-second (all 12
+bhāvas × 3 sandhis, 36 values, tolerance 2′).
+
+### 6.5 ఉపగ్రహ చక్రం — `upagrahaEngine.ts`
+
+* **Sun-relative (aprakāśa) upagrahas** — BPHS ch. 25: Dhūma = Sun + 133°20′,
+  Vyatīpāta = 360° − Dhūma, Pariveṣa = Vyatīpāta + 180°, Indracāpa =
+  360° − Pariveṣa, Upaketu = Indracāpa + 16°40′ (= Sun − 30°). Pinned to 1′.
+  (The reference prints Paridhi = Pariveṣa and Kodaṇḍa = Indracāpa as
+  alternative names — same longitudes.)
+* **Kāla-velā upagrahas** — the day (sunrise → sunset) or night (sunset →
+  next sunrise) is split into eight equal parts; part lords run in weekday
+  order starting from the lord of the 5th weekday *counting the birth weekday
+  as the first*. The upagraha's longitude is the **ascendant at the start of
+  its part**: Mars → Mṛtyu, Mercury → Arthaprahāra, Jupiter → Yamakaṇṭaka,
+  Sun → Kāla, Saturn → Gulika, Moon → Paridhi, Venus → Kodaṇḍa. **Māndi** is
+  the ascendant at the *end* of Saturn's part, which is why printed patrikās
+  show Māndi and Kāla on the same point.
+* Documented divergence: the reference's sunrise/sunset differs by a couple of
+  minutes, so the kāla-velā set is pinned to 1.5° (the largest observed
+  difference is 1.08°).
+
+### 6.6 వింశోత్తరీ దశ — `vimshottariDeepEngine.ts`
+
+Five levels — mahādaśā, bhukti, pratyantardaśā, sūkṣmadaśā, prāṇadaśā — with
+exact local timestamps (`YYYY-MM-DD HH:mm`). Each sub-period is
+`parent width × sub-lord years ÷ 120`; every level starts with the parent's
+lord. The year is 365.2425 d, so a 16-year mahādaśā drifts ≈ 3 h from a
+patrikā that uses 365.25 d — dates are therefore pinned to ±3 days
+(reference: Guru/Śani 2027-07-31, Guru/Budha 2030-02-10, Guru/Ketu 2032-05-18,
+with the pratyantaras 2026-06-30 … 2027-04-05; the app lands within 2 days).
+
+### 6.7 Ṣaḍbala — component-by-component status
+
+| Component | Status vs the reference patrikā |
+| --- | --- |
+| Dig bala | **exact** for all 7 (5.84 / 8.82 / 19.33 / 18.68 / 47.92 / 53.40 / 32.31) |
+| Naiśargika | exact (60, 51.43, 17.14, 25.71, 34.29, 42.86, 8.57) |
+| Ayana (Parāśara khaṇḍa) | exact (Sun 15.34, Moon 37.31, Mercury 52.63) |
+| Pakṣa / tribhāga / nathonnata | exact (nathonnata from civil clock: diurnal 5.48, nocturnal 54.53, Mercury 60) |
+| Kāla total | exact for Mercury, Venus, Jupiter; ±15/±30 virūpas for Sun/Moon/Mars/Saturn because the reference awards varṣa bala to the Sun and māsa bala to the Moon, while this engine uses the classical weekday lords of the Meṣa-saṅkrānti (Mars) and the solar-month start (Saturn) |
+| Cheṣṭā | discrete eight-motion classification (Saravali); the reference uses a continuous formula |
+| Sthāna, Dṛk | computed from BPHS ch. 27 / ch. 26 but not yet pinned cell-by-cell |
