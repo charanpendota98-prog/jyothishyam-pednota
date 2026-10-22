@@ -1508,7 +1508,7 @@ export default function App() {
           <div className="pt-4">
             <JathakamBookShell
               titleTe="విషయ సూచిక & పఠన సహాయం"
-              subtitleTe={`${chart.input.name || 'జాతకుడు'} · ${chart.input.date} ${chart.input.time} · ${chart.input.city} — 21 అధ్యాయాలు, 97 ఉపాంశాలు. విషయ సూచిక నుండి నేరుగా ఏ అధ్యాయానికైనా వెళ్లవచ్చు.`}
+              subtitleTe={`${chart.input.name || 'జాతకుడు'} · ${chart.input.date} ${chart.input.time} · ${chart.input.city} — సంపూర్ణ జాతక మహాగ్రంథం. విషయ సూచిక పుస్తకం లోపలి శీర్షికల నుండి ఆటోమేటిక్‌గా నిర్మించబడుతుంది; ఏ అధ్యాయానికైనా నేరుగా వెళ్లవచ్చు.`}
             >
               <SampoornaJathakamView
                 chart={chart}
