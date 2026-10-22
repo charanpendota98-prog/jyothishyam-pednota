@@ -400,18 +400,22 @@ export default function App() {
         </a>
 
         {/* Zone 2: Desktop 5 concise single-line text navigation links */}
-        <nav className="hidden lg:flex items-center gap-6 overflow-x-auto text-sm font-medium text-[#EDE8E0]/70">
+        <nav className="hidden lg:flex items-center gap-1 overflow-x-auto grantha-scroll text-[13px] font-medium text-[#EDE8E0]/70">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`py-1 border-b-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              title={lang === 'te' ? item.labelTe : item.labelEn}
+              className={`px-2.5 py-1 rounded-md border-b-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === item.id
-                  ? 'text-[#C9A96E] border-[#C9A96E] font-bold'
-                  : 'border-transparent hover:text-[#EDE8E0]'
+                  ? 'text-[#C9A96E] border-[#C9A96E] font-bold bg-[#C9A96E]/10'
+                  : 'border-transparent hover:text-[#EDE8E0] hover:bg-white/5'
               }`}
             >
-              {lang === 'te' ? item.labelTe : item.labelEn}
+              <span className="inline-flex items-center gap-1.5">
+                {item.icon}
+                {lang === 'te' ? item.shortTe : item.labelEn}
+              </span>
             </button>
           ))}
         </nav>
@@ -1555,6 +1559,18 @@ export default function App() {
             </button>
             <button onClick={() => setActiveTab('prashna')} className="hover:text-[#EDE8E0]">
               ప్రశ్న శాస్త్రం
+            </button>
+            <button onClick={() => setActiveTab('hindu_calendar')} className="hover:text-[#EDE8E0]">
+              హిందూ పంచాంగం
+            </button>
+            <button onClick={() => setActiveTab('gochara')} className="hover:text-[#EDE8E0]">
+              గోచార ఫలం
+            </button>
+            <button onClick={() => setActiveTab('vastu')} className="hover:text-[#EDE8E0]">
+              వాస్తు శాస్త్రం
+            </button>
+            <button onClick={() => setActiveTab('granthas')} className="hover:text-[#EDE8E0]">
+              గ్రంథ మండలం
             </button>
           </div>
         </div>
