@@ -566,8 +566,8 @@ Mīna 16:05–17:37), 25 Oct, 27 Oct, 3 Nov.
 | Lagna boundaries (Swiss fixture) | 1 |
 | Annual muhūrta (rules, window legality, ≥15 min, ordering) | 5 |
 
-`npm run verify:jathaka` now runs **592** gates with 0 failures; the whole
-suite stands at **8,888** mechanical checks.
+`npm run verify:jathaka` now runs **612** gates with 0 failures; the whole
+suite stands at **8,908** mechanical checks.
 
 ---
 
@@ -686,3 +686,35 @@ on the nine antardaśās of the first mahādaśā — so the 120-year Table is p
 by something other than itself.
 
 `npm run verify:jathaka` → **607 gates, 0 failures**.
+
+---
+
+## 14. Yoginī daśā — a second daśā system, checked three ways (23 Oct 2026)
+
+Telugu patrikās that carry Yoginī daśā alongside Vimśottarī now have it here.
+The whole system rests on one line:
+
+```
+yoginī index = ((nakṣatra number + 3 − 1) mod 8) + 1     (1 = Maṅgalā … 8 = Śaṅkaṭa)
+balance      = (1 − elapsed fraction of the nakṣatra) × that yoginī's years
+```
+
+Three independent checks, none of which uses the engine's own logic:
+
+1. **The classical nakṣatra groups.** Saravali's table assigns each yoginī a
+   fixed list of nakṣatras (Bhadrikā: 2, 10, 18, 26 …). The formula reproduces
+   **27/27** of them.
+2. **A hand-checkable example.** Moon in Anurādhā (17) → 17 + 3 = 20 → remainder
+   4 → **Bhrāmarī**, exactly as every published worked example states.
+3. **A Python re-derivation** (`scripts/golden/yogini-golden.json`) from Swiss
+   Moon longitude: all 8 periods agree to **0.00 days**.
+
+Reference chart: Jyeṣṭhā (18) → 21 mod 8 = 5 → **Bhadrikā at birth**, balance
+**8 months 18 days**, current period **Bhrāmarī 2026-01-31 → 2030-01-31**.
+
+Sub-periods are the classical eight equal parts, in yoginī order starting from
+the mahādaśā's own yoginī; sub-periods that ended before birth are omitted
+rather than shown as zero-length rows, and the gate enforces both the 8-part
+cover and the contiguity.
+
+`npm run verify:jathaka` → **612 gates, 0 failures** · full suite **8,908**.

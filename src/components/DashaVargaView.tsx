@@ -39,6 +39,7 @@ import { generateSiddhantaAdvancedAppendices } from '../engine/siddhantaAdvanced
 import { NorthIndianKundaliSvg, SouthIndianKundaliSvg } from './ChartsSvg.tsx';
 import { JaiminiCharaDashaVisualizer } from './JaiminiCharaDashaVisualizer.tsx';
 import DrishtiPanel from './DrishtiPanel.tsx';
+import YoginiDashaPanel from './YoginiDashaPanel.tsx';
 
 interface DashaVargaViewProps {
   chart: CompleteChartResult;
@@ -2267,6 +2268,7 @@ export const DashaVargaView: React.FC<DashaVargaViewProps> = ({
           </table>
         </div>
       </section>
+      <YoginiDashaPanel chart={chart} />
       <DrishtiPanel chart={chart} />
     </div>
   );

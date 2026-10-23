@@ -105,6 +105,11 @@ import {
 } from '../src/engine/grahaDrishtiEngine.ts';
 import { sputaDrishti } from '../src/engine/drishtiTables.ts';
 import {
+  computeYoginiDasha,
+  yoginiIndexForNakshatra,
+  YOGINIS,
+} from '../src/engine/yoginiDashaEngine.ts';
+import {
   searchYearMuhurta,
   ACTIVITY_LAGNAS,
 } from '../src/engine/annualMuhurtaEngine.ts';
@@ -2808,6 +2813,112 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
     'వింశోత్తరీ అంతర్దశ — మొదటి మహాదశలో తొమ్మిది అంతర్దశలు స్వతంత్ర గణనతో ≤ 1 రోజు',
     antarLordErr === 0 && antarWorst <= 1,
     `గరిష్ఠ భేదం ${antarWorst.toFixed(2)} రోజులు · గ్రహ తప్పులు ${antarLordErr}`
+  );
+}
+
+/* ================================================================== *
+ *  యోగినీ దశ — సారావళి నక్షత్ర సమూహాలు + స్వతంత్ర పునఃగణన
+ * ================================================================== */
+{
+  // 1) సారావళి పట్టికలోని నక్షత్ర సమూహాలతో సూత్రం సరిపోతుందా (27/27)
+  const SARAVALI: Record<string, number[]> = {
+    Mangala: [6, 14, 22],
+    Pingala: [7, 15, 23],
+    Dhanya: [8, 16, 24],
+    Bhramari: [1, 9, 17, 25],
+    Bhadrika: [2, 10, 18, 26],
+    Ulka: [3, 11, 19, 27],
+    Siddha: [4, 12, 20],
+    Shankata: [5, 13, 21],
+  };
+  let mapErr = 0;
+  for (let n = 1; n <= 27; n++) {
+    const y = YOGINIS[yoginiIndexForNakshatra(n) - 1];
+    if (!SARAVALI[y.nameEn]?.includes(n)) mapErr += 1;
+  }
+  check(
+    'యోగినీ దశ సూత్రం — (నక్షత్రం + 3) mod 8, సారావళి యోగినీ పట్టిక నక్షత్ర సమూహాలతో 27/27',
+    mapErr === 0,
+    `భేదాలు ${mapErr}/27 · ${YOGINIS.map((y) => `${y.nameEn}:${y.years}`).join(' ')}`
+  );
+
+  const r = computeYoginiDasha(CHARAN_REF, '2026-10-23');
+  const days = (a: string, b: string) =>
+    Math.abs(new Date(`${a}T00:00:00Z`).getTime() - new Date(`${b}T00:00:00Z`).getTime()) / 86400000;
+
+  // 2) వరుస క్రమం, నిరంతరత, మొదటి దశ జననం నుంచి
+  let seqErr = 0;
+  let contErr = 0;
+  for (let i = 1; i < 8; i++) {
+    const prevIdx = YOGINIS.findIndex((y) => y.nameEn === r.periods[i - 1].nameEn);
+    const curIdx = YOGINIS.findIndex((y) => y.nameEn === r.periods[i].nameEn);
+    if ((prevIdx + 1) % 8 !== curIdx) seqErr += 1;
+    if (days(r.periods[i - 1].endISO, r.periods[i].startISO) > 0.01) contErr += 1;
+  }
+  check(
+    'యోగినీ దశ — క్రమం (మంగళ→శంకట), విరామం లేకుండా కలుపు, జననం నుంచి ప్రారంభం',
+    seqErr === 0 &&
+      contErr === 0 &&
+      r.periods[0].startISO === CHARAN_REF.dashas[0].startDate &&
+      Math.abs(
+        (new Date(`${r.periods[0].endISO}T00:00:00Z`).getTime() -
+          new Date(`${r.periods[0].startISO}T00:00:00Z`).getTime()) /
+          86400000 /
+          365.25 -
+          5 * (1 - 0.85656353)
+      ) < 0.02,
+    `క్రమ తప్పులు ${seqErr} · కలుపు తప్పులు ${contErr} · జన్మ శేషం ${r.periods[0].balanceTe}`
+  );
+
+  // 3) స్వతంత్ర పైథాన్ గణనతో తేదీలు
+  {
+    const g = JSON.parse(readFileSync('scripts/golden/yogini-golden.json', 'utf8')) as {
+      nakshatraNumber: number;
+      startYogini: string;
+      periods: { yogini: string; start: string; end: string }[];
+    };
+    let mismatch = 0;
+    let worst = 0;
+    for (let i = 0; i < g.periods.length; i++) {
+      if (r.periods[i].nameEn !== g.periods[i].yogini) mismatch += 1;
+      worst = Math.max(worst, days(r.periods[i].endISO, g.periods[i].end));
+      worst = Math.max(worst, days(r.periods[i].startISO, g.periods[i].start));
+    }
+    check(
+      'యోగినీ దశ — స్వతంత్ర పైథాన్ (స్విస్ చంద్రుడు) గణనతో 8/8 దశలు ≤ 1 రోజు',
+      mismatch === 0 && worst <= 1 && r.nakshatraNumber === g.nakshatraNumber && r.startYogini.nameEn === g.startYogini,
+      `${g.startYogini} తో మొదలు · గరిష్ఠ భేదం ${worst.toFixed(2)} రోజులు · గ్రహ తప్పులు ${mismatch}`
+    );
+  }
+
+  // 4) అంతర్దశలు — ప్రతి మహాదశలో 8, నిరంతరం, ఆ యోగినీతోనే ప్రారంభం
+  {
+    let subErr = 0;
+    for (const [pi, p] of r.periods.slice(0, 8).entries()) {
+      // జనన మహాదశలో జననానికి ముందు గడిచిన అంతర్దశలు చూపబడవు (మిగిలినవి మాత్రమే)
+      if (pi === 0 ? p.subs.length < 1 || p.subs.length > 8 : p.subs.length !== 8) subErr += 1;
+      if (pi === 0 ? false : p.subs[0].nameTe !== p.nameTe) subErr += 1;
+      for (let k = 1; k < p.subs.length; k++) {
+        if (days(p.subs[k - 1].endISO, p.subs[k].startISO) > 0.01) subErr += 1;
+      }
+      if (days(p.subs[0].startISO, p.startISO) > 0.01 || days(p.subs[p.subs.length - 1].endISO, p.endISO) > 0.01) subErr += 1;
+    }
+    check(
+      'యోగినీ అంతర్దశలు — ప్రతి మహాదశలో 8, ఆ యోగినీతో ప్రారంభం, మొత్తం మహాదశకు సరిపోతుంది',
+      subErr === 0,
+      `తప్పులు ${subErr}`
+    );
+  }
+
+  // 5) ప్రస్తుత కాలం నిజంగా ఆ దశ లోపలే
+  check(
+    'యోగినీ దశ — ప్రస్తుత యోగినీ తేదీల మధ్యలో ఉంది (2026-10-23)',
+    r.currentIndex >= 0 &&
+      new Date(`${r.periods[r.currentIndex].startISO}T00:00:00Z`).getTime() <=
+        new Date('2026-10-23T00:00:00Z').getTime() &&
+      new Date('2026-10-23T00:00:00Z').getTime() <
+        new Date(`${r.periods[r.currentIndex].endISO}T00:00:00Z`).getTime(),
+    `${r.currentTe} · ${r.periods[r.currentIndex]?.startISO} → ${r.periods[r.currentIndex]?.endISO}`
   );
 }
 

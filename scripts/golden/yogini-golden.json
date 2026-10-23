@@ -1,0 +1,49 @@
+{
+ "source": "Independent Python + pyswisseph re-derivation of Yogini dasha: nak=(moon//13.3333)+1; index=((nak+3-1)%8)+1; balance=(1-frac)*years; 365.25-day year. Reference chart 1998-05-14 08:45 IST.",
+ "moonSidereal": 238.087514,
+ "nakshatraNumber": 18,
+ "startYogini": "Bhadrika",
+ "fractionElapsed": 0.85656353,
+ "periods": [
+  {
+   "yogini": "Bhadrika",
+   "start": "1998-05-14",
+   "end": "1999-01-31"
+  },
+  {
+   "yogini": "Ulka",
+   "start": "1999-01-31",
+   "end": "2005-01-30"
+  },
+  {
+   "yogini": "Siddha",
+   "start": "2005-01-30",
+   "end": "2012-01-31"
+  },
+  {
+   "yogini": "Shankata",
+   "start": "2012-01-31",
+   "end": "2020-01-31"
+  },
+  {
+   "yogini": "Mangala",
+   "start": "2020-01-31",
+   "end": "2021-01-30"
+  },
+  {
+   "yogini": "Pingala",
+   "start": "2021-01-30",
+   "end": "2023-01-31"
+  },
+  {
+   "yogini": "Dhanya",
+   "start": "2023-01-31",
+   "end": "2026-01-31"
+  },
+  {
+   "yogini": "Bhramari",
+   "start": "2026-01-31",
+   "end": "2030-01-31"
+  }
+ ]
+}
