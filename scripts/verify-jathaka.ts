@@ -60,6 +60,7 @@ import { JATHAKA_GATES } from '../src/generated/verificationStats.ts';
 import { buildGranthaProvenance } from '../src/engine/granthaProvenanceEngine.ts';
 import { computeGocharaReport } from '../src/engine/gocharaVedhaEngine.ts';
 import { computeGrahaAvastha } from '../src/engine/grahaAvasthaEngine.ts';
+import { computeShubhaKala } from '../src/engine/shubhaKalaEngine.ts';
 import { PRINT_RENDER_SCALE, renderDpi } from '../src/utils/pdfBookExporter.ts';
 import { computeDashaGocharaSamanvaya } from '../src/engine/dashaGocharaSamanvayaEngine.ts';
 import { generateTeluguSampoornaJathakam } from '../src/engine/teluguJathakam';
@@ -1540,6 +1541,51 @@ check(
       return new Set(parts).size === parts.length;
     })(),
     granthaPartsTe().map((g) => g.partTe).join(' · ')
+  );
+}
+
+// ---- శుభ ముహూర్తాలు & దిక్కులు ----
+{
+  const NOW = Date.UTC(2026, 9, 23, 3, 0, 0);
+  const sk = computeShubhaKala(CHARAN_REF, NOW, 6);
+  check(
+    'శుభ ముహూర్తాలు — 5 కార్యాలకూ తేదీలు (వివాహం, గృహప్రవేశం, వ్యాపారం, వాహనం, విద్యారంభం)',
+    sk.windows.length === 5 && sk.windows.every((w) => w.dates.length >= 1),
+    sk.windows.map((w) => `${w.labelTe}:${w.dates.length}`).join(' · ')
+  );
+  check(
+    'శుభ ముహూర్తాలు — ప్రతి తేదీ భవిష్యత్తులో, నిజమైన ISO తేదీ, పంచాంగం నిండుగా ఉంది',
+    sk.windows.every((w) =>
+      w.dates.every(
+        (d) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(d.dateISO) &&
+          d.dateISO >= '2026-10-23' &&
+          d.tithiTe.length > 1 &&
+          d.nakshatraTe.length > 1 &&
+          d.timeSlotTe.length > 4 &&
+          d.favourableCount >= 3
+      )
+    ),
+    sk.windows.flatMap((w) => w.dates.map((d) => d.dateISO)).join(' ')
+  );
+  check(
+    'శుభ ముహూర్తాలు — ఒక కార్యానికి ఇచ్చిన తేదీలు వేర్వేరు నెలల్లో (ఒకే నెలలో దగ్గరదగ్గర కావు)',
+    sk.windows.every((w) => new Set(w.dates.map((d) => d.dateISO.slice(0, 7))).size === w.dates.length),
+    sk.windows.map((w) => w.dates.map((d) => d.dateISO.slice(0, 7)).join('/')).join(' · ')
+  );
+  check(
+    'శభ దిక్కులు — లగ్నాధిపతి/10వ/4వ/9వ భావాధిపతుల దిక్కులు లెక్కించబడ్డాయి (4 వరుసలు)',
+    sk.directions.length === 4 &&
+      sk.directions.every((d) => d.directionTe.length > 2 && d.lordTe.length > 4),
+    sk.directions.map((d) => `${d.lordTe}→${d.directionTe}`).join(' · ')
+  );
+  check(
+    'శుభ ముహూర్తాలు పుట గ్రంథంలో ముద్రితం — తేదీల పట్టిక + దిక్కుల పట్టిక + జాగ్రత్తలు',
+    BOOK_HTML.includes('శుభ ముహూర్తాలు') &&
+      BOOK_HTML.includes('శుభ దిక్కులు') &&
+      BOOK_HTML.includes('తేదీలు ఎలా తీసుకోబడ్డాయి') &&
+      BOOK_HTML.includes('తుది ముహూర్తం కాదు'),
+    'ముహూర్త పుట ఉంది'
   );
 }
 
