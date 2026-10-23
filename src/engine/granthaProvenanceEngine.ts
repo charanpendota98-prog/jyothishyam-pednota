@@ -22,6 +22,7 @@ import { computeShadbalaDeep } from './shadbalaDeepEngine.ts';
 import { computeVimshottariDeep } from './vimshottariDeepEngine.ts';
 import { calculateJaiminiCharaDasha } from './jaiminiCharaDashaEngine.ts';
 import { generateTajikaVarshaphalaReport } from './tajikaVarshaphalaEngine.ts';
+import { JATHAKA_GATES } from '../generated/verificationStats.ts';
 
 export interface ProvenanceRow {
   id: string;
@@ -337,9 +338,23 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
       .reduce((a, g) => a + g.count, 0)} కణాలుగా విభజించబడ్డాయి; ప్రతి గణన ఇంజిన్ నుంచి నేరుగా ` +
     `తీసుకోబడింది, చేతితో నమోదు చేయబడలేదు.`;
 
+  // గేట్ల సంఖ్యలు: జాతక గేట్లు స్వయంగా ఉత్పత్తి అయ్యే ఫైలు నుంచి (డ్రిఫ్ట్ రాదు);
+  // మిగిలినవి ఆయా స్క్రిప్ట్‌ల అంకెలు — మారితే ఇక్కడా మార్చాలి (గేట్ దీన్ని తనిఖీ చేస్తుంది).
+  const GATE_COUNTS = {
+    astro: 660,
+    panchanga: 365,
+    lunar: 411,
+    rise: 4745,
+    festivals: 31,
+    jathaka: JATHAKA_GATES,
+    sampradaya: 1531,
+  } as const;
+  const gateTotal = Object.values(GATE_COUNTS).reduce((a, b) => a + b, 0);
   const gateCohortTe =
-    'verify:astro 660 · verify:panchanga 365 · verify:calendar-lunar 411 · verify:rise 4745 · ' +
-    'verify:festivals 31 · verify:jathaka 335 · verify:sampradaya 1531 — మొత్తం 7,712 యాంత్రిక తనిఖీలు, 0 విఫలం.';
+    `verify:astro ${GATE_COUNTS.astro} · verify:panchanga ${GATE_COUNTS.panchanga} · ` +
+    `verify:calendar-lunar ${GATE_COUNTS.lunar} · verify:rise ${GATE_COUNTS.rise} · ` +
+    `verify:festivals ${GATE_COUNTS.festivals} · verify:jathaka ${GATE_COUNTS.jathaka} · ` +
+    `verify:sampradaya ${GATE_COUNTS.sampradaya} — మొత్తం ${gateTotal.toLocaleString('en-US')} యాంత్రిక తనిఖీలు, 0 విఫలం.`;
 
   return { rows, summaryTe, gateCohortTe, unverifiableTe, groupsTe: groups };
 }

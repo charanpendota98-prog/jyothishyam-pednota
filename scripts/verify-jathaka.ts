@@ -56,6 +56,7 @@ import {
   ClassicalJathakaPdfDocument,
 } from '../src/components/ClassicalJathakaPdfDocument.tsx';
 import { GRANTHA_PAGES, granthaPartsTe } from '../src/engine/granthaPageMap.ts';
+import { JATHAKA_GATES } from '../src/generated/verificationStats.ts';
 import { buildGranthaProvenance } from '../src/engine/granthaProvenanceEngine.ts';
 import { generateTeluguSampoornaJathakam } from '../src/engine/teluguJathakam';
 import { generateUpayaPariharaReport } from '../src/engine/upayaPariharaEngine';
@@ -1382,6 +1383,11 @@ check(
         BOOK_HTML.includes('ప్రమాణ పట్టిక') &&
         prov.unverifiableTe.length >= 4,
       `${prov.unverifiableTe.length} పరిమితులు`
+    );
+    check(
+      'ప్రమాణ పట్టికలోని గేట్ సంఖ్య నిజమైన జాతక గేట్లతో సరిపోతుంది (డ్రిఫ్ట్ లేదు)',
+      prov.gateCohortTe.includes(`verify:jathaka ${JATHAKA_GATES}`),
+      prov.gateCohortTe.slice(0, 120)
     );
     check(
       'బుక్‌మార్క్ ఎగుమతి — outline గ్రంథ పుట చిట్టా నుంచే (granthaPageMap)',
