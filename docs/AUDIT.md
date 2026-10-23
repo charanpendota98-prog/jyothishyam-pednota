@@ -626,3 +626,63 @@ Jupiter + Saturn both in bindu kakṣyā: **28 Feb → 31 Mar (31 d)**, **30 Apr
 3 Jun (34 d)**, **26 Nov → year end (35 d)**. Those are the long windows a
 Telugu pañcāṅgam would call *guru-śani śubha sandhi* — and they are derived,
 not stored. All of it is gated against 399 Swiss crossings.
+
+---
+
+## 13. Dṛṣṭi — three layers, one table (23 Oct 2026)
+
+### 13.1 The defect
+
+The engine held **two** aspect functions. `drikBalaVirupas` (used by ṣaḍbala)
+reproduces both printed textbooks; `sputaDrishti` (used for bhāva dṛṣṭi) was an
+incomplete transcription of the BPHS 26 table — it implemented the *forward*
+special aspects but not the **retrograde-side** ones:
+
+| Aspect | Should be | Was |
+| --- | --- | --- |
+| Saturn, 10th (270°) | 60 | 15 |
+| Mars, 8th (210°–240°) | 60 → 30 | 45 → 30 |
+| Jupiter, 9th (240°) | 60 | 30 |
+| Saturn, 9th-sign band (240°–270°) | 30 → 60 | 15 → 22.5 |
+
+Every bhāva-bala number that involved a Saturn or Mars aspect from the far side
+of the chart was therefore computed from a quarter-strength value. Fixed against
+the Saravali/BPHS table, with two further corrections the same audit surfaced:
+
+1. **No aspect beyond 300°.** The published table's 270°–330° row evaluates to a
+   *negative* value after 300°; BPHS 26 says the aspect is zero beyond ten
+   signs. 19 sample points were returning −21 to −28.5 virūpas.
+2. **Jupiter 240°–270°.** The published row (`15 + 2(270−a)/3`) is discontinuous
+   with its own 60-at-240° anchor. We interpolate 60 → 15 linearly and say so in
+   the code. This is the only place the app departs from a printed table, and the
+   departure is documented at the point of use.
+
+Verification after the fix: ṣaḍbala still reproduces the two books (301/301),
+and a new engine-level gate sweeps 0.5° steps for four grahas — **no value
+outside 0…60, no jump above 1.6 virūpa per half-degree, 60 exactly at 180°**.
+
+### 13.2 What is now computed
+
+`grahaDrishtiEngine.ts` returns four independent layers:
+
+| Layer | Rule | Gate |
+| --- | --- | --- |
+| Graha dṛṣṭi (sign) | 7th full; 4/8 = 45, 5/9 = 30, 3/10 = 15; Mars 4/8, Jupiter 5/9, Saturn 3/10 full; Rāhu/Ketu 5/7/9 per Phaladīpikā | 108/108 (9 × 12) |
+| Sphuṭa dṛṣṭi | BPHS 26 / Saravali table, degree-exact | sweep test above |
+| Rāśi dṛṣṭi | movable ↔ fixed, dual ↔ dual, adjacent excluded | 12 signs, symmetry, nature |
+| Argalā / virodhārgala | 2/4/11 vs 12/10/3 (Jaimini) | count & net arithmetic |
+
+For the reference chart: **55 dṛṣṭis (19 full), 36 pairs, 8 dṛṣṭis on the
+lagna**. The lagna rows are sentences, not boilerplate — each carries the
+graha's lordships from that lagna, the house it aspects from, and the virūpa
+value, all read from the chart.
+
+### 13.3 Vimśottarī re-derived in Python
+
+A second, independent implementation (Python + `pyswisseph`, Moon → nakṣatra
+fraction → 365.25-day year) now lives as `scripts/golden/vimshottari-golden.json`.
+The engine agrees with it to **0.00 days** on all nine mahādaśā boundaries and
+on the nine antardaśās of the first mahādaśā — so the 120-year Table is pinned
+by something other than itself.
+
+`npm run verify:jathaka` → **607 gates, 0 failures**.

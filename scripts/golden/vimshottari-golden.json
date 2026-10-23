@@ -1,0 +1,101 @@
+{
+ "source": "Independent re-derivation in Python + pyswisseph: Moon sidereal (Lahiri), nakshatra fraction, 365.25-day year. Reference chart 1998-05-14 08:45 IST, 17.385N 78.4867E.",
+ "moonSidereal": 238.087514,
+ "nakshatra0": 17,
+ "fraction": 0.85656353,
+ "startLord": "Mercury",
+ "mahadashas": [
+  {
+   "lord": "Mercury",
+   "start": "1983-10-21",
+   "end": "2000-10-20"
+  },
+  {
+   "lord": "Ketu",
+   "start": "2000-10-20",
+   "end": "2007-10-21"
+  },
+  {
+   "lord": "Venus",
+   "start": "2007-10-21",
+   "end": "2027-10-21"
+  },
+  {
+   "lord": "Sun",
+   "start": "2027-10-21",
+   "end": "2033-10-21"
+  },
+  {
+   "lord": "Moon",
+   "start": "2033-10-21",
+   "end": "2043-10-21"
+  },
+  {
+   "lord": "Mars",
+   "start": "2043-10-21",
+   "end": "2050-10-21"
+  },
+  {
+   "lord": "Rahu",
+   "start": "2050-10-21",
+   "end": "2068-10-20"
+  },
+  {
+   "lord": "Jupiter",
+   "start": "2068-10-20",
+   "end": "2084-10-20"
+  },
+  {
+   "lord": "Saturn",
+   "start": "2084-10-20",
+   "end": "2103-10-22"
+  }
+ ],
+ "firstAntardashas": [
+  {
+   "lord": "Mercury",
+   "start": "1983-10-21",
+   "end": "1986-03-19"
+  },
+  {
+   "lord": "Ketu",
+   "start": "1986-03-19",
+   "end": "1987-03-16"
+  },
+  {
+   "lord": "Venus",
+   "start": "1987-03-16",
+   "end": "1990-01-14"
+  },
+  {
+   "lord": "Sun",
+   "start": "1990-01-14",
+   "end": "1990-11-20"
+  },
+  {
+   "lord": "Moon",
+   "start": "1990-11-20",
+   "end": "1992-04-21"
+  },
+  {
+   "lord": "Mars",
+   "start": "1992-04-21",
+   "end": "1993-04-18"
+  },
+  {
+   "lord": "Rahu",
+   "start": "1993-04-18",
+   "end": "1995-11-05"
+  },
+  {
+   "lord": "Jupiter",
+   "start": "1995-11-05",
+   "end": "1998-02-10"
+  },
+  {
+   "lord": "Saturn",
+   "start": "1998-02-10",
+   "end": "2000-10-20"
+  }
+ ]
+}

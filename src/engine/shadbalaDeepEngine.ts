@@ -19,6 +19,7 @@ import type { CompleteChartResult, PlanetPosition } from './ephemeris';
 import type { SiderealMode, RiseSetTimes } from './astroCore';
 import { riseSetForLocalDate, civilWeekdayAt, sankrantiJd } from './astroCore';
 import { SAPTAVARGAJA_VIRUPAS, vargaDignity, type VargaDignityId } from './vargaVimsopakaEngine';
+import { sputaDrishti } from './drishtiTables.ts';
 
 export const SEVEN_GRAHAS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'] as const;
 export type GrahaId7 = (typeof SEVEN_GRAHAS)[number];
@@ -249,37 +250,7 @@ function rasiDrishtiHouses(id: string): number[] {
   return [7];
 }
 
-/**
- * Sphuta Drishti (BPHS Ch. 26 / B.V. Raman) — the graded aspect a graha casts,
- * in virupas (0–60), as a function of the aspect angle `a` (0–360).
- * Mars, Jupiter and Saturn additionally get their special full aspects.
- */
-export function sputaDrishti(aspectingId: string, aspectAngle: number): number {
-  const a = norm360(aspectAngle);
-  if (a < 30 || a >= 300) return 0;
-  if (a < 60) {
-    if (aspectingId === 'Saturn') return (a - 30) * 2;
-    return (a - 30) / 2;
-  }
-  if (a < 90) {
-    if (aspectingId === 'Saturn') return 45 + (90 - a) / 2;
-    return a - 45;
-  }
-  if (a < 120) {
-    if (aspectingId === 'Mars' || aspectingId === 'Jupiter') return 45 + (a - 90) / 2;
-    return 30 + (120 - a) / 2;
-  }
-  if (a < 150) {
-    if (aspectingId === 'Mars' || aspectingId === 'Jupiter') return 2 * (150 - a);
-    return 150 - a;
-  }
-  if (a < 180) return (a - 150) * 2;
-  if (a < 210) {
-    if (aspectingId === 'Mars') return 60;
-    return (300 - a) / 2;
-  }
-  return (300 - a) / 2;
-}
+export { sputaDrishti };
 
 /**
  * దృక్ బలం — పారాశర స్ఫుట దృష్టి (బృహత్ పరాశర అ.26), విరూపాలలో.

@@ -98,6 +98,13 @@ import {
 } from '../src/engine/ashtakavargaKakshyaEngine.ts';
 import { grahaSiderealLongitude } from '../src/engine/astroCore.ts';
 import {
+  computeGrahaDrishti,
+  rasiDrishtiOf,
+  signDrishtiVirupas,
+  signNature,
+} from '../src/engine/grahaDrishtiEngine.ts';
+import { sputaDrishti } from '../src/engine/drishtiTables.ts';
+import {
   searchYearMuhurta,
   ACTIVITY_LAGNAS,
 } from '../src/engine/annualMuhurtaEngine.ts';
@@ -2760,6 +2767,179 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
       'కక్ష్యా బలం — 0…1 మధ్య, బిందు సంఖ్య మొత్తానికి సరిపోతుంది',
       st.ratio >= 0 && st.ratio <= 1 && st.binduCount <= st.total,
       `${(st.ratio * 100).toFixed(0)}% · ${st.binduCount}/${st.total}`
+    );
+  }
+}
+
+/* ================================================================== *
+ *  వింశోత్తరీ దశ — స్వతంత్ర పైథాన్ పునఃగణనతో (దినం కచ్చితత్వం)
+ * ================================================================== */
+{
+  const g = JSON.parse(readFileSync('scripts/golden/vimshottari-golden.json', 'utf8')) as {
+    moonSidereal: number;
+    nakshatra0: number;
+    startLord: string;
+    mahadashas: { lord: string; start: string; end: string }[];
+    firstAntardashas: { lord: string; start: string; end: string }[];
+  };
+  const days = (a: string, b: string) => Math.abs(new Date(`${a}T00:00:00Z`).getTime() - new Date(`${b}T00:00:00Z`).getTime()) / 86400000;
+  const md = CHARAN_REF.dashas as unknown as { lord: string; startDate: string; endDate: string }[];
+  let lordErr = 0;
+  let worstDays = 0;
+  for (let i = 0; i < g.mahadashas.length && i < md.length; i++) {
+    if (md[i].lord !== g.mahadashas[i].lord) lordErr += 1;
+    worstDays = Math.max(worstDays, days(md[i].endDate, g.mahadashas[i].end));
+    if (i > 0) worstDays = Math.max(worstDays, days(md[i].startDate, g.mahadashas[i].start));
+  }
+  check(
+    'వింశోత్తరీ మహాదశ — స్వతంత్ర పునఃగణనతో (స్విస్ చంద్రుడు + నక్షత్ర భాగం) క్రమం మరియు తేదీలు ≤ 1 రోజు',
+    lordErr === 0 && worstDays <= 1 && Math.abs(CHARAN_REF.planets.find((p) => p.id === 'Moon')!.siderealLon - g.moonSidereal) < 0.01,
+    `${g.startLord} తో మొదలు · గరిష్ఠ భేదం ${worstDays.toFixed(2)} రోజులు · గ్రహ తప్పులు ${lordErr}`
+  );
+
+  const first = (CHARAN_REF.dashas as unknown as { antardashas: { lord: string; startDate: string; endDate: string }[] }[])[0];
+  let antarWorst = 0;
+  let antarLordErr = 0;
+  for (let i = 0; i < g.firstAntardashas.length && i < first.antardashas.length; i++) {
+    if (first.antardashas[i].lord !== g.firstAntardashas[i].lord) antarLordErr += 1;
+    antarWorst = Math.max(antarWorst, days(first.antardashas[i].endDate, g.firstAntardashas[i].end));
+  }
+  check(
+    'వింశోత్తరీ అంతర్దశ — మొదటి మహాదశలో తొమ్మిది అంతర్దశలు స్వతంత్ర గణనతో ≤ 1 రోజు',
+    antarLordErr === 0 && antarWorst <= 1,
+    `గరిష్ఠ భేదం ${antarWorst.toFixed(2)} రోజులు · గ్రహ తప్పులు ${antarLordErr}`
+  );
+}
+
+/* ================================================================== *
+ *  గ్రహ దృష్టి — పట్టిక, విశేష దృష్టులు, రాశి దృష్టి, స్ఫుట దృష్టి
+ * ================================================================== */
+{
+  // 1) భావ దృష్టి పట్టిక — శాస్త్ర నియమాన్ని గేట్ లోనే స్వతంత్రంగా రాసి పోల్చాము
+  const NINE_IDS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+  const expected = (id: string, d: number): number => {
+    if (d === 1) return 0;
+    if (d === 7) return 60;
+    if (id === 'Mars' && (d === 4 || d === 8)) return 60;
+    if (id === 'Jupiter' && (d === 5 || d === 9)) return 60;
+    if (id === 'Saturn' && (d === 3 || d === 10)) return 60;
+    if (id === 'Rahu' || id === 'Ketu') return [5, 7, 9].includes(d) ? 60 : 0;
+    if (d === 4 || d === 8) return 45;
+    if (d === 5 || d === 9) return 30;
+    if (d === 3 || d === 10) return 15;
+    return 0;
+  };
+  let tableBreaks = 0;
+  for (const id of NINE_IDS) {
+    for (let d = 1; d <= 12; d++) {
+      if (signDrishtiVirupas(id, d) !== expected(id, d)) tableBreaks += 1;
+    }
+  }
+  check(
+    'గ్రహ దృష్టి పట్టిక — తొమ్మిది గ్రహాలు × 12 భావాలు = 108 నియమాలు (7వ పూర్ణం, విశేష దృష్టులు)',
+    tableBreaks === 0,
+    `భేదాలు ${tableBreaks}/108`
+  );
+
+  // 2) విశేష దృష్టులు — కుజ 4/8, గురు 5/9, శని 3/10 పూర్ణం
+  const specials: [string, number][] = [
+    ['Mars', 4], ['Mars', 8], ['Jupiter', 5], ['Jupiter', 9], ['Saturn', 3], ['Saturn', 10],
+  ];
+  check(
+    'విశేష దృష్టులు — కుజుడు 4/8, గురువు 5/9, శని 3/10 పూర్ణ (60 విరూపాలు), తక్కినవి పాక్షికం',
+    specials.every(([g, d]) => signDrishtiVirupas(g, d) === 60) &&
+      signDrishtiVirupas('Sun', 4) === 45 &&
+      signDrishtiVirupas('Venus', 5) === 30 &&
+      signDrishtiVirupas('Mercury', 3) === 15,
+    specials.map(([g, d]) => `${g}${d}:${signDrishtiVirupas(g, d)}`).join(' ')
+  );
+
+  // 3) రాశి దృష్టి — ప్రతి రాశి మూడు రాశులను, పరస్పరం, పక్క రాశి లేకుండా
+  {
+    let countErr = 0;
+    let symmetryErr = 0;
+    let adjacentErr = 0;
+    let natureErr = 0;
+    for (let s = 0; s < 12; s++) {
+      const sees = rasiDrishtiOf(s);
+      if (sees.length !== 3) countErr += 1;
+      for (const t of sees) {
+        if (!rasiDrishtiOf(t).includes(s)) symmetryErr += 1;
+        const gap = (t - s + 12) % 12;
+        if (gap === 1 || gap === 11) adjacentErr += 1;
+        if (signNature(s) === 2 ? signNature(t) !== 2 : signNature(t) === 2 || signNature(t) === signNature(s)) {
+          natureErr += 1;
+        }
+      }
+    }
+    check(
+      'రాశి దృష్టి — ప్రతి రాశి 3 రాశులు, పరస్పరం, పక్క రాశి కాదు, చర↔స్థిర · ద్వి↔ద్వి',
+      countErr === 0 && symmetryErr === 0 && adjacentErr === 0 && natureErr === 0,
+      `లెక్క ${countErr} · సమరూపత ${symmetryErr} · పక్కది ${adjacentErr} · స్వభావం ${natureErr}`
+    );
+  }
+
+  // 4) స్ఫుట దృష్టి — 0…60, 180°లో పూర్ణం, నిరంతరం, 330°+ శూన్యం
+  {
+    let maxJump = 0;
+    let over = 0;
+    let prev = 0;
+    for (const g of ['Sun', 'Mars', 'Jupiter', 'Saturn']) {
+      prev = 0;
+      for (let a = 0; a < 360; a += 0.5) {
+        const v = sputaDrishti(g, a);
+        if (v < -1e-9 || v > 60 + 1e-9) over += 1;
+        maxJump = Math.max(maxJump, Math.abs(v - prev));
+        prev = v;
+      }
+    }
+    check(
+      'స్ఫుట దృష్టి — 0…60 విరూపాల లోపే, 180° పూర్ణం, 0.5° అడుగుకు పెద్ద అంతరాయం లేదు',
+      over === 0 &&
+        maxJump <= 1.6 &&
+        ['Sun', 'Mars', 'Jupiter', 'Saturn'].every((g) => Math.abs(sputaDrishti(g, 180) - 60) < 1e-9) &&
+        ['Sun', 'Mars', 'Saturn'].every((g) => sputaDrishti(g, 340) === 0),
+      `పరిధి దాటినవి ${over} · గరిష్ఠ అంతరాయం ${maxJump.toFixed(2)} విరూపాలు`
+    );
+  }
+
+  // 5) కుండలి దృష్టి నివేదిక
+  {
+    const r = computeGrahaDrishti(CHARAN_REF);
+    const byName = (id: string) => r.casts.filter((c) => c.from === id).length;
+    check(
+      'దృష్టి నివేదిక — 55 దృష్టులు (7 గ్రహాలు × 7, రాహు/కేతు × 3), 36 జంటలు',
+      r.casts.length === 55 &&
+        byName('Saturn') === 7 &&
+        byName('Rahu') === 3 &&
+        r.pairs.length === 36 &&
+        r.lagnaDrishti.length === r.casts.filter((c) => c.toSignIndex === CHARAN_REF.ascendant.signIndex).length,
+      `${r.casts.length} దృష్టులు · ${r.pairs.length} జంటలు · లగ్నంపై ${r.lagnaDrishti.length}`
+    );
+    // లగ్న దృష్టి వాక్యాలు కుండలి నుంచే
+    const asc = CHARAN_REF.ascendant.signIndex;
+    let wrong = 0;
+    for (const row of r.lagnaDrishti) {
+      const pl = CHARAN_REF.planets.find((p) => p.id === row.from)!;
+      const gap = ((asc - pl.d1Sign + 12) % 12) + 1;
+      if (gap !== row.house) wrong += 1;
+      if (!row.phalaTe.includes(`${row.virupas} విరూపాలు`)) wrong += 1;
+    }
+    check(
+      'లగ్న దృష్టి ఫలం — ప్రతి వాక్యంలో భావ దూరం, విరూపాలు కుండలి నుంచే (స్థిర పాఠ్యం కాదు)',
+      wrong === 0 && r.lagnaDrishti.every((x) => x.phalaTe.length > 40),
+      `తప్పులు ${wrong} · ${r.lagnaDrishti.length} వాక్యాలు`
+    );
+    // అర్గళా లెక్క
+    let argErr = 0;
+    for (const row of r.argala) {
+      if (row.net !== row.argala.length - row.virodha.length) argErr += 1;
+      if (row.argala.length + row.virodha.length > 9) argErr += 1;
+    }
+    check(
+      'అర్గళా/విరోధార్గళా — 2,4,11 మరియు 12,10,3 లోని గ్రహాలే; నికరం = అర్గళా − విరోధం',
+      argErr === 0 && r.argala.length === 12,
+      `తప్పులు ${argErr} · ${r.argala.length} భావాలు`
     );
   }
 }
