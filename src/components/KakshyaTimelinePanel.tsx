@@ -5,7 +5,7 @@
  * ఎప్పుడు బిందువు లేని కక్ష్యలో (ఫలం లోపిస్తుంది) నడిచింది — నిమిషం కచ్చితత్వంతో.
  * స్థిర పాఠ్యం కాదు: ప్రతి సరిహద్దు సిద్ధాంత గ్రహ స్ఫుటం నుంచి ద్విభాజనంతో వస్తుంది.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarRange, Loader2 } from 'lucide-react';
 import type { CompleteChartResult } from '../engine/ephemeris.ts';
 import {
@@ -33,14 +33,23 @@ export default function KakshyaTimelinePanel({ chart, year }: Props) {
   const [segments, setSegments] = useState<KakshyaSegment[] | null>(null);
   const [busy, setBusy] = useState(false);
   const tz = chart.input.tzOffsetHours;
+  const yearRef = useRef(year);
 
   const run = () => {
     setBusy(true);
     window.setTimeout(() => {
-      setSegments(kakshyaSegmentsForYear(chart, year, tz));
+      setSegments(kakshyaSegmentsForYear(chart, yearRef.current, tz));
       setBusy(false);
     }, 20);
   };
+
+  // సంవత్సరం మారినప్పుడు (మరియు మొదటిసారి) స్వయంగా లెక్కించు — ఖాళీ ప్యానెల్ చూపవద్దు
+  useEffect(() => {
+    yearRef.current = year;
+    setSegments(null);
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year]);
 
   const binduDays = useMemo(() => {
     if (!segments) return {} as Record<string, number>;

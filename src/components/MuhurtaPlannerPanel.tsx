@@ -6,7 +6,7 @@
  *
  * స్థిర జాబితా కాదు — ప్రతి అభ్యర్థనలో 365 రోజుల పంచాంగం + లగ్న గణన జరుగుతుంది.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarClock, Clock, Loader2, Search, TriangleAlert, CheckCircle2 } from 'lucide-react';
 import type { CompleteChartResult } from '../engine/ephemeris.ts';
 import {
@@ -46,12 +46,14 @@ export default function MuhurtaPlannerPanel({ chart, lang = 'te', initialYear }:
   const [busy, setBusy] = useState(false);
 
   const tz = chart.input.tzOffsetHours;
+  const keyRef = useRef(`${activity}|${year}`);
 
   const run = () => {
     setBusy(true);
     // ఒక ఫ్రేమ్ ఇచ్చి, ఆ తర్వాత భారీ గణన — UI బ్లాక్ అవ్వకుండా
     window.setTimeout(() => {
-      const rep = searchYearMuhurta(activity, year, chart.input.lat, chart.input.lng, tz, {
+      const [act, yr] = keyRef.current.split('|');
+      const rep = searchYearMuhurta(act as MuhurtaActivityId, Number(yr), chart.input.lat, chart.input.lng, tz, {
         chart,
         placeTe: chart.input.city,
         limit: 12,
@@ -60,6 +62,14 @@ export default function MuhurtaPlannerPanel({ chart, lang = 'te', initialYear }:
       setBusy(false);
     }, 30);
   };
+
+  // కార్యం/సంవత్సరం మారగానే స్వయంగా వెతుకు — ఖాళీ ప్యానెల్ చూపవద్దు
+  useEffect(() => {
+    keyRef.current = `${activity}|${year}`;
+    setReport(null);
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity, year]);
 
   const lagnaListTe = useMemo(
     () =>
