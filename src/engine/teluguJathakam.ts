@@ -1,5 +1,5 @@
 import { ZODIAC_SIGNS, type CompleteChartResult } from './ephemeris.ts';
-import { computePillarScore, PILLAR_SPECS } from './pillarBalaEngine.ts';
+import { computePillarScore, buildPillarNarrative, PILLAR_SPECS } from './pillarBalaEngine.ts';
 import { mahadashaPhala } from './mahadashaPhalaEngine.ts';
 import { TELUGU_RASIS } from './rasiNames.ts';
 import { computeLagnaFunctional, PLANET_TE } from './lagnaFunctionalEngine.ts';
@@ -1888,7 +1888,7 @@ export function generateTeluguSampoornaJathakam(
       titleTe: 'విదేశీ ప్రయాణాలు, దైవబలం & సమాజ కీర్తి',
       subtitleEn: 'Foreign Opportunities, Spiritual Siddhi, Karakamsa & D20 Vimsamsa (9th, 12th Houses)',
       keyHousesTe: `9వ భాగ్య (${TELUGU_RASIS[ninthSignIdx].nameTe.split(' ')[0]}), 12వ విదేశీ భావం & కారకాంశం (${arudhaPadas[2].rasiNameTe.split(' ')[0]})`,
-      karakaPlanetsTe: `భాగ్యాధిపతి ${stripParens(bhagyaLordMeta.nameTe)}, రాహువు (${rahu.house}వ భావం) & ఆత్మకారకుడు ${stripParens(jaiminiKarakas[0].planetNameTe)}`,
+      karakaPlanetsTe: `భాగ్యాధిపతి ${stripParens(bhagyaLordMeta.nameTe)} (${ninthLordPlanet.house}వ భావం), రాహువు (${rahu.house}వ భావం) & ఆత్మకారకుడు ${stripParens(jaiminiKarakas[0].planetNameTe)}`,
       scorePercent: 89,
       verdictBadgeTe: 'భాగ్యోదయం & దూరప్రాంత యోగం',
       analysisParagraphsTe: [
@@ -2212,13 +2212,18 @@ export function generateTeluguSampoornaJathakam(
             : computed.band === 'durbala'
               ? 'ఈ రంగం దుర్బలం — ఊహించి చెప్పడం తగదు; పరిహారాలు మరియు నిపుణుల సలహా ముఖ్యం.'
               : '';
+      // వివరణ పేరాలు — పరిశ్రమల జాబితాలు/వయస్సు బ్యాండ్లు/భాగస్వామి విశేషణాలు పోయాయి;
+      // ఇప్పుడు ప్రతి వాక్యమూ 5వ/10వ/7వ అధిపతి స్థానం, రాశి దృష్టి, SAV, వర్గ లగ్నం, షడ్బల క్రమం నుంచి.
+      const narrative = buildPillarNarrative(chart, pillar.id);
       return {
         ...pillar,
         scorePercent: computed.score,
         verdictBadgeTe: `${computed.bandTe} · ${computed.score}/100`,
         analysisParagraphsTe: [
           computed.leadTe,
-          ...(computed.score >= 60 ? pillar.analysisParagraphsTe.slice(1) : cautionTe ? [cautionTe] : []),
+          ...narrative.paragraphsTe,
+          ...(cautionTe ? [cautionTe] : []),
+          narrative.silenceTe,
           `గణన: ${computed.derivationTe}.`,
         ],
         favorablePeriodsTe: computed.favorableTe,

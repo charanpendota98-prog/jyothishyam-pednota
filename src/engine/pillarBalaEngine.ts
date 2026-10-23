@@ -25,6 +25,7 @@ import type { CompleteChartResult } from './ephemeris.ts';
 import { SIGN_LORD, RASI_TE, PLANET_TE, type PlanetId9 } from './lagnaFunctionalEngine.ts';
 import { computeShadbalaDeep, DEBILITATION_POINT } from './shadbalaDeepEngine.ts';
 import { computeVimshottariDeep } from './vimshottariDeepEngine.ts';
+import { housesRuledBy } from './mahadashaPhalaEngine.ts';
 
 /** ఏ స్తంభానికి ఏ భావాలు/కారకులు */
 export interface PillarSpec {
@@ -296,3 +297,193 @@ export const PILLAR_SPECS: Record<string, PillarSpec> = {
   'health-longevity': { primaryHouse: 1, houses: [1, 6, 8], karakas: ['Sun', 'Saturn'] },
   'foreign-spirituality': { primaryHouse: 9, houses: [9, 12, 5], karakas: ['Jupiter', 'Rahu'] },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  స్తంభ వివరణ — పూర్తిగా కుండలి నుంచి (స్థిర వాక్యాలు, పరిశ్రమల జాబితాలు లేవు)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BENEFIC_SET = ['Jupiter', 'Venus', 'Mercury', 'Moon'];
+
+/**
+ * గ్రహ కారక రంగాలు (శాస్త్రీయ కారకత్వం) — పరిశ్రమల “స్థిర జాబితా” కాదు;
+ * ఏ గ్రహం ఏ భావానికి అధిపతో ఆ గ్రహపు రంగాలే ఫలం అవుతాయి.
+ */
+const PLANET_DOMAINS_TE: Record<string, string> = {
+  Sun: 'ప్రభుత్వ/అధికార వ్యవస్థ, నిర్వహణ, ఆరోగ్య రంగం',
+  Moon: 'ప్రజా సంబంధాలు, సేవా రంగం, ద్రవ్య/ద్రవ పదార్థాలు, ప్రయాణం',
+  Mars: 'సాంకేతికం, ఇంజినీరింగ్, రక్షణ/పోలీస్, క్రీడలు, శస్త్ర చికిత్స',
+  Mercury: 'గణితం-లెక్కలు, వాణిజ్యం, రచన-విశ్లేషణ, సాఫ్ట్‌వేర్/డేటా',
+  Jupiter: 'ఉపదేశం-అధ్యాపకత్వం, న్యాయం, ఆర్థిక సలహా, ఆధ్యాత్మికం',
+  Venus: 'కళలు-సౌందర్యం, సంగీతం, డిజైన్, ఆర్థికం, సంబంధాల నిర్వహణ',
+  Saturn: 'కార్మిక-నిర్మాణ రంగం, భూమి-గనులు, క్రమశిక్షణ, దీర్ఘకాల ప్రాజెక్టులు',
+  Rahu: 'సాంకేతికం, విదేశీ సంబంధాలు, ఇంటర్నెట్/పరిశోధన',
+  Ketu: 'పరిశోధన, ఆధ్యాత్మికం, ఏకాంత అధ్యయనం',
+};
+const MALEFIC_SET = ['Sun', 'Mars', 'Saturn', 'Rahu', 'Ketu'];
+
+/** రాశి దృష్టి (పూర్ణ రాశి): సూర్యుడు/చంద్రుడు/బుధుడు/శుక్రుడు 7వది;
+ *  కుజుడు 4, 7, 8; గురువు 5, 7, 9; శని 3, 7, 10 — పరాశరీ సూత్రం. */
+export function rasiAspectsOf(planetId: string, fromHouse: number): number[] {
+  const offsets =
+    planetId === 'Mars'
+      ? [4, 7, 8]
+      : planetId === 'Jupiter'
+        ? [5, 7, 9]
+        : planetId === 'Saturn'
+          ? [3, 7, 10]
+          : [7];
+  return offsets.map((o) => ((fromHouse - 1 + o - 1) % 12) + 1);
+}
+
+/** ఒక భావాన్ని ఎవరు చూస్తున్నారు (రాశి దృష్టి) */
+export function aspectingPlanets(chart: CompleteChartResult, house: number): string[] {
+  return chart.planets
+    .filter((p) => ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].includes(p.id))
+    .filter((p) => p.house !== house && rasiAspectsOf(p.id, p.house).includes(house))
+    .map((p) => p.id);
+}
+
+export interface PillarNarrative {
+  paragraphsTe: string[];
+  /** ఈ అంశంపై కుండలి ఏమి చెప్పదు (నిజాయితీ వాక్యం) */
+  silenceTe: string;
+}
+
+/**
+ * స్తంభానికి రెండు పేరాలు — ప్రతి వాక్యమూ ఒక స్థానం/బలం/వర్గం నుంచి.
+ */
+export function buildPillarNarrative(
+  chart: CompleteChartResult,
+  pillarId: string
+): PillarNarrative {
+  const spec = PILLAR_SPECS[pillarId];
+  if (!spec) return { paragraphsTe: [], silenceTe: '' };
+  const lagnaSign = chart.ascendant.signIndex;
+  const signOfHouse = (h: number) => (lagnaSign + h - 1) % 12;
+  const lordOf = (h: number) => SIGN_LORD[signOfHouse(h)] as PlanetId9;
+  const planetOf = (id: string) => chart.planets.find((p) => p.id === id)!;
+  const shadbala = computeShadbalaDeep(chart);
+  const rankOf = (id: string) => {
+    const sorted = [...shadbala.rows].sort((a, b) => b.totalVirupas - a.totalVirupas);
+    return sorted.findIndex((r) => r.id === id) + 1;
+  };
+  const rasi = (h: number) => rasiClean(signOfHouse(h));
+  const inHouse = (h: number) =>
+    chart.planets
+      .filter((p) => p.house === h && ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].includes(p.id))
+      .map((p) => p.id);
+
+  const occupLine = (h: number) => {
+    const occ = inHouse(h);
+    const asp = aspectingPlanets(chart, h);
+    const parts: string[] = [];
+    parts.push(occ.length === 0 ? `${h}వ భావం ఖాళీ` : `${h}వ భావంలో ${occ.map((p) => PLANET_TE[p as PlanetId9]).join(', ')}`);
+    if (asp.length > 0) parts.push(`దానిని ${asp.map((p) => PLANET_TE[p as PlanetId9]).join(', ')} చూస్తున్నారు`);
+    return parts.join(', ');
+  };
+
+  const savOf = (h: number) => chart.ashtakavarga.sarvashtakavarga[signOfHouse(h)];
+  /** మొదటి పేరాలో స్థానం ఇప్పటికే ఉంది — ఇక్కడ బల క్రమం మాత్రమే (పునరుక్తి తప్పించి) */
+  const lordRankTe = (h: number) => `${PLANET_TE[lordOf(h)]} షడ్బల క్రమంలో ${rankOf(lordOf(h))}/7`;
+  const vargaLine = (key: 'd24Sign' | 'd10Sign' | 'd9Sign' | 'd20Sign', labelTe: string) => {
+    const asc = (chart.ascendant as unknown as Record<string, number | undefined>)[key];
+    return typeof asc !== 'number' ? '' : `${labelTe} లగ్నం ${rasiClean(asc)}`;
+  };
+
+  const paragraphsTe: string[] = [];
+  let silenceTe = '';
+
+  switch (pillarId) {
+    case 'education-wisdom': {
+      paragraphsTe.push(
+        `${occupLine(5)}. ${vargaLine('d24Sign', 'విద్యా చతుర్వింశాంశ (D24)')} — ` +
+          `${lordRankTe(5)}; బుధుడు ${rankOf('Mercury')}/7, గురువు ${rankOf('Jupiter')}/7. ` +
+          `2వ భావానికి ${savOf(2)} బిందువులు, 4వ భావానికి ${savOf(4)} బిందువులు.`
+      );
+      paragraphsTe.push(
+        `చదువు దిశ 5వ భావాధిపతి ${PLANET_TE[lordOf(5)]} కారకత్వం నుంచి: ${PLANET_DOMAINS_TE[lordOf(5)] ?? '—'}. ` +
+          `అది ${planetOf(lordOf(5)).house}వ భావంలో ఉండటం వల్ల ${planetOf(lordOf(5)).house}వ భావ విషయాలతో (ఆ భావం పాలించే జీవిత రంగం) కలిసి ఫలిస్తుంది. ` +
+          `${inHouse(5).length === 0 ? '5వ భావంలో గ్రహాలు లేకపోవడం వల్ల విద్యా ఫలం పూర్తిగా అధిపతి స్థితి మీదే ఆధారపడి ఉంటుంది.' : ''}`
+      );
+      silenceTe = 'కుండలిలో లేనివి: ఏ పరీక్ష/సంస్థ, ఏ సబ్జెక్టు ఖచ్చితంగా అనుకూలం అనేది — అది కుండలి చెప్పదు.';
+      break;
+    }
+    case 'career-profession': {
+      paragraphsTe.push(
+        `${occupLine(10)}. ${vargaLine('d10Sign', 'దశాంశ (D10)')}. ${lordRankTe(10)}. ` +
+          `10వ రాశికి ${savOf(10)} బిందువులు, 6వ రాశికి ${savOf(6)} బిందువులు.`
+      );
+      paragraphsTe.push(
+        `వృత్తి స్వభావం 10వ భావాధిపతి ${PLANET_TE[lordOf(10)]} కారకత్వం నుంచే: ${PLANET_DOMAINS_TE[lordOf(10)] ?? '—'}. ` +
+          `ఆ గ్రహం ${planetOf(lordOf(10)).house}వ భావంలో ` +
+          `${rasiClean(planetOf(lordOf(10)).signIndex)} రాశిలో ఉన్నాడు; ${PLANET_TE[lordOf(10)]} కారకత్వమే (ఆ గ్రహం పాలించే భావాలు: ` +
+          `${housesRuledBy(lagnaSign, lordOf(10)).map((h) => `${h}వ`).join(', ') || '—'}) వృత్తి మార్గాన్ని నిర్దేశిస్తుంది. ` +
+          `శని ${rankOf('Saturn')}/7, సూర్యుడు ${rankOf('Sun')}/7 — ఇద్దరూ వృత్తి కారకులు.`
+      );
+      silenceTe = 'కుండలిలో లేనివి: ఖచ్చిత ఉద్యోగ నామం, కంపెనీ, శాఖ — స్థానం + దశలు మాత్రమే చెబుతాయి.';
+      break;
+    }
+    case 'wealth-property': {
+      paragraphsTe.push(
+        `${lordRankTe(2)}; ${lordRankTe(11)}. 2వ రాశికి ${savOf(2)} బిందువులు, 11వ రాశికి ${savOf(11)} బిందువులు. ` +
+          `${occupLine(2)}; ${occupLine(4)}.`
+      );
+      paragraphsTe.push(
+        `ధనం ఎక్కడ నుంచి వస్తుందో 2వ మరియు 11వ భావాధిపతుల స్థానాలే చెబుతాయి: ` +
+          `${PLANET_TE[lordOf(2)]} ${planetOf(lordOf(2)).house}వ భావంలో, ${PLANET_TE[lordOf(11)]} ${planetOf(lordOf(11)).house}వ భావంలో. ` +
+          `ఆస్తి (4వ) అధిపతి ${PLANET_TE[lordOf(4)]} ${planetOf(lordOf(4)).house}వ భావంలో ఉన్నందున భూమి/గృహ యోగం ఆ గ్రహ దశల్లో చూడాలి.`
+      );
+      silenceTe = 'కుండలిలో లేనివి: ఖచ్చిత మొత్తాలు, ఏ సంవత్సరంలో ఎంత ఆదాయం — సంఖ్యలు కుండలి చెప్పదు.';
+      break;
+    }
+    case 'marriage-family': {
+      const dk = planetOf('Venus');
+      paragraphsTe.push(
+        `${occupLine(7)}. ${vargaLine('d9Sign', 'నవాంశ (D9)')}. ${lordRankTe(7)}. ` +
+          `శుక్రుడు ${rankOf('Venus')}/7 స్థానంలో, ${dk.house}వ భావంలో.`
+      );
+      paragraphsTe.push(
+        `జీవిత భాగస్వామి స్వభావం 7వ భావంలోని గ్రహాల నుంచే: ` +
+          `${inHouse(7).length === 0 ? '7వ భావం ఖాళీ — స్వభావం 7వ అధిపతి మరియు శుక్రుని స్థితి నుంచి మాత్రమే తెలుస్తుంది' : `7వ భావంలో ${inHouse(7).map((p) => PLANET_TE[p as PlanetId9]).join(', ')} — ${inHouse(7).filter((p) => BENEFIC_SET.includes(p)).length > 0 ? 'శుభ ప్రభావం' : 'పాప ప్రభావం, సర్దుబాటు అవసరం'}`}. ` +
+          `7వ భావాధిపతి ${PLANET_TE[lordOf(7)]} ${planetOf(lordOf(7)).house}వ భావంలో ఉన్నందున దాంపత్య ఫలం ఆ స్థానాన్ని బట్టి ఉంటుంది.`
+      );
+      silenceTe = 'కుండలిలో లేనివి: భాగస్వామి పేరు, ఖచ్చిత వివాహ తేదీ, వృత్తి — కుండలి ఎవరినీ పేరుతో చెప్పదు.';
+      break;
+    }
+    case 'health-longevity': {
+      const lagnaLord = lordOf(1);
+      paragraphsTe.push(
+        `${occupLine(1)}. ${lordRankTe(1)}. లగ్న రాశికి ${savOf(1)} బిందువులు, 6వ రాశికి ${savOf(6)}, 8వ రాశికి ${savOf(8)}. ` +
+          `6వ అధిపతి ${PLANET_TE[lordOf(6)]} ${planetOf(lordOf(6)).house}వ భావంలో, 8వ అధిపతి ${PLANET_TE[lordOf(8)]} ${planetOf(lordOf(8)).house}వ భావంలో.`
+      );
+      const afflicting = inHouse(1).filter((p) => MALEFIC_SET.includes(p));
+      paragraphsTe.push(
+        `శరీర ప్రకృతి లగ్నాధిపతి ${PLANET_TE[lagnaLord]} మీద ఆధారపడి ఉంటుంది (షడ్బలంలో ${rankOf(lagnaLord)}/7). ` +
+          `${afflicting.length > 0 ? `లగ్నంలో ${afflicting.map((p) => PLANET_TE[p as PlanetId9]).join(', ')} ఉన్నందున ఆ గ్రహాల కారక రంగాలలో (ఆయా గ్రహాలు పాలించే భావాలు) మరియు శరీరంలో ఆయా భాగాలలో శ్రద్ధ అవసరం.` : 'లగ్నంలో పాప గ్రహాలు లేవు — ఇది ఆరోగ్యానికి అనుకూల సంకేతం.'}`
+      );
+      silenceTe = 'కుండలిలో లేనివి: వ్యాధి నిర్ధారణ, మందుల పేర్లు, ఆయుర్దాయ సంవత్సరాలు — ఇవి జ్యోతిష్యం చెప్పగలిగినవి కావు.';
+      break;
+    }
+    case 'foreign-spirituality': {
+      paragraphsTe.push(
+        `${occupLine(9)}. ${vargaLine('d20Sign', 'వింశాంశ (D20)')}. ${lordRankTe(9)}. ` +
+          `12వ అధిపతి ${PLANET_TE[lordOf(12)]} ${planetOf(lordOf(12)).house}వ భావంలో, రాహువు ${planetOf('Rahu').house}వ భావంలో (${rasiClean(planetOf('Rahu').signIndex)}).`
+      );
+      const rahuHouse = planetOf('Rahu').house;
+      const foreignSignals: string[] = [];
+      if ([3, 9, 12].includes(rahuHouse)) foreignSignals.push(`రాహువు ${rahuHouse}వ భావంలో — దూర ప్రయాణ/విదేశ యోగ సంకేతం`);
+      if ([9, 12].includes(planetOf(lordOf(12)).house)) foreignSignals.push(`12వ అధిపతి ${planetOf(lordOf(12)).house}వ భావంలో — విదేశ/ఏకాంత సంకేతం`);
+      if ([9, 12].includes(planetOf(lordOf(9)).house)) foreignSignals.push(`9వ అధిపతి ${planetOf(lordOf(9)).house}వ భావంలో — ధర్మ/దూర యాత్ర సంకేతం`);
+      paragraphsTe.push(
+        `${foreignSignals.length > 0 ? foreignSignals.join('; ') + '.' : 'విదేశ యోగానికి బలమైన సంకేతం లేదు — 3, 9, 12 భావాలలో రాహువు/అధిపతులు లేరు.'} ` +
+          `ఆధ్యాత్మిక దిశ 9వ భావాధిపతి ${PLANET_TE[lordOf(9)]} మరియు గురువు (${rankOf('Jupiter')}/7) స్థితిని బట్టి ఉంటుంది.`
+      );
+      silenceTe = 'కుండలిలో లేనివి: ఏ దేశం, ఏ తీర్థం, ఎప్పుడు — ఖచ్చిత ప్రదేశాలు కుండలి చెప్పదు.';
+      break;
+    }
+    default:
+      break;
+  }
+
+  return { paragraphsTe: paragraphsTe.filter((p) => p.trim().length > 0), silenceTe };
+}

@@ -110,7 +110,7 @@ export function auditJathakaClaims(
     for (const m of text.matchAll(planetHouseRe)) {
       const [, nameTe, between, numStr, suffix] = m;
       // గ్రహ జాబితాలు (“శుక్రుడు, శని …”), బాధక/అధిపత్య వాక్యాలు — ఇవి స్థాన వాదనలు కావు
-      if (/[,.]|మరియు|·|మొదలగు|ఆది|బాధక|స్థాన|భావాధిపతి|అధిపతి|లోర్డ్/.test(between)) {
+      if (/[,.;]|మరియు|·|మొదలగు|ఆది|బాధక|స్థాన|భావాధిపతి|అధిపతి|లోర్డ్|చూస్తున్న|దృష్టి/.test(between)) {
         skipped++;
         continue;
       }
