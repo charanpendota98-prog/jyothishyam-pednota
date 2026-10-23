@@ -164,10 +164,16 @@ export function computeDashaGocharaSamanvaya(
     const ingress: string[] = [];
     const transitHouses: string[] = [];
     let saturnSign = 0;
-    for (const pid of ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']) {
+    // రాశి మార్పులో చంద్ర/బుధ/శుక్ర/కుజ సంచారం ప్రతి నెలా జరిగేది — పుస్తకంలో
+    // ఆ శబ్దం అవసరం లేదు. మందగతి గ్రహాలు + సూర్యుడు మాత్రమే చూపుతాము.
+    for (const pid of ['Sun', 'Jupiter', 'Saturn', 'Rahu', 'Ketu']) {
       const s0 = Math.floor(lonAt(pid, jdStart, mode) / 30) % 12;
       const s1 = Math.floor(lonAt(pid, jdEnd, mode) / 30) % 12;
-      if (s0 !== s1) ingress.push(`${nameOf(pid)} → ${rasiOf(s1)}`);
+      if (s0 !== s1) {
+        // వెనక్కి వెళ్లి మళ్లీ ప్రవేశించడం = వక్రి — అది ముందుకు సాగిన మార్పు కాదు.
+        const backward = ((s1 - s0 + 12) % 12) > 6;
+        ingress.push(`${nameOf(pid)} → ${rasiOf(s1)}${backward ? ' (వక్రి)' : ''}`);
+      }
       if (pid === 'Saturn') saturnSign = s1;
       if (['Saturn', 'Jupiter', 'Rahu'].includes(pid)) {
         const house = ((Math.floor(lonAt(pid, midMs / DAY + JD_UNIX_EPOCH, mode) / 30) % 12) - moonSign + 12) % 12 + 1;

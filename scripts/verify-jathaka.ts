@@ -1637,6 +1637,11 @@ check(
     `${sam.months.filter((m) => !m.ingressTe.includes('ప్రధాన రాశి మార్పు లేదు')).length} నెలల్లో మార్పు`
   );
   check(
+    'దశా × గోచారం — నెల వరుస పొడవు A4 లో ఇమిడేలా నియంత్రితం (రాశి మార్పు పాఠ్యం ≤ 70 అక్షరాలు)',
+    sam.months.every((m) => m.ingressTe.length <= 70),
+    `అత్యధికం ${Math.max(...sam.months.map((m) => m.ingressTe.length))} అక్షరాలు`
+  );
+  check(
     'దశా × గోచారం పుట గ్రంథంలో ముద్రితం — నెలవారీ పట్టిక + ప్రత్యంతర పట్టిక + గణన నియమం',
     BOOK_HTML.includes('దశా × గోచార సమన్వయం') &&
       BOOK_HTML.includes('నెలవారీ కాలరేఖ') &&
