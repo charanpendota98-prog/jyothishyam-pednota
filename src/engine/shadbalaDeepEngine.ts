@@ -288,20 +288,52 @@ export function computeShadbalaDeep(
   const pakshaBala = pakshaAngle / 3;
   const isShukla = elong < 180;
 
-  // ── Tribhaga bala ─────────────────────────────────────────────────────
-  const dayLength = Math.max(0.1, sunsetJd - sunriseJd);
-  const isDay = birthJd >= sunriseJd && birthJd < sunsetJd;
-  const tribhagaLord: GrahaId7 | null = isDay
-    ? (['Mercury', 'Sun', 'Saturn'] as GrahaId7[])[
-        Math.min(2, Math.floor(((birthJd - sunriseJd) / dayLength) * 3))
-      ]
-    : (['Moon', 'Venus', 'Mars'] as GrahaId7[])[Math.min(2, Math.floor(((birthJd - sunsetJd) / dayLength) * 3))];
+  // ── వారము (sunrise-to-sunrise) ────────────────────────────────────────
+  // హిందూ పంచాంగంలో వారము సూర్యోదయమున మారుతుంది.  సూర్యోదయానికి ముందు పుట్టిన
+  // జాతకానికి ఆ రోజు కాదు, ముందు రోజు వారాధిపతియే దిన బలానికి మూలం — ఇది
+  // పంచాంగంలో చూపే వారంతో తప్పనిసరిగా ఏకీభవించాలి.
+  const civilDate = chart.input.date;
+  const shiftDate = (iso: string, delta: number) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() + delta);
+    return dt.toISOString().slice(0, 10);
+  };
+  const riseOf = (iso: string) => {
+    const r = riseSetForLocalDate(iso, chart.input.lat, chart.input.lng, tz);
+    return { sunrise: r.sunriseJd ?? null, sunset: r.sunsetJd ?? null };
+  };
+  const today = riseOf(civilDate);
+  const s0 = today.sunrise ?? birthJd - 0.25;
+  const isAfterSunrise = birthJd >= s0;
+  const hinduDayStart = isAfterSunrise ? s0 : (riseOf(shiftDate(civilDate, -1)).sunrise ?? s0 - 1);
+  const hinduDayEnd = isAfterSunrise
+    ? (today.sunset ?? s0 + 0.5)
+    : (riseOf(shiftDate(civilDate, -1)).sunset ?? s0 - 0.5);
+  const hinduNightEnd = isAfterSunrise
+    ? (riseOf(shiftDate(civilDate, 1)).sunrise ?? hinduDayEnd + 0.5)
+    : s0;
+  const dayLength = Math.max(0.1, hinduDayEnd - hinduDayStart);
+  const nightLength = Math.max(0.1, hinduNightEnd - hinduDayEnd);
+  const isDay = birthJd < hinduDayEnd;
 
-  // ── Dina / Hora lords ─────────────────────────────────────────────────
-  const weekday = civilWeekdayAt(birthJd, tz); // 0 = Sunday
+  // ── Tribhaga bala — పగలు/రాత్రి మూడో భాగాధిపతి ────────────────────────
+  const tribhagaLord: GrahaId7 = isDay
+    ? (['Mercury', 'Sun', 'Saturn'] as GrahaId7[])[
+        Math.min(2, Math.max(0, Math.floor(((birthJd - hinduDayStart) / dayLength) * 3)))
+      ]
+    : (['Moon', 'Venus', 'Mars'] as GrahaId7[])[
+        Math.min(2, Math.max(0, Math.floor(((birthJd - hinduDayEnd) / nightLength) * 3)))
+      ];
+
+  // ── దిన / హోర అధిపతులు ────────────────────────────────────────────────
+  const weekday = civilWeekdayAt(hinduDayStart, tz); // 0 = Sunday
   const dinaLord = WEEKDAY_LORD[weekday];
-  const hoursFromSunrise = (birthJd - sunriseJd) * 24;
-  const horaIndex = Math.max(0, Math.floor(hoursFromSunrise)) + 1;
+  // హోర = ఋతు హోర (పగటి పొదుపు/12, రాత్రి పొడవు/12) — నిరంతర 60 నిమిషాల కాదు.
+  const horaSlot = isDay
+    ? Math.floor((birthJd - hinduDayStart) / (dayLength / 12))
+    : 12 + Math.floor((birthJd - hinduDayEnd) / (nightLength / 12));
+  const horaIndex = Math.min(23, Math.max(0, horaSlot)) + 1;
   const horaLord = HORA_CYCLE[(HORA_CYCLE.indexOf(dinaLord) + (horaIndex - 1)) % 7];
 
   // ── Masa / Varsha lords (solar sankranti weekday lords) ───────────────
@@ -377,7 +409,10 @@ export function computeShadbalaDeep(
     const dig = angDiff(lon, weakPoint[id]) / 3;
 
     // 3) Kala bala
-    const isBenefic = ['Jupiter', 'Venus'].includes(id) || (id === 'Moon' && isShukla) || id === 'Mercury';
+    // పక్ష బలం: చంద్రుడు, బుధుడు, గురువు, శుక్రుడు — నిత్య శుభులు (బృహత్ పరాశర
+    // హోరా అ.27).  చంద్రుడిని కృష్ణ పక్షంలో పాపుడిగా మార్చడం తప్పు; ఆయనకు
+    // కృష్ణ పక్షంలో బలం తగ్గుతుంది, కానీ "60 − పక్ష బలం" సూత్రం వర్తించదు.
+    const isBenefic = ['Moon', 'Mercury', 'Jupiter', 'Venus'].includes(id);
     const paksha = isBenefic ? pakshaBala : 60 - pakshaBala;
     const group: 'ns' | 'smjv' | 'mercury' =
       id === 'Moon' || id === 'Saturn' ? 'ns' : id === 'Mercury' ? 'mercury' : 'smjv';

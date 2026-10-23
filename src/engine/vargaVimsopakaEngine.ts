@@ -10,7 +10,7 @@
  * is exactly ONE implementation of the divisional mathematics in the app.
  */
 import type { CompleteChartResult } from './ephemeris';
-import { TELUGU_RASIS } from './teluguJathakam';
+import { TELUGU_RASIS } from './rasiNames';
 
 export const VARGA_ORDER = [
   'D1',

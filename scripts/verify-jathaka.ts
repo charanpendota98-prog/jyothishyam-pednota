@@ -29,6 +29,7 @@
  */
 import { calculateChart, type CompleteChartResult } from '../src/engine/ephemeris';
 import { computeShadbalaDeep } from '../src/engine/shadbalaDeepEngine';
+import { computeDayPanchanga } from '../src/engine/hinduCalendarEngine';
 import { computeVargaVimshopaka, VIMSHOPAKA_SCHEMES } from '../src/engine/vargaVimsopakaEngine';
 import { computeAvakahada, GHATA_TABLE } from '../src/engine/avakahadaEngine';
 import { computeYogaVichara } from '../src/engine/yogaVicharaEngine';
@@ -1402,6 +1403,107 @@ check(
   badFiles.length ? badFiles.slice(0, 4).join(', ') : '0 ఉల్లంఘనలు'
 );
 
+
+// ─────────────────────────────────────────────────────────────────────────
+//  షడ్బల అంతర్గత స్థిరత్వం × పంచాంగ ఏకీభావం
+//  (గణితం స్వయం-స్థిరంగా ఉందా, పంచాంగమూ-షడ్బలమూ ఒకే వార/హోరను చెబుతున్నాయా)
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n— షడ్బల స్థిరత్వం · పంచాంగ ఏకీభావం —');
+{
+  const cases: [string, CompleteChartResult][] = [
+    ['సూచన జాతకం (2026-10-22 22:55)', KUNDALI],
+    ['చరణ్ (1998-05-14 08:45)', chartOf({
+      name: 'c', date: '1998-05-14', time: '08:45', lat: 17.3843, lng: 78.4583,
+      tzOffsetHours: 5.5, city: 'Hyderabad', country: 'India',
+      ayanamsa: 'lahiri', houseSystem: 'whole_sign',
+    })],
+    ['సూర్యోదయానికి ముందు (2026-10-22 04:30)', chartOf({
+      name: 'p', date: '2026-10-22', time: '04:30', lat: 17.3843, lng: 78.4583,
+      tzOffsetHours: 5.5, city: 'Hyderabad', country: 'India',
+      ayanamsa: 'lahiri', houseSystem: 'whole_sign',
+    })],
+  ];
+  for (const [label, ch] of cases) {
+    const sb = computeShadbalaDeep(ch);
+    const byId = (id: string) => sb.rows.find((r) => r.id === id)!;
+
+    // 1) పక్ష బలం: శుభులు = కోణం/3, పాపులు = 60 − ఆ విలువ; మొత్తం సరిగ్గా 60.
+    const beneficRows = ['Moon', 'Mercury', 'Jupiter', 'Venus'].map((id) => byId(id));
+    const maleficRows = ['Sun', 'Mars', 'Saturn'].map((id) => byId(id));
+    const pk = (r: typeof sb.rows[number]) =>
+      r.kala.find((k) => k.key === 'paksha')?.virupas ?? Number.NaN;
+    const benOk = beneficRows.every((r) => Math.abs(pk(r) - sb.paksha.pakshaBala) < 1e-6);
+    const malOk = maleficRows.every((r) => Math.abs(pk(r) - (60 - sb.paksha.pakshaBala)) < 1e-6);
+    check(`${label} — పక్ష బలం: శుభ గ్రహాలకు కోణం÷3, పాప గ్రహాలకు 60−అది`,
+      benOk && malOk,
+      `శుభ ${pk(beneficRows[0]).toFixed(2)} · పాప ${pk(maleficRows[0]).toFixed(2)} · కోణం ${sb.paksha.elongDeg.toFixed(2)}°`);
+
+    // 2) హోరా అధిపతికి 60 విరూపాలు, మిగిలిన వారికి 0.
+    const h = sb.hora;
+    const horaOk = sb.rows.every((r) => {
+      const v = r.kala.find((k) => k.key === 'hora')?.virupas ?? 0;
+      return r.id === h.lordId ? Math.abs(v - 60) < 1e-9 : v === 0;
+    });
+    check(`${label} — హోర బలం: ${h.lordTe} (${h.index}వ హోర)కే 60 విరూపాలు`, horaOk, `${h.index}వ హోర → ${h.lordTe}`);
+
+    // 3) దిన బలం (45) వారాధిపతికే.
+    const dinaOk = sb.rows.every((r) => {
+      const v = r.kala.find((k) => k.key === 'dina')?.virupas ?? 0;
+      const isLord = r.nameTe === sb.dinaLordTe;
+      return isLord ? Math.abs(v - 45) < 1e-9 : v === 0;
+    });
+    check(`${label} — దిన బలం (45) వారాధిపతి ${sb.dinaLordTe}కే`, dinaOk, sb.dinaLordTe);
+
+    // 4) మొత్తం = ఆరు బలాల మొత్తం.
+    const sumOk = sb.rows.every((r) => {
+      const total = r.sthanaTotal + r.dig + r.kalaTotal + r.cheshta + r.naisargika + r.drik;
+      return Math.abs(total - r.totalVirupas) < 1e-6;
+    });
+    check(`${label} — మొత్తం విరూపాలు = స్థాన+దిక్+కాల+చేష్టా+నైసర్గిక+దృక్`, sumOk,
+      sb.rows.map((r) => r.totalVirupas.toFixed(1)).join(' · '));
+
+    // 5) క్రమాలు 1..7 ప్రత్యేకం; చార్ట్ షడ్బలం = విస్తృత షడ్బలం (ఒకే మూలం).
+    const ranks = sb.rows.map((r) => r.rank).sort((a, b) => a - b).join(',');
+    check(`${label} — బల క్రమాలు 1…7, పునరావృత్తి లేదు`, ranks === '1,2,3,4,5,6,7', ranks);
+    const sameOk = sb.rows.every((r) => {
+      const e = ch.shadbala.find((x) => x.planet === r.id)!;
+      return Math.abs(e.totalVirupas - r.totalVirupas) < 0.02 && Math.abs(e.kalaBala - r.kalaTotal) < 0.02;
+    });
+    check(`${label} — చార్ట్ షడ్బలం ≡ విస్తృత షడ్బలం (ప్యానెల్/PDF/దృశ్యం ఒకే అంకె)`, sameOk,
+      `${ch.shadbala.length} గ్రహాలు`);
+  }
+
+  // 5b) సూర్యోదయానికి ముందు జన్మ → వారము ముందు రోజుది (హిందూ పంచాంగ నియమం).
+  {
+    const pre = cases[2][1];
+    const dayPan: any = computeDayPanchanga(pre.input.date, {
+      lat: pre.input.lat, lng: pre.input.lng, tzOffsetHours: pre.input.tzOffsetHours,
+      placeName: pre.input.city,
+    } as never);
+    check(
+      'సూర్యోదయానికి ముందు (04:30) జన్మ — వారము ముందు రోజు (బుధవారం), పంచాంగ దిన వారము గురువారం',
+      pre.panchanga.vara.sanskrit === 'Budhavara' && dayPan.weekday.nameEn === 'Thursday',
+      `${pre.panchanga.vara.sanskrit} (జన్మ) · ${dayPan.weekday.nameEn} (దిన పంచాంగం)`
+    );
+  }
+
+  // 6) హోర అధిపతి పంచాంగంలోని అదే గడియలో చెప్పిన అధిపతితో సరిపోతుందా?
+  const ch = KUNDALI;
+  const sb = computeShadbalaDeep(ch);
+  const day: any = computeDayPanchanga(ch.input.date, {
+    lat: ch.input.lat, lng: ch.input.lng, tzOffsetHours: ch.input.tzOffsetHours,
+    placeName: ch.input.city,
+  } as never);
+  const birthJd = ch.julianDay;
+  const slot = (day.hora as { startJd: number | null; endJd: number | null; nameTe: string }[]).find(
+    (w) => w.startJd !== null && w.endJd !== null && birthJd >= w.startJd && birthJd < w.endJd
+  );
+  check(
+    'హోరా — షడ్బల అధిపతి = పంచాంగ హోరా గడియ అధిపతి',
+    !!slot && slot.nameTe.startsWith(sb.hora.lordTe),
+    slot ? `${slot.nameTe} vs ${sb.hora.lordTe}` : 'హోరా గడియ కనుగొనబడలేదు'
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 //  UI లో చూపే తనిఖీ సంఖ్యలు ఇక్కడే నిర్ణయమవుతాయి — చేతితో రాసిన అంకెలు కావు.

@@ -1,10 +1,14 @@
 import * as Astronomy from 'astronomy-engine';
+import { computeShadbalaDeep, type ShadbalaRow as ShadbalaDeepRow } from './shadbalaDeepEngine.ts';
 import {
+  civilDateAt,
+  civilWeekdayAt,
   deltaCancriTrueTropicalLongitude,
   trueObliquityDeg,
   nutationLongitudeDeg,
   riseSetForLocalDate,
   spicaTrueTropicalLongitude,
+  sunriseJdForLocalDate,
 } from './astroCore.ts';
 
 export type ZodiacTradition = 'western' | 'vedic' | 'hybrid';
@@ -1248,10 +1252,19 @@ export function calculatePanchanga(
   const paksha = tithiIndex < 15 ? 'Shukla Paksha (Waxing)' : 'Krishna Paksha (Waning)';
   const tithiLords = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu'];
 
-  // 2. Vara (Weekday in local time)
-  const localMs = dateUTC.getTime() + tzOffsetHours * 3600 * 1000;
-  const localDate = new Date(localMs);
-  const dayOfWeek = localDate.getUTCDay(); // 0=Sun..6=Sat
+  // 2. వారము (Vara) — హిందూ పంచాంగంలో వారము స్థానిక సూర్యోదయమున మారుతుంది.
+  //    సూర్యోదయానికి ముందు పుట్టిన జాతకానికి ముందు రోజు వారాధిపతియే వర్తిస్తుంది
+  //    (ఉదా: గురువారం తెల్లవారుజామున 04:30 → బుధవారం).  ఇది పంచాంగ ప్రమాణం.
+  const jdBirth = dateUTC.getTime() / 86_400_000 + 2440587.5;
+  let sunriseOfDay: number | null = null;
+  try {
+    sunriseOfDay = sunriseJdForLocalDate(civilDateAt(jdBirth, tzOffsetHours), lat, lng, tzOffsetHours);
+  } catch {
+    sunriseOfDay = null;
+  }
+  const varaRefJd = sunriseOfDay !== null && jdBirth < sunriseOfDay ? jdBirth - 1 : jdBirth;
+  const dayOfWeek = civilWeekdayAt(varaRefJd, tzOffsetHours); // 0=Sun..6=Sat
+  const localDate = new Date((varaRefJd - 2440587.5) * 86_400_000 + tzOffsetHours * 3_600_000);
   const varaTable = [
     { name: 'Sunday', sanskrit: 'Ravivara', lord: 'Sun' },
     { name: 'Monday', sanskrit: 'Somavara', lord: 'Moon' },
@@ -2149,13 +2162,12 @@ export function calculateChart(
     input.lng,
     input.tzOffsetHours
   );
-  const shadbala = calculateShadbala(planets);
   const ashtakavarga = calculateAshtakavarga(planets, Math.floor(siderealAsc / 30));
   const arabicLots = calculateArabicLots(activeAsc, planets, houses);
   const midpoints = calculateMidpoints(planets);
   const fixedStars = calculateFixedStars(planets, ayanamsaDeg, useSidereal);
 
-  return {
+  const result: CompleteChartResult = {
     input,
     utcIso: dateUTC.toISOString(),
     julianDay: jd,
@@ -2203,12 +2215,45 @@ export function calculateChart(
     vedicYogas,
     dashas,
     panchanga,
-    shadbala,
+    shadbala: [],
     ashtakavarga,
     arabicLots,
     midpoints,
     fixedStars,
   };
+
+  // ── షడ్బలం — ఒకే మూలం ────────────────────────────────────────────────
+  // ప్యానెల్, PDF, దశా-వర్గ దృశ్యం — అన్నీ ఇక్కడ నుంచే చదువుతాయి.  మునుపు
+  // ephemeris లో సరళీకృత (తప్పులతో కూడిన) షడ్బలం, shadbalaDeepEngine లో మరొక
+  // విస్తృత షడ్బలం — రెండూ వేర్వేరు అంకెలు చూపేవి.  ఇప్పుడు బృహత్ పరాశర హోరా
+  // అ.27 ప్రకారం లెక్కించిన ఒకే ఫలితం.
+  result.shadbala = shadbalaEntriesFromDeep(computeShadbalaDeep(result).rows);
+  return result;
+}
+
+/** షడ్బల విస్తృత ఫలితం → పురాతన ShadbalaEntry (ఒకే అంకె, రెండు రూపాలు). */
+function shadbalaEntriesFromDeep(rows: ShadbalaDeepRow[]): ShadbalaEntry[] {
+  const sanskrit: Record<string, string> = {
+    Sun: 'Surya', Moon: 'Chandra', Mars: 'Mangala', Mercury: 'Budha',
+    Jupiter: 'Guru', Venus: 'Shukra', Saturn: 'Shani',
+  };
+  const round = (x: number) => Math.round(x * 100) / 100;
+  return rows.map((r) => ({
+    planet: r.id,
+    sanskrit: sanskrit[r.id] ?? r.id,
+    sthanaBala: round(r.sthanaTotal),
+    digBala: round(r.dig),
+    kalaBala: round(r.kalaTotal),
+    cheshtaBala: round(r.cheshta),
+    naisargikaBala: round(r.naisargika),
+    drikBala: round(r.drik),
+    totalVirupas: round(r.totalVirupas),
+    totalRupas: round(r.totalRupas),
+    requiredRupas: round(r.requiredVirupas / 60),
+    ratio: Math.round((r.ratioPercent / 100) * 1000) / 1000,
+    status:
+      r.ratioPercent >= 115 ? 'Dominant' : r.ratioPercent >= 95 ? 'Sufficient' : 'Under-Powered',
+  }));
 }
 
 // Synastry & Vedic Kundali Milan (Ashta Koota 36-Guna) Comparison Engine
