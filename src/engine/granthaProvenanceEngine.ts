@@ -23,6 +23,7 @@ import { computeVimshottariDeep } from './vimshottariDeepEngine.ts';
 import { calculateJaiminiCharaDasha } from './jaiminiCharaDashaEngine.ts';
 import { generateTajikaVarshaphalaReport } from './tajikaVarshaphalaEngine.ts';
 import { JATHAKA_GATES } from '../generated/verificationStats.ts';
+import { TELUGU_NAKSHATRAS } from './teluguJathakam.ts';
 
 /** verify:shadbala తనిఖీల సంఖ్య (మాన్యువల్ — స్క్రిప్ట్ మారితే ఇక్కడా మార్చాలి; గేట్ తనిఖీ చేస్తుంది). */
 export const SHADBALA_GATES = 301;
@@ -62,6 +63,29 @@ const TAJIKA = 'తాజిక నీలకంఠి (వర్షఫల)';
 const PANCANGA = 'పంచాంగ రీతి — సూర్య సిద్ధాంతం · దృక్ పంచాంగ సంప్రదాయం';
 
 const dms = (v: number) => formatDMS(v);
+
+/** ముద్రిత గ్రంథంలో పంచాంగము తెలుగులోనే — ఇంగ్లీషు పేర్లు కలపము. */
+const TITHI_TE = [
+  'పాడ్యమి', 'విదియ', 'తదియ', 'చవితి', 'పంచమి', 'షష్ఠి', 'సప్తమి', 'అష్టమి', 'నవమి', 'దశమి',
+  'ఏకాదశి', 'ద్వాదశి', 'త్రయోదశి', 'చతుర్దశి', 'పూర్ణిమ',
+];
+const YOGA_TE = [
+  'విష్కంభ', 'ప్రీతి', 'ఆయుష్మాన్', 'సౌభాగ్య', 'శోభన', 'అతిగండ', 'సుకర్మ', 'ధృతి', 'శూల',
+  'గండ', 'వృద్ధి', 'ధ్రువ', 'వ్యాఘాత', 'హర్షణ', 'వజ్ర', 'సిద్ధి', 'వ్యతీపాత', 'వరీయాన్',
+  'పరిఘ', 'శివ', 'సిద్ధ', 'సాధ్య', 'శుభ', 'శుక్ల', 'బ్రహ్మ', 'ఇంద్ర', 'వైధృతి',
+];
+const KARANA_TE: Record<string, string> = {
+  Bava: 'బవ', Balava: 'బాలవ', Kaulava: 'కౌలవ', Taitila: 'తైతిల', Gara: 'గర',
+  Vanija: 'వణిజ', Vishti: 'విష్టి (భద్ర)', Shakuni: 'శకుని', Chatushpada: 'చతుష్పాద',
+  Naga: 'నాగ', Kimstughna: 'కింస్తుఘ్న',
+};
+const VARA_TE: Record<string, string> = {
+  Sunday: 'ఆదివారం', Monday: 'సోమవారం', Tuesday: 'మంగళవారం', Wednesday: 'బుధవారం',
+  Thursday: 'గురువారం', Friday: 'శుక్రవారం', Saturday: 'శనివారం',
+};
+const NAK_TE_EN: Record<string, string> = Object.fromEntries(TELUGU_NAKSHATRAS.map((n) => [n.nameEn, n.nameTe]));
+const nakTe = (en: string) => NAK_TE_EN[en] ?? en;
+
 
 /** ఒక గ్రహం/లగ్నం ఏ రాశిలో, ఏ డిగ్రీలో, ఏ నక్షత్ర-పాదంలో */
 const signLine = (lon: number, nakTe: string, pada: number) =>
@@ -127,11 +151,11 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
     rows.push({
       id: `graha-${p.id}`,
       subjectTe: `${PLANET_TE[p.id as PlanetId9]} స్ఫుటం`,
-      valueTe: `${signLine(p.siderealLon, p.nakshatra, p.pada)}${p.isRetrograde ? ' · వక్రి' : ''}`,
+      valueTe: `${signLine(p.siderealLon, nakTe(p.nakshatra), p.pada)}${p.isRetrograde ? ' · వక్రి' : ''}`,
       derivationTe:
         `సాయన స్ఫుటం ${p.tropicalLon.toFixed(5)}° − అయనాంశం ${chart.ayanamsaDeg.toFixed(5)}° ` +
         `= నిరయన ${p.siderealLon.toFixed(5)}° → రాశి ${Math.floor(p.siderealLon / 30) + 1}, ` +
-        `రాశ్యంతరం ${dms(p.siderealLon % 30)}, నక్షత్రం ${p.nakshatra}, పాదం ${p.pada}.` +
+        `రాశ్యంతరం ${dms(p.siderealLon % 30)}, నక్షత్రం ${nakTe(p.nakshatra)}, పాదం ${p.pada}.` +
         (isNode
           ? ` పాత సంప్రదాయం: మధ్యమ ${chart.nodeSphuta.convention === 'mean' ? 'వాడబడింది' : 'కాదు'} ` +
             `(మధ్యమ ${chart.nodeSphuta.meanSiderealLon.toFixed(4)}° · సత్యం ${chart.nodeSphuta.trueSiderealLon.toFixed(4)}° · భేదం ${chart.nodeSphuta.differenceDeg.toFixed(4)}°).`
@@ -146,7 +170,7 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
   rows.push({
     id: 'tithi',
     subjectTe: 'తిథి',
-    valueTe: `${pan.tithi.number}. ${pan.tithi.name} (${pan.tithi.percentElapsed}% గతించింది)`,
+    valueTe: `${pan.tithi.number}. ${TITHI_TE[(pan.tithi.number - 1) % 15]} (${pan.tithi.paksha === 'Shukla Paksha (Waxing)' ? 'శుక్ల' : 'కృష్ణ'}) · ${pan.tithi.percentElapsed}% గతించింది`,
     derivationTe:
       `చంద్ర-సూర్య నిరయన భేదం = ${moon.siderealLon.toFixed(4)}° − ${sun.siderealLon.toFixed(4)}° ` +
       `= ${((moon.siderealLon - sun.siderealLon + 360) % 360).toFixed(4)}°; ÷ 12 = ` +
@@ -160,10 +184,10 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
   rows.push({
     id: 'nakshatra',
     subjectTe: 'జన్మ నక్షత్రం · పాదం',
-    valueTe: `${pan.nakshatra.name}-${pan.nakshatra.pada} · ${pan.nakshatra.percentElapsed}% గతించింది`,
+    valueTe: `${nakTe(pan.nakshatra.name)} పాదం ${pan.nakshatra.pada} · ${pan.nakshatra.percentElapsed}% గతించింది`,
     derivationTe:
       `నిరయన చంద్ర స్ఫుటం ${moon.siderealLon.toFixed(5)}° ÷ 13°20′ = ` +
-      `${(moon.siderealLon / (360 / 27)).toFixed(3)} → ${pan.nakshatra.name}; ` +
+      `${(moon.siderealLon / (360 / 27)).toFixed(3)} → ${nakTe(pan.nakshatra.name)}; ` +
       `పాదం = కోణం ÷ 3°20′ = ${pan.nakshatra.pada}. అధిపతి ${pan.nakshatra.lord}.`,
     sourceTe: PANCANGA,
     fnTe: 'ephemeris.ts · calculatePanchanga → nakshatra',
@@ -173,7 +197,7 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
   rows.push({
     id: 'yoga-karana-vara',
     subjectTe: 'యోగం · కరణం · వారం',
-    valueTe: `${pan.yoga.name} (${pan.yoga.number}) · ${pan.karana.name} · ${pan.vara.name}`,
+    valueTe: `${YOGA_TE[pan.yoga.number - 1] ?? pan.yoga.name} (${pan.yoga.number}) · ${KARANA_TE[pan.karana.name] ?? pan.karana.name} · ${VARA_TE[pan.vara.name] ?? pan.vara.name}`,
     derivationTe:
       `యోగం = (సూర్య + చంద్ర నిరయన) ÷ 13°20′ = ` +
       `${(((sun.siderealLon + moon.siderealLon) % 360) / (360 / 27)).toFixed(3)} → ${pan.yoga.number}వ యోగం; ` +
@@ -358,12 +382,13 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
     sampradaya: 1531,
   } as const;
   const gateTotal = Object.values(GATE_COUNTS).reduce((a, b) => a + b, 0);
+  // గ్రాహకుడికి అర్థమయ్యే భాషలో — డెవలపర్ స్క్రిప్ట్ పేర్లు (verify:*) పుస్తకంలో ముద్రించము.
   const gateCohortTe =
-    `verify:astro ${GATE_COUNTS.astro} · verify:panchanga ${GATE_COUNTS.panchanga} · ` +
-    `verify:calendar-lunar ${GATE_COUNTS.lunar} · verify:rise ${GATE_COUNTS.rise} · ` +
-    `verify:festivals ${GATE_COUNTS.festivals} · verify:jathaka ${GATE_COUNTS.jathaka} · ` +
-    `verify:shadbala ${GATE_COUNTS.shadbala} · verify:sampradaya ${GATE_COUNTS.sampradaya} — ` +
-    `మొత్తం ${gateTotal.toLocaleString('en-US')} యాంత్రిక తనిఖీలు, 0 విఫలం.`;
+    `స్విస్ ఎఫెమెరిస్ స్ఫుటాలు (${GATE_COUNTS.astro}) · పంచాంగాంగాలు (${GATE_COUNTS.panchanga}) · ` +
+    `తిథి-నక్షత్ర-యోగ-కరణ వార్షిక పట్టిక (${GATE_COUNTS.lunar}) · ఉదయాస్తమయాలు (${GATE_COUNTS.rise}) · ` +
+    `పండుగలు (${GATE_COUNTS.festivals}) · జాతక వర్గ-దశా గణితం (${GATE_COUNTS.jathaka}) · ` +
+    `షడ్బలం (${GATE_COUNTS.shadbala}) · సంప్రదాయ తీర్పులు (${GATE_COUNTS.sampradaya}) — ` +
+    `మొత్తం ${gateTotal.toLocaleString('te-IN')} యాంత్రిక తనిఖీలు, 0 విఫలం.`;
 
   return { rows, summaryTe, gateCohortTe, unverifiableTe, groupsTe: groups };
 }

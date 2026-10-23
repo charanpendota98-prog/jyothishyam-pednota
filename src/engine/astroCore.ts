@@ -160,7 +160,9 @@ export function localMs(
 
 /** Parse "YYYY-MM-DD" + tz offset into the JD of local midnight. */
 export function localMidnightJd(dateISO: string, tzOffsetHours: number): number {
-  const [y, m, d] = dateISO.split('-').map(Number);
+  // "2026-10-23T00:00:00+05:30" లాంటి పూర్తి ISO వచ్చినా మొదటి 10 అక్షరాలే తీసుకోవాలి —
+  // లేకపోతే మూడో భాగం "23T00:00:00+05:30" అయ్యి NaN ఏర్పడి ఖగోళ గణన క్రాష్ అవుతుంది.
+  const [y, m, d] = dateISO.slice(0, 10).split('-').map(Number);
   return jdFromMs(localMs(y, m, d, 0, 0, 0, tzOffsetHours));
 }
 

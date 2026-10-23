@@ -24,6 +24,7 @@ import { computeShadbalaDeep } from './shadbalaDeepEngine.ts';
 import { computeVimshottariDeep } from './vimshottariDeepEngine.ts';
 import { TELUGU_NAKSHATRAS } from './teluguJathakam.ts';
 import { computeYogaVichara } from './yogaVicharaEngine.ts';
+import { placeNameTe } from './placeNamesTe';
 
 const SEVEN: PlanetId9[] = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
 const KENDRA = [1, 4, 7, 10];
@@ -231,7 +232,7 @@ export function computePanditaVicharam(chart: CompleteChartResult): PanditaRepor
 
   /** ── 1. స్నాప్‌షాట్ ─────────────────────────────────────────────── */
   const snapshot: SnapshotRow[] = [
-    { labelTe: 'జన్మ కాలం', valueTe: `${chart.input.date} · ${chart.input.time}`, noteTe: `${chart.input.city} (${chart.input.lat.toFixed(3)}°N, ${chart.input.lng.toFixed(3)}°E)` },
+    { labelTe: 'జన్మ కాలం', valueTe: `${chart.input.date} · ${chart.input.time}`, noteTe: `${placeNameTe(chart.input.city)} (${chart.input.lat.toFixed(3)}°N, ${chart.input.lng.toFixed(3)}°E)` },
     { labelTe: 'అయనాంశ', valueTe: `${chart.ayanamsaFormatted} (లహిరి)`, noteTe: 'భావ పద్ధతి: సంపూర్ణ రాశి (whole-sign)' },
     { labelTe: 'లగ్నం', valueTe: `${RASI_TE[lagnaSign]} ${chart.ascendant.formattedDMS}`, noteTe: `${chart.ascendant.nakshatra} ${chart.ascendant.pada}వ పాదం · లగ్నాధిపతి ${SAINT[lagnaLord]}` },
     { labelTe: 'జన్మ రాశి (చంద్రుడు)', valueTe: `${RASI_TE[signOf(moon)]} ${moon.formattedDMS}`, noteTe: `${moonNak.nameTe} ${moon.pada}వ పాదం · నక్షత్రాధిపతి ${moonNak.lordTe}` },
@@ -384,14 +385,29 @@ export function computePanditaVicharam(chart: CompleteChartResult): PanditaRepor
 
   const mars = by('Mars');
   const marsHouse = houseOf(mars);
+  /**
+   * కుజ (మాంగళిక) దోషం — సంప్రదాయం మూడు ఆధారాల నుండి చూస్తుంది:
+   *   లగ్నం నుండి, చంద్రుని నుండి, శుక్రుని నుండి (ముహూర్త చింతామణి).
+   * ఒకే లగ్న ఆధారం చూసి “దోషం లేదు” అనడం అసంపూర్ణం — శుక్రుని నుండి 2వ స్థానం
+   * ఉన్నప్పుడు ఆ పాయింట్ విడిగా చెప్పాలి, భంగం ఉందా లేదా అని కూడా.
+   */
   const mangalHouses = [1, 2, 4, 7, 8, 12];
-  const mangalBase = mangalHouses.includes(marsHouse);
+  const houseFrom = (from: PlanetPosition) => ((signOf(mars) - signOf(from) + 12) % 12) + 1;
+  const mangalRefs = [
+    { labelTe: 'లగ్నం నుండి', house: marsHouse },
+    { labelTe: 'చంద్రుని నుండి', house: houseFrom(by('Moon')) },
+    { labelTe: 'శుక్రుని నుండి', house: houseFrom(by('Venus')) },
+  ];
+  const mangalHits = mangalRefs.filter((r) => mangalHouses.includes(r.house));
+  const mangalBase = mangalHits.length > 0;
   const mangalCancel: string[] = [];
   if (mangalBase) {
-    const jupSign = signOf(by('Jupiter'));
-    if (jupSign === signOf(mars)) mangalCancel.push('ఉచ్ఛ గురువు యుతి');
-    if (signOf(mars) === 3 || signOf(mars) === 4) mangalCancel.push('కర్కాటకంలో కుజుడు (శాస్త్ర మినహాయింపు)');
-    if ([2].includes(marsHouse)) mangalCancel.push('2వ భావ స్థితి — కుజ దోష గణనలో కొన్ని సంప్రదాయాలు మినహాయిస్తాయి');
+    const marsSign = signOf(mars);
+    if (marsSign === 0 || marsSign === 7) mangalCancel.push('కుజుడు స్వక్షేత్రంలో (మేష/వృశ్చిక) — శాస్త్ర భంగం');
+    if (marsSign === 9) mangalCancel.push('కుజుడు ఉచ్చ స్థానంలో (మకర) — భంగం');
+    if (signOf(by('Jupiter')) === marsSign) mangalCancel.push('గురు-కుజ యుతి — గురువు ఉచ్ఛ/స్వక్షేత్రంలో ఉంటే పూర్తి భంగం');
+    if (marsSign === 3 || marsSign === 4) mangalCancel.push('కర్కాటక/సింహ స్థితి — సంప్రదాయ మినహాయింపు');
+    if (mangalHits.some((r) => r.house === 2)) mangalCancel.push('2వ భావ స్థితి — కొన్ని సంప్రదాయాలు మినహాయిస్తాయి');
   }
 
   const seventhLord = lordOf(7);
@@ -408,9 +424,17 @@ export function computePanditaVicharam(chart: CompleteChartResult): PanditaRepor
     {
       nameTe: 'కుజ (మాంగళిక) దోషం',
       statusTe: mangalCancel.length ? `ఆధారం ఉంది — భంగం ఉంది` : mangalBase ? 'ఏర్పడింది' : 'లేదు',
-      detailTe: mangalBase
-        ? `కుజుడు ${marsHouse}వ భావంలో (${RASI_TE[signOf(mars)]}, ${DIGNITY[mars.dignity] ?? mars.dignity}). ${mangalCancel.length ? `భంగ కారణాలు: ${mangalCancel.join('; ')}. ఆచరణలో దోషం వర్తించదు.` : 'భంగం లేదు — వివాహ మేలుకూర్పులో పరిగణించాలి.'}`
-        : `కుజుడు ${marsHouse}వ భావంలో — మాంగళిక భావాలలో (1,2,4,7,8,12) లేడు.`,
+      detailTe: `కుజుడు ${RASI_TE[signOf(mars)]}లో (${DIGNITY[mars.dignity] ?? mars.dignity}) — ${mangalRefs
+        .map((r) => `${r.labelTe} ${r.house}వ భావం`)
+        .join(', ')}. ${
+        mangalBase
+          ? `మాంగళిక భావాలలో (1,2,4,7,8,12) ${mangalHits.length} ఆధారం ఉంది. ${
+              mangalCancel.length
+                ? `భంగ కారణాలు: ${mangalCancel.join('; ')}. ఆచరణలో దోషం వర్తించదు.`
+                : 'భంగం లేదు — వివాహ మేలుకూర్పులో పరిగణించాలి.'
+            }`
+          : 'మూడు ఆధారాలలోనూ మాంగళిక భావాలలో (1,2,4,7,8,12) లేడు — కుజ దోషం లేదు.'
+      }`,
     },
     {
       nameTe: 'శని-కుజ సంబంధం / వివాహ ఆలస్యం',
@@ -480,7 +504,7 @@ export function computePanditaVicharam(chart: CompleteChartResult): PanditaRepor
   );
   nishedha.push(
     mangalBase && mangalCancel.length
-      ? 'కుజ దోషం పేరుకే ఉంది; ఉచ్ఛ గురువు యుతి వల్ల భంగమైంది — వివాహానికి ఆటంకం అని చెప్పడం తప్పు.'
+      ? `కుజ దోషం పేరుకే ఉంది; ${mangalCancel[0] ?? 'శాస్త్ర భంగం'} వల్ల ఉపశమించింది — వివాహానికి ఆటంకం అని చెప్పడం తప్పు.`
       : mangalBase
         ? 'కుజ దోషం ఉంది — కానీ ఇది వివాహం జరగకపోవడం కాదు; తాళం/ఆవేశ నిర్వహణ అంశం.'
         : 'కుజ దోషం లేదు — ఈ విషయంలో భయం అవసరం లేదు.'

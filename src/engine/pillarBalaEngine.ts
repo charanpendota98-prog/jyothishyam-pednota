@@ -239,7 +239,7 @@ export function computePillarScore(chart: CompleteChartResult, spec: PillarSpec)
     if (md.startMs < birthMs && md.endMs > birthMs) {
       const over = nowMs >= md.endMs;
       return {
-        labelTe: `${over ? 'గత మహాదశ — ' : ''}జన్మ నుంచి ${md.endLocal.slice(0, 10)} వరకు (మూల మహాదశ ${md.startLocal.slice(0, 10)} నుంచి)`,
+        labelTe: `${over ? 'గత మహాదశ — ' : ''}జన్మ నుంచి ${md.endLocal.slice(0, 10)} వరకు · మూల మహాదశ ${md.startLocal.slice(0, 10)} నుంచి`,
         isPast: over,
       };
     }

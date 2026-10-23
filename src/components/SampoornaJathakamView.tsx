@@ -49,6 +49,7 @@ import { SouthIndianKundaliSvg, type VargaDivision } from './ChartsSvg.tsx';
 import { ClassicalJathakaPdfDocument, JATHAKAM_PDF_PAGES } from './ClassicalJathakaPdfDocument.tsx';
 import { buildGranthaProvenance } from '../engine/granthaProvenanceEngine.ts';
 import { PrintSettingsModal } from './PrintSettingsModal.tsx';
+import { placeNameTe } from '../engine/placeNamesTe';
 import { TajikaVarshaphalaView } from './TajikaVarshaphalaView.tsx';
 import { RoyalWhatsAppSummaryModal } from './RoyalWhatsAppSummaryModal.tsx';
 
@@ -425,7 +426,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
               జన్మ తేదీ: {chart.input.date} · సమయం: {chart.input.time} ({jathakam.udayadiIshtaGhatikaluTe})
             </span>
             <span className="px-3 py-1.5 rounded bg-[#090C18]/90 border border-[#C9A96E]/35 font-semibold">
-              జన్మ స్థలం: {chart.input.city} ({chart.input.lat.toFixed(2)}°N, {chart.input.lng.toFixed(2)}°E)
+              జన్మ స్థలం: {placeNameTe(chart.input.city)} ({chart.input.lat.toFixed(2)}°N, {chart.input.lng.toFixed(2)}°E)
             </span>
           </div>
 
@@ -4276,7 +4277,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
                                 : 'bg-[#5BBFB5]/15 text-[#5BBFB5] border border-[#5BBFB5]/35'
                           }`}
                         >
-                          {item.severityLabelTe} ({item.afflictionScore}%)
+                          {item.severityLabelTe} · {item.afflictionScore}%
                         </span>
                       </div>
                     </div>

@@ -153,6 +153,9 @@ export interface SadeSatiInfo {
   phaseTe: string | null;
   startISO: string | null;
   endISO: string | null;
+  /** ప్రస్తుతం సాడే సాతి లేకపోతే తదుపరి కాలం (26 సంవత్సరాల శని గమనం నుంచి). */
+  nextStartISO: string | null;
+  nextEndISO: string | null;
   noteTe: string;
 }
 
@@ -292,19 +295,39 @@ export function computeGocharaReport(
   const s03 = (natalMoonSignIndex + 2) % 12;
   const s11 = (natalMoonSignIndex + 10) % 12;
 
-  /** Continuous list of Saturn sign-changes from 11 years back to 11 years ahead. */
+  /**
+   * Continuous list of Saturn sign-changes: 11 years back to **26 years ahead**.
+   * 26 సంవత్సరాల లోతు ఎందుకు? — శని ఒక రాశిలో ~2.5 సం. ఉంటాడు; సాడే సాతి ~7.5 సం.
+   * కాబట్టి తదుపరి సాడే సాతి కిటికీని (ఉదా. 2041–2049) చూపాలంటే రెండు శని చక్రాల లోతు కావాలి.
+   */
   const saturnIngresses = (() => {
     const out: { jd: number; signIndex: number }[] = [];
     let cursor = jd - 11 * 365.25;
     out.push({ jd: cursor, signIndex: Math.floor(grahaSiderealLongitude('Saturn', cursor, mode) / 30) % 12 });
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 60; i++) {
       const nx = nextSignIngressJd('Saturn', cursor + 0.02, mode);
       out.push(nx);
       cursor = nx.jd;
-      if (nx.jd > jd + 11 * 365.25) break;
+      if (nx.jd > jd + 26 * 365.25) break;
     }
     return out;
   })();
+
+  /** 12వ భావ ప్రవేశం (సాడే సాతి ఆరంభం) → 3వ భావ ప్రవేశం (ముగింపు) జతలు */
+  const sadeSatiWindows: { startJd: number; endJd: number }[] = [];
+  for (let i = 1; i < saturnIngresses.length; i++) {
+    if (saturnIngresses[i].signIndex !== s12 || saturnIngresses[i - 1].signIndex !== s11) continue;
+    const startJd = saturnIngresses[i].jd;
+    let endJd = Number.NaN;
+    for (let j = i + 1; j < saturnIngresses.length; j++) {
+      if (saturnIngresses[j].signIndex === s03 && saturnIngresses[j - 1].signIndex === s02) {
+        endJd = saturnIngresses[j].jd;
+        break;
+      }
+    }
+    if (Number.isFinite(endJd)) sadeSatiWindows.push({ startJd, endJd });
+  }
+  const nextSadeSati = sadeSatiWindows.find((w) => w.startJd > jd) ?? null;
 
   const sadeSati: SadeSatiInfo = (() => {
     if (!isSadeSati) {
@@ -314,8 +337,13 @@ export function computeGocharaReport(
         phaseTe: null,
         startISO: null,
         endISO: null,
+        nextStartISO: nextSadeSati ? civilDateAt(nextSadeSati.startJd, tz) : null,
+        nextEndISO: nextSadeSati ? civilDateAt(nextSadeSati.endJd, tz) : null,
         noteTe:
-          'ప్రస్తుతం సాడే సాతి కాలం లేదు. శని జన్మ రాశికి 12, 1, 2 భావాల్లో సంచరించినప్పుడు సాడే సాతి ఏర్పడుతుంది.',
+          'ప్రస్తుతం సాడే సాతి కాలం లేదు. శని జన్మ రాశికి 12, 1, 2 భావాల్లో సంచరించినప్పుడు సాడే సాతి ఏర్పడుతుంది.' +
+          (nextSadeSati
+            ? ` తదుపరి సాడే సాతి: ${civilDateAt(nextSadeSati.startJd, tz)} నుండి ${civilDateAt(nextSadeSati.endJd, tz)} వరకు (శని ${RASI_TE[s12]} నుండి ${RASI_TE[s03]} వరకు సంచరించే కాలం).`
+            : ''),
       };
     }
     const phaseIndex = (saturnHouse === 12 ? 1 : saturnHouse === 1 ? 2 : 3) as 1 | 2 | 3;
@@ -347,6 +375,8 @@ export function computeGocharaReport(
       phaseTe,
       startISO: startJd === null ? null : civilDateAt(startJd, tz),
       endISO: endJd === null ? null : civilDateAt(endJd, tz),
+      nextStartISO: null,
+      nextEndISO: null,
       noteTe: `శని ${saturn.signTe}లో సంచరిస్తోంది — జన్మ రాశికి ${saturnHouse}వ భావం. ${
         phaseIndex === 2
           ? 'శని జన్మ రాశిపై ఉన్న కాలం — ఆరోగ్యం, ఉద్యోగ భారం, కుటుంబ బాధ్యతలపై శ్రద్ధ అవసరం; శని శాంతి, హనుమత్ ఆరాధన శ్రేయస్కరం.'

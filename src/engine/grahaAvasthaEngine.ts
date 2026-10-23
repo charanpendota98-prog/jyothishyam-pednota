@@ -266,6 +266,9 @@ export function computeGrahaAvastha(chart: CompleteChartResult): GrahaAvasthaRep
     : ['ఈ కుండలిలో ఏ ఇద్దరు తారా గ్రహాలు 1° లోపు ఒకే రాశిలో లేవు — గ్రహ యుద్ధం లేదు.'];
 
   const combustCount = rows.filter((r) => r.combustionDeg !== null).length;
+  // తెలుగు సంఖ్యా వాక్యవిన్యాసం: “1 గ్రహాలు” కాదు — “1 గ్రహం”, “2 గ్రహాలు”.
+  const grahaWord = (n: number) => (n === 0 ? 'గ్రహం' : n === 1 ? 'గ్రహం' : 'గ్రహాలు');
+  const warWord = (n: number) => (n === 0 ? 'యుద్ధం లేదు' : n === 1 ? '1 గ్రహ యుద్ధం' : `${n} గ్రహ యుద్ధాలు`);
 
   return {
     rows,
@@ -273,7 +276,9 @@ export function computeGrahaAvastha(chart: CompleteChartResult): GrahaAvasthaRep
     summaryTe:
       `అత్యంత బలమైన స్థితి ${strongest?.nameTe} (${strongest?.baladiTe} · ${strongest?.deeptadiTe} · ${strongest?.jagradadiTe}); ` +
       `అత్యంత బలహీన స్థితి ${weakest?.nameTe} (${weakest?.baladiTe} · ${weakest?.deeptadiTe} · ${weakest?.jagradadiTe}). ` +
-      `${combustCount} గ్రహాలు అస్తంగతంలో, ${warPairs.length} గ్రహ యుద్ధం.`,
+      (combustCount === 0
+        ? `ఏ గ్రహమూ అస్తంగతంలో లేదు; ${warWord(warPairs.length)}.`
+        : `${combustCount} ${grahaWord(combustCount)} అస్తంగతంలో; ${warWord(warPairs.length)}.`),
     strongestTe: strongest ? `${strongest.nameTe} — ${strongest.rasiTe} ${strongest.degreeInSign.toFixed(2)}°` : '—',
     weakestTe: weakest ? `${weakest.nameTe} — ${weakest.rasiTe} ${weakest.degreeInSign.toFixed(2)}°` : '—',
     methodNoteTe:

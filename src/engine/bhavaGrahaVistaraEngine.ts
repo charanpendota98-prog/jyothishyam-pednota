@@ -23,6 +23,7 @@ import { computeLagnaFunctional } from './lagnaFunctionalEngine.ts';
 import { computeVimshottariDeep, type DashaNode } from './vimshottariDeepEngine.ts';
 import { BHAVA_THEMES_TE } from './ashtakavargaPhalaEngine.ts';
 import { TELUGU_RASIS } from './rasiNames.ts';
+import { TELUGU_NAKSHATRAS } from './teluguJathakam.ts';
 
 export interface VistaraSection {
   headingTe: string;
@@ -114,6 +115,16 @@ export interface BhavaGrahaVistaraReport {
   synthesisTe: string;
   methodNoteTe: string;
 }
+
+
+/**
+ * ఇంగ్లీషు పేర్లు తెలుగులోకి — ముద్రిత గ్రంథం తెలుగొక్కటే ఉండాలి.
+ * (గతంలో “చంద్రుడు Scorpio 28° … Jyeshtha పాదం 4 (దేవత Indra)” అని ముద్రణ అయ్యింది.)
+ */
+const RASI_TE_BY_EN = new Map(TELUGU_RASIS.map((r) => [r.nameEn.split(' (')[0], r.nameTe.split(' ')[0]]));
+const NAK_TE_BY_EN = new Map(TELUGU_NAKSHATRAS.map((n) => [n.nameEn, n]));
+const rasiTeOf = (nameEn: string) => RASI_TE_BY_EN.get(nameEn) ?? nameEn;
+const nakTeOf = (nameEn: string) => NAK_TE_BY_EN.get(nameEn)?.nameTe ?? nameEn;
 
 const PLANET_TE: Record<string, string> = {
   Sun: 'సూర్యుడు',
@@ -528,7 +539,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       {
         headingTe: '1. స్థానం & గుణం',
         bodyTe:
-          `${PLANET_TE[id]} ${p.signName} ${p.formattedDMS} — ${p.house}వ భావం; ${p.nakshatra} పాదం ${p.pada} (నక్షత్రాధిపతి ${PLANET_TE[p.nakshatraLord] ?? p.nakshatraLord}, దేవత ${p.nakshatraDeity}). ` +
+          `${PLANET_TE[id]} ${rasiTeOf(p.signName)} ${p.formattedDMS} — ${p.house}వ భావం; ${nakTeOf(p.nakshatra)} పాదం ${p.pada} (నక్షత్రాధిపతి ${PLANET_TE[p.nakshatraLord] ?? p.nakshatraLord}, దేవత ${(NAK_TE_BY_EN.get(p.nakshatra)?.deityTe ?? p.nakshatraDeity).split(' (')[0]}). ` +
           `గౌరవం: ${DIGNITY_TE[p.dignity] ?? p.dignity}. ${p.isRetrograde ? 'వక్రీగతుడు — ఫలం లోపలికి మళ్లి, ఆలస్యంగా, పునరావృత్తిగా వస్తుంది.' : 'మార్గీ — ఫలం నేరుగా వస్తుంది.'} ` +
           `సహజ స్వభావం: ${natureTe(nature)}.`,
       },
@@ -549,7 +560,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       {
         headingTe: '4. సంబంధాలు (సహవాసం · దృష్టి)',
         bodyTe:
-          (conj.length ? `సహవాసం: ${conj.map((c) => `${PLANET_TE[c.id] ?? c.id} (${c.signName})`).join(', ')}. ` : 'ఈ రాశిలో ఇతర గ్రహ సహవాసం లేదు. ') +
+          (conj.length ? `సహవాసం: ${conj.map((c) => `${PLANET_TE[c.id] ?? c.id} (${rasiTeOf(c.signName)})`).join(', ')}. ` : 'ఈ రాశిలో ఇతర గ్రహ సహవాసం లేదు. ') +
           (given.length ? `ఈ గ్రహం చూసే భావాలు/గ్రహాలు: ${given.join(', ')}. ` : '') +
           (received.length ? `ఈ గ్రహంపై దృష్టి: ${received.join(', ')}. ` : '') +
           (p.d1Sign === p.d9Sign ? 'D1–D9 రెండింటిలోా ఒకే రాశి — వర్గోత్తమం; ఈ గ్రహపు ఫలం స్థిరం, నమ్మదగినది.' : ''),
@@ -577,15 +588,15 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
     const remedyTe =
       scorePct >= 58
         ? `${PLANET_TE[id]} బలవంతుడు — ప్రత్యేక పరిహారం అవసరం లేదు. ఆ బలాన్ని ${BHAVA_THEMES_TE[lagnaHouse - 1].split(',')[0]} రంగంలో ఉపయోగించడమే ఉత్తమం.`
-        : `${PLANET_TE[id]} బలహీనుడు (${scorePct}%) — ${PLANET_TE[id]} వారం రోజు ఉపవాసం/పూజ, ${p.nakshatra} నక్షత్ర దేవతార్చన; ${weakest?.name ?? 'స్థాన బలం'} పెంచే మార్గం (దానం, సేవ, ఆ గ్రహం పాలిత భావానికి క్రమశిక్షణ).`;
+        : `${PLANET_TE[id]} బలహీనుడు (${scorePct}%) — ${PLANET_TE[id]} వారం రోజు ఉపవాసం/పూజ, ${nakTeOf(p.nakshatra)} నక్షత్ర దేవతార్చన; ${weakest?.name ?? 'స్థాన బలం'} పెంచే మార్గం (దానం, సేవ, ఆ గ్రహం పాలిత భావానికి క్రమశిక్షణ).`;
 
     grahas.push({
       id,
       nameTe: PLANET_TE[id],
-      rasiTe: p.signName,
+      rasiTe: rasiTeOf(p.signName),
       degreeTe: p.formattedDMS,
       house: p.house,
-      nakshatraTe: `${p.nakshatra} పాదం ${p.pada}`,
+      nakshatraTe: `${nakTeOf(p.nakshatra)} పాదం ${p.pada}`,
       pada: p.pada,
       dignityTe: DIGNITY_TE[p.dignity] ?? p.dignity,
       motionTe: p.isRetrograde ? 'వక్రీ' : 'మార్గీ',

@@ -31,6 +31,7 @@ import { computeGocharaReport } from '../engine/gocharaVedhaEngine.ts';
 import { computeGrahaAvastha } from '../engine/grahaAvasthaEngine.ts';
 import { computeDashaGocharaSamanvaya } from '../engine/dashaGocharaSamanvayaEngine.ts';
 import { computeShubhaKala } from '../engine/shubhaKalaEngine.ts';
+import { placeNameTe } from '../engine/placeNamesTe';
 import {
   buildGranthaPrayoga,
   granthaPrayogaSummaryTe,
@@ -46,6 +47,16 @@ interface ClassicalJathakaPdfDocumentProps {
   upayaReport: UpayaPariharaReport;
   lifeChronicle: SampoornaLifeChronicleReport;
 }
+
+const YOGA_TIER_TE: Record<string, string> = {
+  raja: 'రాజయోగ వర్గం',
+  dhana: 'ధనయోగ వర్గం',
+  mahapurusha: 'మహాపురుష వర్గం',
+  chandra: 'చంద్ర యోగ వర్గం',
+  surya: 'సూర్య యోగ వర్గం',
+  dosha: 'దోష వర్గం',
+  general: 'సామాన్య యోగం',
+};
 
 type ClassicalVargaKey =
   | 'd1Sign'
@@ -516,7 +527,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
                   జన్మ స్థలం (అక్షాంశ-రేఖాంశాలు)
                 </td>
                 <td className="py-1 px-2">
-                  {chart.input.city} ({chart.input.lat.toFixed(2)}°N, {chart.input.lng.toFixed(2)}°E)
+                  {placeNameTe(chart.input.city)} ({chart.input.lat.toFixed(2)}°N, {chart.input.lng.toFixed(2)}°E)
                 </td>
               </tr>
               <tr className="bg-[#F9F4E8]">
@@ -568,7 +579,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
                   జన్మ రాశి (చంద్ర రాశి) & అధిపతి
                 </td>
                 <td className="py-1 px-2 font-bold text-[#7A1818]">
-                  {jathakam.janmaRasiTe} (అధిపతి: {jathakam.janmaRasiAdhipatiTe})
+                  {jathakam.janmaRasiTe} (అధిపతి: {jathakam.janmaRasiAdhipatiTe.split(' (')[0]})
                 </td>
               </tr>
               <tr className="bg-[#F9F4E8]">
@@ -1087,7 +1098,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
                     {v.planetNameTe}
                   </td>
                   <td className="py-0.5 px-2 border border-[#8B6914]/50 font-mono-tabular">
-                    {v.dignifiedVargasCount} ({v.dignifiedVargaCodes.join(', ') || 'సాధారణ'})
+                    {v.dignifiedVargasCount} వర్గాలు — {v.dignifiedVargaCodes.map((c) => c.replace(/^D(\d+)\((.*)\)$/, 'D$1 $2')).join(', ') || 'సాధారణ'}
                   </td>
                   <td className="py-0.5 px-2 border border-[#8B6914]/50 font-bold text-[#144D3E]">
                     {v.amsaTitleTe}
@@ -1526,7 +1537,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
                       {cd.startDate.slice(0, 4)}–{cd.endDate.slice(0, 4)} ({cd.startAge}–{cd.endAge} సం.)
                     </td>
                     <td className="py-0.5 px-1.5 border border-[#8B6914]/50">
-                      AL-{cd.houseFromAL} · UL-{cd.houseFromUL} {cd.karakasInSignTe && cd.karakasInSignTe.length > 0 ? `· ${cd.karakasInSignTe[0].split(' ')[0]}` : ''}
+                      ఆరూఢ లగ్నం {cd.houseFromAL} · ఉపపదం {cd.houseFromUL} {cd.karakasInSignTe && cd.karakasInSignTe.length > 0 ? `· ${cd.karakasInSignTe[0].split(' ')[0]}` : ''}
                     </td>
                   </tr>
                 ))}
@@ -1699,7 +1710,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
             >
               <div className="flex flex-wrap items-center justify-between gap-2 bg-[#F3E8CE] border-b border-[#8B6914] px-2 py-1 -mx-2 -mt-2 mb-1.5 font-bold">
                 <span className="text-[#7A1818] text-[10.5px]">
-                  {gp.glyph} {gp.planetNameTe} — {gp.houseNumber}వ భావం ({gp.rasiAndDegreeTe}) · {gp.lordshipHousesTe}
+                  {gp.glyph} {gp.planetNameTe} — {gp.houseNumber}వ భావం · {gp.rasiAndDegreeTe} · {gp.lordshipHousesTe}
                 </span>
                 <span className="text-[#144D3E] text-[9px]">
                   {gp.functionalRoleTe} | నక్షత్రం: {gp.nakshatraAndPadaTe}
@@ -1721,7 +1732,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
                 </li>
                 <li>
                   <strong className="text-[#5C3A21]">• దశా కాలం & పరిహారం: </strong>
-                  {gp.dashaBhuktiPhalamTe} <span className="font-semibold text-[#7A1818]">({gp.specificPariharaTe})</span>
+                  {gp.dashaBhuktiPhalamTe} <span className="font-semibold text-[#7A1818]">· {gp.specificPariharaTe}</span>
                 </li>
               </ul>
             </div>
@@ -1750,7 +1761,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
             >
               <div className="flex flex-wrap items-center justify-between gap-2 bg-[#F3E8CE] border-b border-[#8B6914] px-2 py-1 -mx-2 -mt-2 mb-1.5 font-bold">
                 <span className="text-[#7A1818] text-[10.5px]">
-                  {gp.glyph} {gp.planetNameTe} — {gp.houseNumber}వ భావం ({gp.rasiAndDegreeTe}) · {gp.lordshipHousesTe}
+                  {gp.glyph} {gp.planetNameTe} — {gp.houseNumber}వ భావం · {gp.rasiAndDegreeTe} · {gp.lordshipHousesTe}
                 </span>
                 <span className="text-[#144D3E] text-[9px]">
                   {gp.functionalRoleTe} | నక్షత్రం: {gp.nakshatraAndPadaTe}
@@ -1772,7 +1783,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
                 </li>
                 <li>
                   <strong className="text-[#5C3A21]">• దశా కాలం & పరిహారం: </strong>
-                  {gp.dashaBhuktiPhalamTe} <span className="font-semibold text-[#7A1818]">({gp.specificPariharaTe})</span>
+                  {gp.dashaBhuktiPhalamTe} <span className="font-semibold text-[#7A1818]">· {gp.specificPariharaTe}</span>
                 </li>
               </ul>
             </div>
@@ -2003,7 +2014,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
               <div className="flex flex-wrap items-baseline justify-between gap-1 bg-[#F3E8CE] px-2 py-1">
                 <span className="text-[10px] font-bold text-[#7A1818]">{bh.house}. {bh.titleTe}</span>
                 <span className="text-[8.4px]">
-                  {bh.rasiTe} · SAV <strong>{bh.sav}</strong> ({bh.savBandTe}) · అధిపతి {bh.lordTe} {bh.lordHouse}వ భావంలో · <strong className="text-[#144D3E]">{bh.scorePct}%</strong>
+                  {bh.rasiTe} · SAV <strong>{bh.sav}</strong> · {bh.savBandTe} · అధిపతి {bh.lordTe} {bh.lordHouse}వ భావంలో · <strong className="text-[#144D3E]">{bh.scorePct}%</strong>
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-2 py-1 text-[8.2px] leading-snug">
@@ -2037,7 +2048,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
               <div className="flex flex-wrap items-baseline justify-between gap-1 bg-[#F3E8CE] px-2 py-1">
                 <span className="text-[10px] font-bold text-[#7A1818]">{bh.house}. {bh.titleTe}</span>
                 <span className="text-[8.4px]">
-                  {bh.rasiTe} · SAV <strong>{bh.sav}</strong> ({bh.savBandTe}) · అధిపతి {bh.lordTe} {bh.lordHouse}వ భావంలో · <strong className="text-[#144D3E]">{bh.scorePct}%</strong>
+                  {bh.rasiTe} · SAV <strong>{bh.sav}</strong> · {bh.savBandTe} · అధిపతి {bh.lordTe} {bh.lordHouse}వ భావంలో · <strong className="text-[#144D3E]">{bh.scorePct}%</strong>
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-2 py-1 text-[8.2px] leading-snug">
@@ -2265,13 +2276,13 @@ export const ClassicalJathakaPdfDocument: React.FC<
               {upayaReport.maleficInfluences.map((rem, idx) => (
                 <tr key={rem.planetId} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
                   <td className="py-0.5 px-2 border border-[#8B6914]/50 font-bold text-[#7A1818]">
-                    {rem.planetNameTe} ({rem.severityLabelTe})
+                    {rem.planetNameTe} — {rem.severityLabelTe}
                   </td>
                   <td className="py-0.5 px-2 border border-[#8B6914]/50">
                     {rem.afflictionReasonsTe[0] ?? 'దశా/గోచార రక్షణ కొరకు'}
                   </td>
                   <td className="py-0.5 px-2 border border-[#8B6914]/50 font-semibold text-[#144D3E]">
-                    {rem.mantraUpaya.beejaMantraTe} ({rem.mantraUpaya.japaCountTe})
+                    {rem.mantraUpaya.beejaMantraTe} · {rem.mantraUpaya.japaCountTe}
                   </td>
                   <td className="py-0.5 px-2 border border-[#8B6914]/50">
                     <strong>దానం:</strong> {rem.danaUpaya.danaItemsTe} · <strong>రత్నం:</strong> {TELUGU_PLANETS[rem.planetId]?.ratnamTe ?? 'రత్నం'} · <strong>క్షేత్రం:</strong> {rem.templeAndSevaUpaya.kshetraNameTe}
@@ -2289,7 +2300,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
               30. రత్న ధారణ, ఇష్టదేవత & అదృష్ట సూచికలు (Gemstone & Favorable Points)
             </div>
             <div><strong>జీవన రత్నం (Life Stone):</strong> {astroVisionReport.adrushtaSoochika.lifeGemstoneTe}</div>
-            <div><strong>భాగ్య రత్నం (Lucky Stone):</strong> {astroVisionReport.adrushtaSoochika.beneficGemstoneTe} ({astroVisionReport.adrushtaSoochika.fortuneGemstoneTe})</div>
+            <div><strong>భాగ్య రత్నం (Lucky Stone):</strong> {astroVisionReport.adrushtaSoochika.beneficGemstoneTe} · {astroVisionReport.adrushtaSoochika.fortuneGemstoneTe}</div>
             <div><strong>అదృష్ట సంఖ్యలు & వారములు:</strong> {astroVisionReport.adrushtaSoochika.luckyNumbers} · {astroVisionReport.adrushtaSoochika.luckyDaysTe}</div>
             <div><strong>అదృష్ట రంగులు & దిక్కు:</strong> {astroVisionReport.adrushtaSoochika.luckyColorsTe} · {astroVisionReport.adrushtaSoochika.favorableDirectionTe}</div>
             <div><strong>ఆరాధ్య ఇష్టదేవత:</strong> {verificationReport.jaiminiDevataNirnaya.ishtaDevataTe}</div>
@@ -2328,16 +2339,16 @@ export const ClassicalJathakaPdfDocument: React.FC<
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-1.5">
             <div>
-              <strong>వర్ష ప్రవేశ తేదీ & సమయం:</strong> {varshaphalaReport.varshaPraveshaDate} ({varshaphalaReport.varshaPraveshaWeekdayTe}) · {varshaphalaReport.varshaPraveshaTime}
+              <strong>వర్ష ప్రవేశ తేదీ & సమయం:</strong> {varshaphalaReport.varshaPraveshaDate} · {varshaphalaReport.varshaPraveshaWeekdayTe} · {varshaphalaReport.varshaPraveshaTime}
             </div>
             <div>
-              <strong>వర్ష లగ్నం:</strong> {varshaphalaReport.varshaLagnaRasiTe} (అధిపతి: {varshaphalaReport.varshaLagnaLordTe})
+              <strong>వర్ష లగ్నం:</strong> {varshaphalaReport.varshaLagnaRasiTe} — అధిపతి {varshaphalaReport.varshaLagnaLordTe}
             </div>
             <div>
               <strong>ముంథా రాశి & భావం:</strong> {varshaphalaReport.munthaRasiTe} (వర్ష లగ్నం నుండి {varshaphalaReport.munthaHouseFromVarshaLagna}వ భావం)
             </div>
             <div>
-              <strong>వర్షేశ్వరుడు (Year Lord):</strong> {varshaphalaReport.varsheshwaraPlanetTe} ({varshaphalaReport.varsheshwaraPanchavargiyaBala} వి.బలం)
+              <strong>వర్షేశ్వరుడు (Year Lord):</strong> {varshaphalaReport.varsheshwaraPlanetTe} · {varshaphalaReport.varsheshwaraPanchavargiyaBala} వి.బలం
             </div>
           </div>
           <div className="text-[9.5px] leading-snug text-[#2B1E16] border-t border-[#8B6914]/30 pt-1">
@@ -2540,8 +2551,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
 
         <div className="mt-2 border-t border-[#8B6914] pt-1.5 text-[8.5px] text-[#5C3A21] leading-relaxed">
           ప్రమాణం: ప్రతి తీర్పు వెనుక లెక్క ఉంది (గణన వివరాలు ఇంటరాక్టివ్ గ్రంథంలో); ప్రతి తీర్పుకు గ్రంథ నియమం ఉంది.
-          యాంత్రిక గేట్ <em>npm run verify:sampradaya</em> — 3 జాతకాలు · 1531 తనిఖీలు (స్కోరు పరిధి, ఆధారం, సగటు/వ్యాప్తి గణితం,
-          కారకుల అనన్యత, చరదశ/తాజిక ఆధారాలు, దశా కిటికీ తేదీలు). జాతకం చెప్పలేని అంశాలు (పేరు, హోదా, ఆయుర్దాయ సంఖ్య, వ్యాధి నిర్ధారణ) ఇక్కడ కల్పించబడవు.
+          ఇవన్నీ యాంత్రికంగా సరిచూడబడతాయి — స్కోరు పరిధి, ప్రతి తీర్పుకు ఆధారం, సగటు/వ్యాప్తి గణితం,
+          కారకుల అనన్యత, చరదశ/తాజిక ఆధారాలు, దశా కిటికీ తేదీలు. జాతకం చెప్పలేని అంశాలు (పేరు, హోదా, ఆయుర్దాయ సంఖ్య, వ్యాధి నిర్ధారణ) ఇక్కడ కల్పించబడవు.
         </div>
       </section>
 
@@ -2577,7 +2588,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
               <tr key={y.id} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
                 <td className="py-[3px] px-1 align-top">
                   <div className="font-bold text-[#7A1818]">{y.nameTe}</div>
-                  <div className="text-[7.4px] text-[#6E5528]">{y.tier}</div>
+                  <div className="text-[7.4px] text-[#6E5528]">{YOGA_TIER_TE[y.tier] ?? y.tier}</div>
                 </td>
                 <td className="py-[3px] px-1 align-top">
                   <div className={y.present ? 'font-bold text-[#144D3E]' : 'text-[#8A7A66]'}>

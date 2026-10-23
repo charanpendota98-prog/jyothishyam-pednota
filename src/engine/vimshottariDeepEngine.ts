@@ -291,7 +291,9 @@ export function computeVimshottariDeep(chart: CompleteChartResult): VimshottariD
       mahadashaEndLocal: formatLocalDateTime(mdStartMs + mahaSpan, tz),
     },
     janmaNakshatraTe: NAK_TE[nakIndex],
-    janmaNakshatraPada: Math.floor((degInNak % (nakSpan / 4)) / (nakSpan / 4)) + 1,
+    // పాదం = నక్షత్రంలో ఎంత సేపు గడిచింది ÷ 3°20′. (మునుపు ఇక్కడ `%` వల్ల
+    // ప్రతి నాలుగో పాదం తప్పుగా వచ్చేది — PDF లో “జ్యేష్ఠ-1” అని ముద్రణ అయ్యింది.)
+    janmaNakshatraPada: Math.min(4, Math.floor(degInNak / (nakSpan / 4)) + 1),
     moonLon: Number(moonLon.toFixed(4)),
     mahadashas,
     birthChain,

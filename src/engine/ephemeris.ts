@@ -527,7 +527,8 @@ export function formatDMS(degInSign: number): string {
   const m = Math.floor(minFloat);
   const s = Math.round((minFloat - m) * 60);
   const sFixed = s === 60 ? 59 : s;
-  return `${String(d).padStart(2, '0')}° ${String(m).padStart(2, '0')}' ${String(sFixed).padStart(2, '0')}"`;
+  // ముద్రిత గ్రంథంలో ప్రైమ్ గుర్తులు — సున్నితమైన, అచ్చుకు తగిన రూపం.
+  return `${String(d).padStart(2, '0')}° ${String(m).padStart(2, '0')}′ ${String(sFixed).padStart(2, '0')}″`;
 }
 
 // Convert BirthInput local date/time + tzOffsetHours into UTC Date

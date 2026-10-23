@@ -1714,7 +1714,7 @@ export function generateTeluguSampoornaJathakam(
       authorTe: 'మహర్షి పరాశరులు (Maharshi Parashara)',
       chapterRefTe: 'రాజయోగాధ్యాయం & షోడశవర్గ అధ్యాయం (అధ్యాయం 6, 24 & 39)',
       sanskritSlokaTe: 'లగ్నేశః కేంద్రకోణస్థః స్వోచ్చస్వక్షేత్రసంस्थितః | ధర్మకర్మాధినాథౌ చ సంబద్ధౌ రాజయోగదౌ ||',
-      topicTitleTe: `లగ్నాధిపతి (${lagnaLordMeta.nameTe}) & కేంద్ర-త్రికోణ రాజయోగ పరిశీలన`,
+      topicTitleTe: `లగ్నాధిపతి (${lagnaLordMeta.nameTe.split(' ')[0]}) & కేంద్ర-త్రికోణ రాజయోగ పరిశీలన`,
       deepAnalysisTe: `మహర్షి పరాశరుల ప్రమాణం ప్రకారం మీ జన్మ లగ్నం ${lagnaRasiObj.nameTe}. లగ్నాధిపతి అయిన ${lagnaLordMeta.nameTe} మీ కుండలిలో ${lagnaLordPlanet.house}వ భావంలో (${TELUGU_RASIS[lagnaLordPlanet.d1Sign].nameTe}లో, ${lagnaLordPlanet.formattedDMS}) సంచరిస్తున్నాడు. పంచమాధిపతి ${TELUGU_PLANETS[fifthLordEng]?.nameTe} (${fifthLordPlanet.house}వ ఇంట) మరియు భాగ్యాధిపతి ${bhagyaLordMeta.nameTe} (${ninthLordPlanet.house}వ ఇంట) స్థితిగతుల వల్ల మీకు స్వయంకృషి, పూర్వజన్మ పుణ్యబలం మరియు ధర్మబద్ధమైన కీర్తి లభిస్తాయి. ${
         chart.vedicYogas.length > 0
           ? `ఈ జాతకంలో ${chart.vedicYogas.map((y) => y.name).join(', ')} వంటి విశేష యోగాలు క్రియాశీలకంగా ఉన్నాయి.`
@@ -1790,7 +1790,7 @@ export function generateTeluguSampoornaJathakam(
       authorTe: 'మహాకవి కాళిదాసు (Mahakavi Kalidasa)',
       chapterRefTe: 'ఖండం 4 & 6 — విపరీత రాజయోగ, నీచభంగ & దశా-భుక్తి సూత్రాలు',
       sanskritSlokaTe: 'రంధ్రవ్యయరిపూణాం తు నాథాః స్వస్థానసంस्थिताః | మిథః సంయుక్తవీక్షా వా విపరీతమహాశ్రియమ్ ||',
-      topicTitleTe: `విపరీత రాజయోగ, నీచభంగ & దుస్థానాధిపతుల (${TELUGU_PLANETS[sixthLordEng]?.nameTe}, ${TELUGU_PLANETS[eighthLordEng]?.nameTe}) పరిశీలన`,
+      topicTitleTe: `విపరీత రాజయోగ, నీచభంగ & దుస్థానాధిపతుల (${TELUGU_PLANETS[sixthLordEng]?.nameTe.split(' ')[0]}, ${TELUGU_PLANETS[eighthLordEng]?.nameTe.split(' ')[0]}) పరిశీలన`,
       deepAnalysisTe: `మహాకవి కాళిదాసు రచించిన 'ఉత్తర కాలామృతం' ప్రకారం 6, 8, 12 భావాధిపతులు (${TELUGU_PLANETS[sixthLordEng]?.nameTe}, ${TELUGU_PLANETS[eighthLordEng]?.nameTe}, ${TELUGU_PLANETS[twelfthLordEng]?.nameTe}) తమ స్వస్థానాలలో గాని, పరస్పర రాశులలో గాని ఉన్నప్పుడు హర్ష, సరళ, విమల అనే 'విపరీత రాజయోగాలు' ఏర్పడతాయి. అంతేగాక శని/రాహు/కేతు దశలలో ఆకస్మిక అధికార లాభం, పోటీదారులపై అనూహ్య విజయం మరియు కష్టాల నుండి అద్భుత పురోగతి కలుగుతాయి.`,
       keyVerdictTe: `6, 8, 12 అధిపతుల స్థితి · ఆకస్మిక రాజయోగ రక్షణ`,
     },
@@ -1800,7 +1800,7 @@ export function generateTeluguSampoornaJathakam(
       authorTe: 'మహర్షి జైమిని (Maharshi Jaimini)',
       chapterRefTe: 'ప్రథమాధ్యాయం (పాదం 1–3) — ఆత్మకారక, కారకాంశ & ఆరూఢ పాద సిద్ధాంతం',
       sanskritSlokaTe: 'ఆత్మాధికః కళాదిభిర్నభోగః సప్తానామష్టానాం వా | స్వాంశే గ్రహైర్బలయుతైః రాజయోగో ధ్రువం భవేత్ ||',
-      topicTitleTe: `ఆత్మకారకుడు (${jaiminiKarakas[0].planetNameTe}), అమాత్యకారకుడు (${amkRow.planetNameTe}) & ఆరూఢ లగ్న (${arudhaPadas[0].rasiNameTe}) విశ్లేషణ`,
+      topicTitleTe: `ఆత్మకారకుడు ${jaiminiKarakas[0].planetNameTe}, అమాత్యకారకుడు ${amkRow.planetNameTe} & ఆరూఢ లగ్న ${arudhaPadas[0].rasiNameTe} విశ్లేషణ`,
       deepAnalysisTe: `జైమిని మహర్షి సూత్రాల ప్రకారం మీ కుండలిలో అత్యధిక భాగలతో (${jaiminiKarakas[0].degreeFormatted}) ఉన్న ${jaiminiKarakas[0].planetNameTe} 'ఆత్మకారకుడు' (AK), ${amkRow.planetNameTe} 'అమాత్యకారకుడు' (AmK), మరియు ${dkRow.planetNameTe} 'దారకారకుడు' (DK). కారకాంశ లగ్నం ${arudhaPadas[2].rasiNameTe} కాగా, ఆరూఢ లగ్నం (AL) ${arudhaPadas[0].rasiNameTe} (${arudhaPadas[0].houseFromLagna}వ భావం), ఉపపాద లగ్నం (UL) ${arudhaPadas[1].rasiNameTe}. ఆత్మకారక-అమాత్యకారకుల సంబంధం వల్ల ఉన్నత వృత్తి గౌరవం మరియు ఆరూఢ లగ్న బలం వల్ల సమాజంలో స్థిరమైన ప్రతిష్ఠ లభిస్తాయి.`,
       keyVerdictTe: `AK: ${jaiminiKarakas[0].planetNameTe} · AmK: ${amkRow.planetNameTe} · AL: ${arudhaPadas[0].rasiNameTe.split(' ')[0]}`,
     },

@@ -8,6 +8,7 @@ import {
   TELUGU_PLANETS,
   TELUGU_RASIS,
 } from './teluguJathakam.ts';
+import { placeNameTe } from './placeNamesTe';
 
 export interface SiddhantaAuditItem {
   id: string;
@@ -493,7 +494,7 @@ export function generateVerificationAndAnalysisReport(
     return {
       planetId: pid,
       planetNameTe: TELUGU_PLANETS[pid]?.nameTe ?? pid,
-      rasiAndDegreeTe: `${TELUGU_RASIS[p.signIndex]?.nameTe.split(' ')[0]} ${p.formattedDMS}`,
+      rasiAndDegreeTe: `${TELUGU_RASIS[p.signIndex]?.nameTe.split(' ')[0]} ${p.formattedDMS}`.replace(/[()]/g, ''),
       baladiAvasthaTe: baladi.label,
       baladiStrengthPct: baladi.pct,
       jagradadiAvasthaTe,
@@ -626,7 +627,7 @@ export function generateVerificationAndAnalysisReport(
       calculatedValueTe: `అయనాంశ: ${formatDMS(chart.ayanamsaDeg)} · LMT సవరణ: ${lmtSign}${absLmtMin} ని. ${absLmtSec} సె.`,
       status: 'verified',
       statusBadgeTe: '100% దృగ్గణిత ప్రమాణం',
-      deepExplanationTe: `ఈ కుండలి గణనలో NASA JPL DE421 / VSOP87 ఖగోళ సూత్రాలతో పాటు ${chart.input.city} యొక్క ఖచ్చితమైన అక్షాంశ-రేఖాంశాలకు (${chart.input.lat.toFixed(2)}°N, ${chart.input.lng.toFixed(2)}°E) స్థానిక సూర్య కాలమానం (Local Sidereal Time) అనువర్తించబడింది.`,
+      deepExplanationTe: `ఈ కుండలి గణనలో NASA JPL DE421 / VSOP87 ఖగోళ సూత్రాలతో పాటు ${placeNameTe(chart.input.city)} యొక్క ఖచ్చితమైన అక్షాంశ-రేఖాంశాలకు (${chart.input.lat.toFixed(2)}°N, ${chart.input.lng.toFixed(2)}°E) స్థానిక సూర్య కాలమానం (Local Sidereal Time) అనువర్తించబడింది.`,
     },
     {
       id: 'suryodayadi_vara',

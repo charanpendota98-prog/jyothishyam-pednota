@@ -10,6 +10,7 @@ import {
   type HouseSystem,
   type PlanetPosition,
 } from './engine/ephemeris.ts';
+import { placeNameTe } from './engine/placeNamesTe';
 import {
   STATE_DISTRICT_ATLAS,
   TELUGU_RASIS,
@@ -562,7 +563,7 @@ export default function App() {
             </div>
             <div className="kpi-chip">
               <span className="kpi-label">స్థలం</span>
-              <span className="kpi-value max-w-[160px]">{chart.input.city.split('(')[0].trim()}</span>
+              <span className="kpi-value max-w-[160px]">{placeNameTe(chart.input.city)}</span>
             </div>
             <div className="kpi-chip">
               <span className="kpi-label">లగ్నం</span>
@@ -1518,7 +1519,7 @@ export default function App() {
           <div className="pt-4">
             <JathakamBookShell
               titleTe="విషయ సూచిక & పఠన సహాయం"
-              subtitleTe={`${chart.input.name || 'జాతకుడు'} · ${chart.input.date} ${chart.input.time} · ${chart.input.city} — సంపూర్ణ జాతక మహాగ్రంథం · ${JATHAKAM_SECTION_COUNT} అధ్యాయాలు. విషయ సూచిక పుస్తకం లోపలి శీర్షికల నుండి ఆటోమేటిక్‌గా నిర్మించబడుతుంది; ఏ అధ్యాయానికైనా నేరుగా వెళ్లవచ్చు.`}
+              subtitleTe={`${chart.input.name || 'జాతకుడు'} · ${chart.input.date} ${chart.input.time} · ${placeNameTe(chart.input.city)} — సంపూర్ణ జాతక మహాగ్రంథం · ${JATHAKAM_SECTION_COUNT} అధ్యాయాలు. విషయ సూచిక పుస్తకం లోపలి శీర్షికల నుండి ఆటోమేటిక్‌గా నిర్మించబడుతుంది; ఏ అధ్యాయానికైనా నేరుగా వెళ్లవచ్చు.`}
             >
               <SampoornaJathakamView
                 chart={chart}

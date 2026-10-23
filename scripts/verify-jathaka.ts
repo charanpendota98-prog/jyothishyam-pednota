@@ -1460,7 +1460,8 @@ check(
     );
     check(
       'ప్రమాణ పట్టికలోని గేట్ సంఖ్య నిజమైన జాతక గేట్లతో సరిపోతుంది (డ్రిఫ్ట్ లేదు)',
-      prov.gateCohortTe.includes(`verify:jathaka ${JATHAKA_GATES}`),
+      // గ్రాహక పుస్తకంలో `verify:*` కోడ్ పేర్లు ముద్రించము — లేబుల్ తర్వాత కుండలీకరణంలో సంఖ్య.
+      prov.gateCohortTe.includes(`(${JATHAKA_GATES})`),
       prov.gateCohortTe.slice(0, 120)
     );
     check(
@@ -1478,7 +1479,7 @@ check(
     check(
       'ప్రమాణ పట్టిక — యాంత్రిక గేట్ల మొత్తం 8 గేట్ల మొత్తానికి సరిపోతుంది (షడ్బల సహితం)',
       (() => {
-        const pairs = [...prov.gateCohortTe.matchAll(/verify:[a-z-]+ ([\d,]+)/g)].map((m) =>
+        const pairs = [...prov.gateCohortTe.matchAll(/\((\d[\d,]*)\)/g)].map((m) =>
           Number(m[1].replace(/,/g, ''))
         );
         const total = Number((prov.gateCohortTe.match(/మొత్తం ([\d,]+) యాంత్రిక/) ?? [])[1]?.replace(/,/g, '') ?? -1);

@@ -1,6 +1,12 @@
 import { type CompleteChartResult, type PlanetPosition } from './ephemeris.ts';
 import { TELUGU_RASIS, TELUGU_PLANETS, TELUGU_NAKSHATRAS } from './teluguJathakam.ts';
 
+
+/** కుండలీకరణం లోపల పేరు పెట్టేటప్పుడు సమానార్థ పదం ("చంద్రుడు (సోముడు)") అవసరం లేదు —
+ *  లేకపోతే "కేపీ సబ్-లార్డ్ (చంద్రుడు (సోముడు))" అని పొరలు ఏర్పడతాయి.
+ */
+const shortGrahaTe = (name: string): string => (name ?? '').split(' (')[0];
+
 export interface BhavaLordPlacementItem {
   houseNumber: number;
   houseNameTe: string;
@@ -497,7 +503,7 @@ export function generateKundaliSookshmaNadiReport(
   );
   if (retroPlanets.length > 0) {
     conjunctionsAndSpecialStates.push({
-      titleTe: `వక్ర గ్రహ చేష్టా బల & పూర్వజన్మ ప్రారబ్ధ విశ్లేషణ (${retroPlanets.length} గ్రహాలు)`,
+      titleTe: `వక్ర గ్రహ చేష్టా బల & పూర్వజన్మ ప్రారబ్ధ విశ్లేషణ (${retroPlanets.length === 1 ? '1 గ్రహం' : `${retroPlanets.length} గ్రహాలు`})`,
       houseNumber: retroPlanets[0].house,
       rasiNameTe: retroPlanets.map((p) => `${p.house}వ భావం`).join(', '),
       planetsTe: retroPlanets.map((p) => TELUGU_PLANETS[p.id]?.nameTe ?? p.name),
@@ -538,7 +544,7 @@ export function generateKundaliSookshmaNadiReport(
     const kp = computeKpStarAndSubLord(cusp.siderealCusp);
     const sigHouses = getPlanetSignifiedHouses(kp.subLordId);
     kpSubLordTable.push({
-      entityTitleTe: `${cusp.house}వ భావ కస్ప్ (Cusp ${cusp.house})`,
+      entityTitleTe: `${cusp.house}వ భావ మధ్య స్ఫుటం (కస్ప్ ${cusp.house})`,
       rasiNameTe: TELUGU_RASIS[cusp.signIndex].nameTe.split(' ')[0],
       degreeFormatted: cusp.formattedDMS,
       rasiLordTe: TELUGU_PLANETS[SIGN_LORD_ID[cusp.signIndex]]?.nameTe ?? cusp.lord,
@@ -567,50 +573,50 @@ export function generateKundaliSookshmaNadiReport(
       cuspSubLordTe: cuspItem.subLordTe,
       favorableHouses: `${favHouses.join(', ')} (మీ సబ్-లార్డ్ సూచించే భావాలు: ${cuspItem.signifiedHouses.join(', ')})`,
       verdictTe: isStrong
-        ? `✅ KP సబ్-లార్డ్ (${cuspItem.subLordTe}) అనుకూల భావాలైన [${matchingFav.join(', ')}] లను బలంగా సూచిస్తున్నాడు: ${posTextTe}`
-        : `ℹ️ KP సబ్-లార్డ్ (${cuspItem.subLordTe}) మిశ్రమ భావాలను సూచిస్తున్నాడు: ${modTextTe}`,
+        ? `✅ KP సబ్-లార్డ్ (${shortGrahaTe(cuspItem.subLordTe)}) అనుకూల భావాలైన [${matchingFav.join(', ')}] లను బలంగా సూచిస్తున్నాడు: ${posTextTe}`
+        : `ℹ️ KP సబ్-లార్డ్ (${shortGrahaTe(cuspItem.subLordTe)}) మిశ్రమ భావాలను సూచిస్తున్నాడు: ${modTextTe}`,
     };
   };
 
   const kpLifeEventVerdicts = [
     buildKpDomainVerdict(
       2,
-      'ధన ప్రవాహం, బ్యాంకు నిల్వ & కుటుంబ వృద్ధి (KP 2nd Cusp)',
+      'ధన ప్రవాహం, బ్యాంకు నిల్వ & కుటుంబ వృద్ధి (కేపీ 2వ కస్ప్)',
       [2, 6, 10, 11],
       'నిరంతర ధన ప్రవాహం, స్వార్జిత ఆస్తులు మరియు కుటుంబ స్థిరత్వం ఖచ్చితంగా సిద్ధిస్తాయి.',
       'ధన సంపాదన బాగుంటుంది కానీ వృథా ఖర్చులను నియంత్రిస్తూ స్థిర ఆస్తులలో పెట్టుబడి పెట్టాలి.'
     ),
     buildKpDomainVerdict(
       4,
-      'సొంత ఇల్లు, భూమి, ఆస్తులు & వాహన యోగం (KP 4th Cusp)',
+      'సొంత ఇల్లు, భూమి, ఆస్తులు & వాహన యోగం (కేపీ 4వ కస్ప్)',
       [4, 11, 12, 2],
       'సొంత గృహ నిర్మాణం / కొనుగోలు, భూమి మరియు వాహన యోగం మీ జాతకంలో బలంగా వాగ్దానం చేయబడింది.',
       'ఆస్తుల కొనుగోలులో పత్రాల పరిశీలన జాగ్రత్తగా చేయాలి; జీవిత భాగస్వామి లేదా కుటుంబ సభ్యుల పేరుతో కొనుగోలు శుభప్రదం.'
     ),
     buildKpDomainVerdict(
       5,
-      'సంతాన యోగం, ఉన్నత మేధస్సు & స్పెక్యులేషన్ (KP 5th Cusp)',
+      'సంతాన యోగం, ఉన్నత మేధస్సు & స్పెక్యులేషన్ (కేపీ 5వ కస్ప్)',
       [2, 5, 11],
       'సంతాన మూలక సౌఖ్యం, పిల్లల ఉన్నత భవిష్యత్తు మరియు సృజనాత్మక రంగంలో విజయం లభిస్తాయి.',
       'సంతానం మరియు పెట్టుబడుల విషయంలో ఆచితూచి వ్యవహరించాలి; కులదేవతా ఆరాధన శ్రేష్ఠం.'
     ),
     buildKpDomainVerdict(
       7,
-      'వివాహం, వైవాహిక సామరస్యం & భాగస్వామ్యం (KP 7th Cusp)',
+      'వివాహం, వైవాహిక సామరస్యం & భాగస్వామ్యం (కేపీ 7వ కస్ప్)',
       [2, 7, 11, 5],
       'వివాహ జీవితం సుఖమయంగా ఉంటుంది; భాగస్వామి రాకతో అదృష్టం మరియు ఆర్థిక స్థాయి పెరుగుతాయి.',
       'జీవిత భాగస్వామితో పరస్పర సహనం, అవగాహన పాటించడం వల్ల దాంపత్యం అన్యోన్యంగా సాగుతుంది.'
     ),
     buildKpDomainVerdict(
       10,
-      'ఉద్యోగం, వ్యాపారం, పదవీ యోగం & కీర్తి (KP 10th Cusp)',
+      'ఉద్యోగం, వ్యాపారం, పదవీ యోగం & కీర్తి (కేపీ 10వ కస్ప్)',
       [2, 6, 10, 11],
       'వృత్తి-ఉద్యోగాలలో అత్యున్నత పదవి, స్వతంత్ర నిర్ణయాధికారం మరియు సమాజంలో ప్రత్యేక గుర్తింపు లభిస్తాయి.',
       'ఉద్యోగంలో స్థాన చలనాలు లేదా మార్పుల ద్వారా క్రమంగా ఉన్నత స్థానానికి చేరుకుంటారు.'
     ),
     buildKpDomainVerdict(
       12,
-      'విదేశీ ప్రయాణాలు & దూర ప్రాంత భాగ్యోదయం (KP 12th Cusp)',
+      'విదేశీ ప్రయాణాలు & దూర ప్రాంత భాగ్యోదయం (కేపీ 12వ కస్ప్)',
       [3, 9, 12],
       'జన్మస్థలానికి దూరంగా లేదా విదేశీ / అంతర్జాతీయ సంస్థల అనుసంధానంతో విశేష ధన-కీర్తి యోగం ఉంది.',
       'స్వదేశంలోనే ఉంటూ దూర ప్రాంత వ్యవహారాలు లేదా బహుళజాతి సంస్థల ద్వారా లాభపడతారు.'
@@ -706,10 +712,10 @@ export function generateKundaliSookshmaNadiReport(
     badhakeshPlanetTe: badhakeshTe,
     badhakeshPlacedHouse: badhakeshPlanet.house,
     badhakaImpactTe: `మీ ${lagnaRasiTe} కు ${badhakaHouse}వ భావం (${TELUGU_RASIS[badhakaSignIdx].nameTe.split(' ')[0]}) బాధక స్థానం మరియు దాని అధిపతి "${badhakeshTe}" బాధకాధిపతి. ఈ గ్రహం ${badhakeshPlanet.house}వ భావంలో ఉండటం వల్ల ఆ భావ విషయాలలో చివరి నిమిషంలో చిన్న ఆటంకాలు లేదా జాప్యం కనిపించినా, ఆత్మవిశ్వాసంతో ప్రయత్నిస్తే అవే విజయంగా మారుతాయి.`,
-    badhakaRemedyTe: `బాధకాధిపతి (${badhakeshTe}) దశా-భుక్తులలో కులదేవతా పూజ మరియు మహాగణపతి ఆరాధన చేయడం వల్ల అదృశ్య ఆటంకాలు (Hidden Obstacles) పూర్తిగా తొలగిపోతాయి.`,
+    badhakaRemedyTe: `బాధకాధిపతి (${shortGrahaTe(badhakeshTe)}) దశా-భుక్తులలో కులదేవతా పూజ మరియు మహాగణపతి ఆరాధన చేయడం వల్ల అదృశ్య ఆటంకాలు (Hidden Obstacles) పూర్తిగా తొలగిపోతాయి.`,
     marakaHouses: [2, 7],
     marakaLordsTe: [maraka1Te, maraka2Te],
-    marakaCautionTe: `2వ అధిపతి (${maraka1Te}) మరియు 7వ అధిపతి (${maraka2Te}) ధన-కళత్ర కారకులైనప్పటికీ, ఆరోగ్య విషయంలో వీరి అంతర్దశలలో ఆహార నియమాలు, తగిన విశ్రాంతి మరియు మృత్యుంజయ జపం పాటించడం శ్రేయస్కరం.`,
+    marakaCautionTe: `2వ అధిపతి (${shortGrahaTe(maraka1Te)}) మరియు 7వ అధిపతి (${shortGrahaTe(maraka2Te)}) ధన-కళత్ర కారకులైనప్పటికీ, ఆరోగ్య విషయంలో వీరి అంతర్దశలలో ఆహార నియమాలు, తగిన విశ్రాంతి మరియు మృత్యుంజయ జపం పాటించడం శ్రేయస్కరం.`,
   };
 
   // 7. Gender-Specific Shastra Analysis (Stri Jataka vs Purusha Jataka)
@@ -786,7 +792,7 @@ export function generateKundaliSookshmaNadiReport(
 
   const futureTimelineVerdictsTe = [
     `ప్రస్తుతం మీకు ${mahaTe} మహాదశ (${activeMaha.startDate} నుండి ${activeMaha.endDate} వరకు) మరియు అందులో ${antarTe} అంతర్దశ (${activeAntar.startDate} → ${activeAntar.endDate}) నడుస్తున్నది. మహాదశా నాథుడు ${mahaPlanet.house}వ భావంలో మరియు అంతర్దశా నాథుడు ${antarPlanet.house}వ భావంలో ఉండటం వల్ల ఈ కాలంలో ${mahaPlanet.house}, ${antarPlanet.house} భావాలకు సంబంధించిన ఆర్థిక, వృత్తి మరియు కుటుంబ మార్పులు ప్రత్యక్షంగా అనుభవానికి వస్తాయి.`,
-    `భాగ్యాధిపతి (${ninthLordTe}) మరియు కర్మాధిపతి (${tenthLordTe}) సమన్వయం వల్ల రాబోయే దశా-భుక్తులలో ఆదాయ మార్గాలు విస్తరించడం, సొంత ఆస్తి / గృహ యోగం మరియు సమాజంలో ప్రత్యేక గుర్తింపు ఖచ్చితంగా ఏర్పడతాయి.`,
+    `భాగ్యాధిపతి (${shortGrahaTe(ninthLordTe)}) మరియు కర్మాధిపతి (${shortGrahaTe(tenthLordTe)}) సమన్వయం వల్ల రాబోయే దశా-భుక్తులలో ఆదాయ మార్గాలు విస్తరించడం, సొంత ఆస్తి / గృహ యోగం మరియు సమాజంలో ప్రత్యేక గుర్తింపు ఖచ్చితంగా ఏర్పడతాయి.`,
     `భృగు నంది నాడి ప్రకారం గురువు (${TELUGU_RASIS[jupiter.signIndex].nameTe.split(' ')[0]}) మరియు శని (${TELUGU_RASIS[saturn.signIndex].nameTe.split(' ')[0]}) స్థానాలు మీ జీవిత ద్వితీయార్థాన్ని (ముఖ్యంగా 32–36 సం. తర్వాత) అత్యంత స్థిరమైన ఆర్థిక సామ్రాజ్యంగా తీర్చిదిద్దుతాయి.`,
   ];
 
@@ -795,7 +801,7 @@ export function generateKundaliSookshmaNadiReport(
       `మీ లగ్నాధిపతి ${lagnaLordTe} మరియు భాగ్యాధిపతి ${ninthLordTe} బలాన్ని పెంచుకోవడానికి ఆ గ్రహాల వారాలలో ఇష్టదేవతా ఆరాధన, ధ్యానం క్రమం తప్పకుండా చేయండి.`,
       `మీ జన్మ నక్షత్రం (${moonNakMeta.nameTe}) యొక్క పాద అక్షరం (“${moonNakMeta.padasTe[moon.pada - 1]}”) లేదా రాశి అక్షరాలను వ్యాపార/వ్యవహార ప్రారంభాలలో ఉపయోగించుకోండి.`,
       `ప్రస్తుత ${mahaTe}–${antarTe} కాలంలో ${mahaPlanet.house}వ మరియు ${antarPlanet.house}వ భావ రంగాలపై పూర్తి ఏకాగ్రత పెట్టి ప్రణాళికాబద్ధంగా పెట్టుబడులు పెట్టండి.`,
-      `బాధకాధిపతి (${badhakeshTe}) ప్రభావం తగ్గడానికి ప్రతి పౌర్ణమికి లేదా శుభ తిథులలో కులదేవతకు నైవేద్యం సమర్పించండి.`,
+      `బాధకాధిపతి (${shortGrahaTe(badhakeshTe)}) ప్రభావం తగ్గడానికి ప్రతి పౌర్ణమికి లేదా శుభ తిథులలో కులదేవతకు నైవేద్యం సమర్పించండి.`,
     ],
     mustAvoidTe: [
       `భావోద్వేగంతో లేదా ఇతరుల మాటలు విని ఆర్థిక హామీలు (Guarantees/Sureties) ఇవ్వడం, రహస్య ప్రణాళికలను ముందుగానే బయటపెట్టడం చేయకండి.`,
