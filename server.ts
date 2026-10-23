@@ -214,8 +214,11 @@ app.get('/api/panchanga', (req, res) => {
     const date = String(req.query.date ?? '').trim();
     if (!ISO_DATE_RE.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
     const { geo, mode } = parseGeo(req.query);
-    const riseConvention =
-      req.query.rise === 'centre-refraction' ? 'centre-refraction' : req.query.rise === 'upper-limb' ? 'upper-limb' : 'hindu';
+    const riseParam = String(req.query.rise ?? '');
+    const riseConvention: RiseConvention =
+      riseParam === 'hindu' || riseParam === 'upper-limb' || riseParam === 'centre-refraction' || riseParam === 'app'
+        ? (riseParam as RiseConvention)
+        : 'hindu';
     const day = computeDayPanchanga(date, { ...geo, placeName: String(req.query.placeName ?? geo.placeName) }, {
       siderealMode: mode,
       riseConvention,
