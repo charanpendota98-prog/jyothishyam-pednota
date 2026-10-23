@@ -51,7 +51,16 @@ import { resolveNamaAkshara } from '../src/engine/namaAksharaEngine';
 import { TELUGU_NAKSHATRAS as NAMA_NAKSHATRAS } from '../src/engine/teluguJathakam';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { JATHAKAM_PDF_PAGES } from '../src/components/ClassicalJathakaPdfDocument.tsx';
+import {
+  JATHAKAM_PDF_PAGES,
+  ClassicalJathakaPdfDocument,
+} from '../src/components/ClassicalJathakaPdfDocument.tsx';
+import { generateTeluguSampoornaJathakam } from '../src/engine/teluguJathakam';
+import { generateUpayaPariharaReport } from '../src/engine/upayaPariharaEngine';
+import { generateVerificationAndAnalysisReport } from '../src/engine/jathakaVerifications';
+import { generateAstroVisionMasterReport } from '../src/engine/astroVisionAndTransitEngine';
+import { generateSiddhantaAdvancedAppendices } from '../src/engine/siddhantaAdvancedAppendices';
+import { generateSampoornaLifeChronicle } from '../src/engine/sampoornaLifeChronicleEngine';
 import { VastuShastraView } from '../src/components/VastuShastraView';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -1508,6 +1517,55 @@ console.log('\n— షడ్బల స్థిరత్వం · పంచా�
     'హోరా — షడ్బల అధిపతి = పంచాంగ హోరా గడియ అధిపతి',
     !!slot && slot.nameTe.startsWith(sb.hora.lordTe),
     slot ? `${slot.nameTe} vs ${sb.hora.lordTe}` : 'హోరా గడియ కనుగొనబడలేదు'
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  ముద్రణా గ్రంథం (15 పుటల PDF) — నిజంగా రెండర్ అవుతుందా? (SSR)
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n— ముద్రణా గ్రంథం (PDF 15 పుటలు) — SSR —');
+{
+  const jathakam = generateTeluguSampoornaJathakam(KUNDALI);
+  const upayaReport = generateUpayaPariharaReport(KUNDALI);
+  const verificationReport = generateVerificationAndAnalysisReport(KUNDALI);
+  const astroVisionReport = generateAstroVisionMasterReport(KUNDALI);
+  const advancedAppendices = generateSiddhantaAdvancedAppendices(KUNDALI);
+  const lifeChronicle = generateSampoornaLifeChronicle(
+    KUNDALI,
+    jathakam,
+    verificationReport,
+    astroVisionReport,
+    advancedAppendices
+  );
+  const pdfHtml = renderToString(
+    React.createElement(ClassicalJathakaPdfDocument, {
+      chart: KUNDALI,
+      jathakam,
+      verificationReport,
+      astroVisionReport,
+      advancedAppendices,
+      upayaReport,
+      lifeChronicle,
+    } as Parameters<typeof ClassicalJathakaPdfDocument>[0])
+  );
+  check(
+    'PDF గ్రంథం 15 పుటలు సంపూర్ణంగా రెండర్ — ఖాళీ గణన (NaN/undefined) లేదు',
+    pdfHtml.length > 150_000 && !/NaN/.test(pdfHtml) && !/>undefined</.test(pdfHtml),
+    `${Math.round(pdfHtml.length / 1000)} వేల అక్షరాలు · ${(pdfHtml.match(/class="classical-grantha-page/g) ?? []).length} పుటలు`
+  );
+  check(
+    'PDF లో రాహు పాత సంప్రదాయం — మధ్యమ + సత్య స్ఫుటాలు చూపబడతాయి',
+    pdfHtml.includes('రాహు పాత సంప్రదాయం') &&
+      pdfHtml.includes(KUNDALI.nodeSphuta.differenceDeg.toFixed(2)),
+    `భేదం ${KUNDALI.nodeSphuta.differenceDeg.toFixed(2)}°`
+  );
+  // PDF లోని షడ్బల అంకెలు = విస్తృత షడ్బలం (ఒకే మూలం)
+  const sbRows = computeShadbalaDeep(KUNDALI).rows;
+  const sunRupas = sbRows.find((r) => r.id === 'Sun')!.totalRupas.toFixed(2);
+  check(
+    'PDF షడ్బల పట్టిక — విస్తృత షడ్బలం లెక్కతో సరిపోతుంది',
+    pdfHtml.includes(sunRupas),
+    `సూర్యుడు ${sunRupas} రూపాలు`
   );
 }
 
