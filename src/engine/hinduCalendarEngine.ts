@@ -31,6 +31,7 @@ import {
   formatDurationHMS,
   formatDurationTe,
   formatLocalHM,
+  formatLocalHMS,
   jdFromDate,
   jdFromMs,
   kaliAhargana,
@@ -329,6 +330,11 @@ export interface DayPanchanga {
   sunset: string;
   moonrise: string;
   moonset: string;
+  /** సెకన్లతో కూడిన ఉదయాస్తమయాలు — మరో పంచాంగ యాప్‌తో పోల్చడానికి */
+  sunriseHms: string;
+  sunsetHms: string;
+  moonriseHms: string;
+  moonsetHms: string;
   moonsetNextDay: boolean;
   solarNoon: string;
   dayLengthMs: number;
@@ -2179,6 +2185,10 @@ export function computeDayPanchanga(
     sunset: timeStr(sunsetJd, tz),
     moonrise: timeStr(rs.moonriseJd, tz),
     moonset: timeStr(rs.moonsetJd, tz),
+    sunriseHms: formatLocalHMS(sunriseJd, tz),
+    sunsetHms: formatLocalHMS(sunsetJd, tz),
+    moonriseHms: rs.moonriseJd === null ? '—' : formatLocalHMS(rs.moonriseJd, tz),
+    moonsetHms: rs.moonsetJd === null ? '—' : formatLocalHMS(rs.moonsetJd, tz),
     moonsetNextDay: rs.moonsetJd !== null && civilDateAt(rs.moonsetJd, tz) !== dateISO,
     solarNoon: timeStr(solarNoonJd, tz),
     dayLengthMs: dayLenJd * 86_400_000,

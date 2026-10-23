@@ -745,6 +745,7 @@ function limbFunction(
   jd: number,
   convention: RiseConvention = RISE_CONVENTION
 ): number {
+  convention = normalizeConvention(convention, body);
   if (convention === 'hindu') {
     const time = Astronomy.MakeTime(dateFromJd(jd));
     // హిందూ సంప్రదాయం (స్విస్ `BIT_HINDU_RISING`):
@@ -823,7 +824,19 @@ function refineLimbCrossing(
  * హోర, దినమానం అన్నీ కదులుతాయి. యాప్ డిఫాల్ట్ = హిందూ (డ్రిక్) సంప్రదాయం,
  * ఎందుకంటే వినియోగదారు పోల్చే ప్రమాణం అదే.
  */
-export type RiseConvention = 'hindu' | 'centre-refraction' | 'upper-limb';
+export type RiseConvention = 'hindu' | 'centre-refraction' | 'upper-limb' | 'app';
+
+/**
+ * `app` — "హిందూ క్యాలెండర్" (Alok Mandavgane) యాప్ నిర్వచనం:
+ *   • సూర్యుడు: **బింబ కేంద్రం + వక్రీభవనం**  → `swe.BIT_DISC_CENTER + CALC_RISE`
+ *     (అతని ఓపెన్ సోర్స్ ఇంజిన్ `webresh/drik-panchanga` · `sunrise()`)
+ *   • చంద్రుడు: **బింబ పై అంచు + వక్రీభవనం** (స్విస్ డిఫాల్ట్)
+ * సిద్ధిపేట 2026-10-23 ప్రమాణం: 06:11:31 / 17:46:01 · చంద్రుడు 15:43:53 / 04:10:41.
+ */
+function normalizeConvention(convention: RiseConvention, body: Astronomy.Body): RiseConvention {
+  if (convention !== 'app') return convention;
+  return body === Astronomy.Body.Sun ? 'centre-refraction' : 'upper-limb';
+}
 
 /**
  * డిఫాల్ట్ — డ్రిక్ పంచాంగ ప్రమాణం.
@@ -848,6 +861,7 @@ function upperLimbEvent(
   const observer = new Astronomy.Observer(lat, lng, 0);
   // హిందూ (డ్రిక్) సంప్రదాయం: బింబ కేంద్రం, వక్రీభవనం లేదు → ఎత్తు 0°.
   // ఖగోళ ప్రమాణం: పై అంచు + వక్రీభవనం → ఎత్తు −0.878°.
+  convention = normalizeConvention(convention, body);
   const horizonAltitude =
     convention === 'hindu' ? 0 : convention === 'centre-refraction' ? 0 : -(0.612 + 0.266);
   // (centre-refraction లో కూడా స్థూల అన్వేషణ 0° దగ్గరే — కానీ refine దాన్ని

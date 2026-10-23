@@ -113,5 +113,46 @@ console.log('\n  ══ చట్రం & ఉదయ నిర్వచనం —
   );
 }
 
+/* ---------- 3. యాప్ నిర్వచనం (riseConvention 'app') — సెకన్ల స్థాయిలో ---------- */
+{
+  const toSec = (hms: string) => {
+    const [h, m, s] = hms.split(':').map(Number);
+    return h * 3600 + m * 60 + s;
+  };
+  const d = computeDayPanchanga('2026-10-23', GEO, { siderealMode: 'sayana', riseConvention: 'app' });
+  const secDiff = (got: string, want: string) => {
+    let x = toSec(got) - toSec(want);
+    if (x > 43200) x -= 86400;
+    if (x < -43200) x += 86400;
+    return x;
+  };
+  const rows: [string, string, string, number][] = [
+    ['సూర్యోదయం', d.sunriseHms, '06:11:31', 60],
+    ['సూర్యాస్తమయం', d.sunsetHms, '17:46:01', 60],
+    ['చంద్రోదయం', d.moonriseHms, '15:43:53', 120],
+    ['చంద్రాస్తమయం', d.moonsetHms, '04:10:41', 120],
+  ];
+  for (const [name, got, want, tol] of rows) {
+    const diff = secDiff(got, want);
+    check(
+      `యాప్ నిర్వచనం — ${name} సెకన్ల స్థాయిలో`,
+      Math.abs(diff) <= tol,
+      `మనం ${got} · యాప్ ${want} · భేదం ${diff > 0 ? '+' : ''}${diff} సె.`
+    );
+  }
+  check('యాప్ నిర్వచనం — సౌర మాసం మార్గశిరం 1వ దినం (యాప్ "Solar 1")',
+    d.era.solarMasaTe === 'మార్గశిరం' && d.era.solarMonthDay === 1,
+    `${d.era.solarMasaTe} ${d.era.solarMonthDay}వ దినం · ${d.era.solarMonthTe}`);
+  check('యాప్ నిర్వచనం — మాసం కార్తీకం, నక్షత్రం రేవతి, సౌర ఋతువు హేమంత',
+    d.era.masaLabelTe === 'కార్తీకం' && d.nakshatra.nameTe.startsWith('రేవతి') && d.era.rituTe.startsWith('హేమంత'),
+    `${d.era.masaLabelTe} · ${d.nakshatra.nameTe} · ${d.era.rituTe}`);
+  check('యాప్ నిర్వచనం — చంద్రుడు మేషంలోకి 25:22:19 (01:22 +1) కి ±2 నిమి',
+    !!d.moonSignEnd && Math.abs(diffMin(d.moonSignEnd.time, '01:22')) <= 2,
+    `${d.moonSignEnd?.dateISO} ${d.moonSignEnd?.time}`);
+  check('యాప్ నిర్వచనం — సూర్యుడు వృశ్చికంలోకి 15:06:41 కి ±5 నిమి',
+    !!d.sunSignEnd && d.sunSignEnd.sameDay && Math.abs(diffMin(d.sunSignEnd.time, '15:07')) <= 5,
+    `${d.sunSignEnd?.time}`);
+}
+
 console.log(`\n  మొత్తం: ${checks} — విజయం ${checks - failures} — విఫలం ${failures}\n`);
 if (failures > 0) process.exit(1);

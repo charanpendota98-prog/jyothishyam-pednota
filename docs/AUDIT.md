@@ -209,7 +209,7 @@ independent implementations.
 | Swiss Ephemeris (`pyswisseph`) | 2.10.03, SIDM_LAHIRI | planetary longitudes, ascendant, sunrise/sunset |
 | BPHS aṣṭakavarga tables | hand-encoded, independently | bhinna/sarva bindus |
 | PyJHora (Open Astro) | `main` @ Oct 2026 | pañcāṅga, daśā, ṣaḍbala component structure |
-| drik-panchanga | `webresh` @ Oct 2026 | pañcāṅga sanity (tithi/nakṣatra/yoga) |
+| drik-panchanga | `webresh` @ Oct 2026 | pañcāṅga sanity (tithi/nakṣatra/yoga) · **యాప్ ఉదయ/అస్తమయ నిర్వచణం** (`panchanga.py: sunrise()` = `BIT_DISC_CENTER`) |
 
 Reproduce:
 
@@ -567,7 +567,7 @@ Mīna 16:05–17:37), 25 Oct, 27 Oct, 3 Nov.
 | Annual muhūrta (rules, window legality, ≥15 min, ordering) | 5 |
 
 `npm run verify:jathaka` now runs **612** gates with 0 failures; the whole
-suite stands at **8,938** mechanical checks.
+suite stands at **8,946** mechanical checks.
 
 ---
 
@@ -860,7 +860,7 @@ refraction):
   with the corrected definition, which is exactly what a boundary case looks
   like.
 
-`npm run verify:drik` → **14 gates, 0 failures**; with §16 the suite is **8,938**.
+`npm run verify:drik` → **14 gates, 0 failures**; with §16 the suite is **8,946**.
 
 ---
 
@@ -892,14 +892,25 @@ Three independent differences explain every row:
    tropical ingresses — 24.23° away from the sidereal ones (Sun enters Vṛścika on
    2026-11-16 nirayana). The month, rāśi, nakṣatra and solar-month labels all
    shift with the same 24.23°, which is why the app printed Mārgaśīra/Kārtīka.
-   **Nirayana remains our default** (turn-32 instruction: Drik is the timing
-   authority); sāyana is a display mode, never the basis of a prediction.
-2. **Rise/set**: that app raises the **disc centre 0.57° above** the horizon
-   (centre + atmospheric refraction). Drik — and our default — use the Hindu
-   definition: geocentric, ecliptic latitude zeroed, disc centre on the
-   geometric horizon, no refraction. ≈2.5 min in the morning, ≈2.5 min in the
-   evening. With **సాయనం + ఖగోళ** the engine reproduces the other app's
-   sunrise/sunset to the minute.
+   **Decision (user, turn 34): the calendar screen opens in the app's own
+   convention** — sāyana frame + the app's rise/set definition — and always
+   prints the nirayana (śāstra) reading underneath, so nothing is hidden. The
+   jāṭakam, daśā, muhūrta and festival engines stay nirayana/Drik.
+2. **Rise/set**: that app raises the **disc centre with atmospheric
+   refraction** for the Sun and the **upper limb with refraction** for the
+   Moon — exactly what its author's open engine does
+   (`webresh/drik-panchanga`, `panchanga.py: sunrise()` = `swe.BIT_DISC_CENTER +
+   CALC_RISE`). Drik uses the Hindu definition instead: geocentric, ecliptic
+   latitude zeroed, disc centre on the geometric horizon, **no refraction**.
+   This is now a first-class convention in our engine, `RiseConvention = 'app'`,
+   and it reproduces the app to the **second**:
+
+   | | app screen | our `'app'` convention | Δ |
+   |---|---|---|---|
+   | sunrise | 06:11:31 | 06:11:34 | +3 s |
+   | sunset | 17:46:01 | 17:46:06 | +5 s |
+   | moonrise | 15:43:53 | 15:44:08 | +15 s |
+   | moonset | 04:10:41 (+1) | 04:10:18 (+1) | −23 s |
 3. **Ṛtu** is derived from the lunar month in the śāstra (Kārtika → Śarad); that
    app derives it from the *solar* month (Mārgaśīra → Hemanta). Both are now
    printed, so the choice is visible instead of hidden.
@@ -926,4 +937,4 @@ One honest caveat, measured not assumed: Drik's own library computes in the
 *identities* never differ but their *end minutes* can differ by up to 2. The
 Drik gate therefore runs our engine in `true_citra`, which is Drik's own frame.
 
-`npm run verify:conventions` → **9 gates, 0 failures** · full suite **8,938**.
+`npm run verify:conventions` → **17 gates, 0 failures** · full suite **8,946**.

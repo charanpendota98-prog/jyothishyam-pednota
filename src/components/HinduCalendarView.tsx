@@ -187,16 +187,19 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
   const mo = useMemo(() => chart.planets.find((p) => p.id === 'Moon'), [chart]);
   const janmaNakshatraIndex = mo ? Math.floor(mo.siderealLon / (360 / 27)) : 0;
 
+  // డిఫాల్ట్ = "హిందూ క్యాలెండర్" యాప్ నిర్వచనం (సాయన చట్రం + బింబ కేంద్రం/వక్రీభవనం).
+  // యాప్ వాడే కోడ్: webresh/drik-panchanga · sunrise() = swe.BIT_DISC_CENTER + CALC_RISE.
   const [ayanamsaMode, setAyanamsaMode] = useState<SiderealMode>(() => {
     const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('jyotishyam.ayanamsa') : null;
-    return saved === 'sayana' ? 'sayana' : 'lahiri';
+    return saved === 'lahiri' ? 'lahiri' : 'sayana';
   });
   useEffect(() => {
     try { localStorage.setItem('jyotishyam.ayanamsa', ayanamsaMode); } catch { /* ignore */ }
   }, [ayanamsaMode]);
   const [riseMode, setRiseMode] = useState<RiseConvention>(() => {
     const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('jyotishyam.riseConvention') : null;
-    return saved === 'centre-refraction' || saved === 'upper-limb' ? saved : RISE_CONVENTION;
+    if (saved === 'hindu' || saved === 'upper-limb' || saved === 'centre-refraction' || saved === 'app') return saved;
+    return 'app';
   });
   useEffect(() => {
     try { localStorage.setItem('jyotishyam.riseConvention', riseMode); } catch { /* ignore */ }
@@ -204,6 +207,14 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
   const day: DayPanchanga = useMemo(
     () => computeDayPanchanga(dateISO, geo, { siderealMode: ayanamsaMode, riseConvention: riseMode }),
     [dateISO, geo, ayanamsaMode, riseMode]
+  );
+  // సాయన చట్రంలో చూస్తున్నప్పుడు నిరయన (శాస్త్ర) పాఠం కూడా కనిపించాలి — ఏదీ దాక్కోకూడదు.
+  const nirayanaDay: DayPanchanga | null = useMemo(
+    () =>
+      ayanamsaMode === 'sayana'
+        ? computeDayPanchanga(dateISO, geo, { siderealMode: 'lahiri', riseConvention: riseMode })
+        : null,
+    [ayanamsaMode, dateISO, geo, riseMode]
   );
   const monthCells: MonthDayCell[] = useMemo(
     () => getMonthCalendar(monthYear, monthIdx + 1, geo, { todayISO }),
@@ -287,6 +298,15 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
             </div>
           ))}
         </div>
+
+        {nirayanaDay && (
+          <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] text-[#EDE8E0]/60">
+            నిరయన (శాస్త్ర) చట్రంలో: సూర్యుడు {RASI_SHORT_TE[nirayanaDay.sunSignIndex]} · చంద్రుడు{' '}
+            {RASI_SHORT_TE[nirayanaDay.moonSignIndex]} · {nirayanaDay.era.masaLabelTe} ·{' '}
+            {TELUGU_NAKSHATRAS[nirayanaDay.nakshatra.number - 1]?.nameTe} నక్షత్రం · అయనాంశం{' '}
+            {nirayanaDay.ayanamsaFormatted}
+          </div>
+        )}
       </div>
 
       {/* ---------- Date nav ---------- */}
@@ -331,9 +351,9 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
         <div className="flex items-center gap-1.5">
           <span className="text-[#EDE8E0]/45">సూర్యోదయ నిర్వచనం:</span>
           {([
-            ['hindu', 'డ్రిక్ (బింబ కేంద్రం, వక్రీభవనం లేదు)'],
+            ['app', 'యాప్ (హిందూ క్యాలెండర్)'],
+            ['hindu', 'డ్రిక్ (కేంద్రం, వక్రీభవనం లేదు)'],
             ['centre-refraction', 'ఖగోళ (కేంద్రం + వక్రీభవనం)'],
-            ['upper-limb', 'బింబ అంచు + వక్రీభవనం'],
           ] as const).map(([k, label]) => (
             <button
               key={k}
@@ -357,9 +377,9 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
             డ్రిక్ ప్రమాణం
           </button>
           <button
-            onClick={() => { setAyanamsaMode('sayana'); setRiseMode('centre-refraction'); }}
+            onClick={() => { setAyanamsaMode('sayana'); setRiseMode('app'); }}
             className="rounded-md border border-white/10 px-2 py-0.5 text-[#EDE8E0]/55 hover:text-[#EDE8E0]"
-            title="Hindu Calendar యాప్ చూపే సాయన చట్రం + ఖగోళ ఉదయం"
+            title="Hindu Calendar యాప్ చూపే సాయన చట్రం + యాప్ ఉదయ/అస్తమయ నిర్వచనం"
           >
             యాప్ పోలిక
           </button>
@@ -431,8 +451,8 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           <SectionTitle icon={<Sunrise className="w-4 h-4" />}>సూర్య గణన</SectionTitle>
           <div className="grid grid-cols-2 gap-2 text-[12px]">
             {[
-              ['సూర్యోదయం', day.sunrise],
-              ['సూర్యాస్తమయం', day.sunset],
+              ['సూర్యోదయం', day.sunriseHms],
+              ['సూర్యాస్తమయం', day.sunsetHms],
               ['మధ్యాహ్నం', day.solarNoon],
               ['దినమానం', day.dinmanaTe],
               ['రాత్రిమానం', day.ratrimanaTe],
@@ -462,8 +482,8 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           <SectionTitle icon={<MoonStar className="w-4 h-4" />}>చంద్ర గణన</SectionTitle>
           <div className="grid grid-cols-2 gap-2 text-[12px]">
             {[
-              ['చంద్రోదయం', day.moonrise],
-              ['చంద్రాస్తమయం', `${day.moonset}${day.moonsetNextDay ? ' (+1)' : ''}`],
+              ['చంద్రోదయం', day.moonriseHms],
+              ['చంద్రాస్తమయం', `${day.moonsetHms}${day.moonsetNextDay ? ' (+1)' : ''}`],
               [
                 'చంద్ర రాశి',
                 `${RASI_SHORT_TE[day.moonSignIndex]}${

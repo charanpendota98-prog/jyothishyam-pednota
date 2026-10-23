@@ -378,7 +378,7 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
     lunar: 411,
     rise: 4752,
     drik: 14,
-    conventions: 9,
+    conventions: 17,
     festivals: 31,
     jathaka: JATHAKA_GATES,
     shadbala: SHADBALA_GATES,
