@@ -154,5 +154,84 @@ console.log('\n  ══ చట్రం & ఉదయ నిర్వచనం —
     `${d.sunSignEnd?.time}`);
 }
 
+/* ---------- 4. 24 అక్టోబర్ 2026 — యాప్ రెండో స్క్రీన్‌షాట్, ప్రతి అంశం ---------- */
+{
+  const d = computeDayPanchanga('2026-10-24', GEO, { siderealMode: 'sayana', riseConvention: 'app' });
+  const toSec = (hms: string) => {
+    const [h, m, s] = hms.split(':').map(Number);
+    return h * 3600 + m * 60 + s;
+  };
+  const secDiff = (got: string, want: string) => {
+    let x = toSec(got) - toSec(want);
+    if (x > 43200) x -= 86400;
+    if (x < -43200) x += 86400;
+    return x;
+  };
+  // యాప్ స్క్రీన్ (24 Oct 2026, సాయన): ఉదయాలు సెకన్లతో
+  const rows: [string, string, string, number][] = [
+    ['సూర్యోదయం', d.sunriseHms, '06:11:51', 10],
+    ['సూర్యాస్తమయం', d.sunsetHms, '17:45:25', 10],
+    ['చంద్రోదయం', d.moonriseHms, '16:20:46', 30],
+    ['చంద్రాస్తమయం', d.moonsetHms, '29:06:32', 40],
+  ];
+  for (const [name, got, want, tol] of rows) {
+    const diff = secDiff(got, want.replace('29:', '05:'));
+    check(
+      `24 Oct — ${name} (యాప్ సెకన్లతో)`,
+      Math.abs(diff) <= tol,
+      `మనం ${got} · యాప్ ${want} · భేదం ${diff > 0 ? '+' : ''}${diff} సె.`
+    );
+  }
+  check(
+    '24 Oct — పగటి వ్యవధి 11:33:33 · రాత్రి 12:26:47 (యాప్)',
+    d.dinmanaTe.includes('11 గం 33 ని') && d.ratrimanaTe.includes('12 గం 26 ని'),
+    `${d.dinmanaTe} · ${d.ratrimanaTe}`
+  );
+  const anga: [string, string, string, number][] = [
+    ['తిథి', d.tithi.endClock, '13:36:10', 90],
+    ['నక్షత్రం', d.nakshatra.endClock, '24:43:44*', 100],
+    ['యోగం', d.yoga.endClock, '27:50:51*', 100],
+    ['కరణం', d.karana.endClock, '13:36:10', 90],
+  ];
+  for (const [name, got, want, tol] of anga) {
+    const diff = secDiff(got.replace('*', ''), want.replace('*', ''));
+    check(
+      `24 Oct — ${name} ముగింపు (యాప్ గడియారం 24+ గంటల శైలితో)`,
+      Math.abs(diff) <= tol && (got.endsWith('*') === want.endsWith('*')),
+      `మనం ${got} · యాప్ ${want} · భేదం ${diff > 0 ? '+' : ''}${diff} సె.`
+    );
+  }
+  const padas = d.nakshatra.padaEnds.map((x) => x.endClock);
+  const padaRef = ['07:16:36', '13:08:12', '18:57:13'];
+  const padaOk = padaRef.every((want, i) => Math.abs(secDiff(padas[i], want)) <= 100);
+  check(
+    '24 Oct — అశ్విని 1/2/3 పాదాల ముగింపులు (యాప్ పాదము పట్టిక)',
+    padaOk,
+    `${padas.slice(0, 3).join(' · ')} · యాప్ ${padaRef.join(' · ')}`
+  );
+  check(
+    '24 Oct — తిథి త్రయోదశి · శుక్ల · కార్తీకం (అమాంత + పూర్ణిమాంత) · శనివారం',
+    d.tithi.number === 13 && d.era.masaLabelTe === 'కార్తీకం' && d.era.purnimantaMasaTe === 'కార్తీకం' &&
+      d.weekday.nameTe === 'శనివారం',
+    `${d.tithi.nameTe} · ${d.era.masaLabelTe} / ${d.era.purnimantaMasaTe} · ${d.weekday.nameTe}`
+  );
+  check(
+    '24 Oct — చాంద్ర రాశి మేష · సౌర రాశి వృశ్చిక · సౌర మాసం మార్గశిరం 2',
+    d.moonSignIndex === 0 && d.sunSignIndex === 7 && d.era.solarMasaTe === 'మార్గశిరం' && d.era.solarMonthDay === 2,
+    `${d.moonSignIndex} · ${d.sunSignIndex} · ${d.era.solarMasaTe} ${d.era.solarMonthDay}`
+  );
+  check(
+    '24 Oct — సంవత్సరాలు: పరాభవ (దక్షిణ) · రౌద్ర (ఉత్తర) · విక్రమ 2083 · శక 1948 · కాశీ 5127',
+    d.era.samvatsaraTe === 'పరాభవ' && d.era.samvatsaraUttaraTe === 'రౌద్ర' &&
+      d.era.vikramYear === 2083 && d.era.shakaYear === 1948 && d.era.kaliYear === 5127,
+    `${d.era.samvatsaraTe} · ${d.era.samvatsaraUttaraTe} · ${d.era.vikramYear}/${d.era.shakaYear}/${d.era.kaliYear}`
+  );
+  check(
+    '24 Oct — సూర్యోదయ లగ్నం వృశ్చికం (స్విస్ ట్రాపికల్ 210.05°)',
+    d.lagnaAtSunrise.signIndex === 7 && Math.abs(d.lagnaAtSunrise.absDeg - 210.05) < 0.05,
+    `${d.lagnaAtSunrise.signTe} ${d.lagnaAtSunrise.formatted} (${d.lagnaAtSunrise.absDeg}°)`
+  );
+}
+
 console.log(`\n  మొత్తం: ${checks} — విజయం ${checks - failures} — విఫలం ${failures}\n`);
 if (failures > 0) process.exit(1);

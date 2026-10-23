@@ -287,8 +287,9 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           {[
             ['మాసం', `${day.era.masaLabelTe} (అమాంత)`],
             ['పక్షం', day.era.pakshaTe],
-            ['ఋతువు', `${day.era.lunarRituTe}${day.era.rituTe !== day.era.lunarRituTe ? ` (సౌర: ${day.era.rituTe})` : ''}`],
-            ['సంవత్సరం', `శ్రీ ${day.era.samvatsaraTe}`],
+            ['ఋతువు', `${day.era.rituTe}${day.era.rituTe !== day.era.lunarRituTe ? ` (చాంద్ర: ${day.era.lunarRituTe})` : ''}`],
+            ['సంవత్సరం (దక్షిణ)', `శ్రీ ${day.era.samvatsaraTe}`],
+            ['సంవత్సరం (ఉత్తర)', day.era.samvatsaraUttaraTe],
             ['అయనం', day.era.ayanaTe],
             ['సౌర మాసం (సంక్రమణి)', `${day.era.solarMasaTe} · ${day.era.solarMonthTe} · ${day.era.solarMonthDay}వ దినం`],
           ].map(([k, v], idx) => (
@@ -386,7 +387,7 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
         </div>
         <span className="text-[10px] text-[#EDE8E0]/35">
           {ayanamsaMode === 'sayana'
-            ? 'సాయనం పోలిక కోసం మాత్రమే — జ్యోతిష ప్రమాణం నిరయనం (లహిరి).'
+            ? 'సాయనం = యాప్ పోలిక కోసం. పండుగలు, ముహూర్తాలు, జాతకం నిరయన (లహిరి) ప్రమాణంలోనే — సాయనంలో దీపావళి 9 అక్టోబరుకు జరిగిపోతుంది.'
             : `అయనాంశం ${day.ayanamsaFormatted}`}
         </span>
       </div>
@@ -397,8 +398,8 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           labelTe="తిథి"
           valueTe={day.tithi.nameTe}
           subTe={`${day.tithi.pakshaTe} · తర్వాత ${day.tithi.nextNameTe ?? '—'}`}
-          start={day.tithi.startTime}
-          end={day.tithi.endTime}
+          start={day.tithi.startClock}
+          end={day.tithi.endClock}
           percent={day.tithi.percentElapsed}
           accent="#C9A96E"
           icon={<Moon className="w-3.5 h-3.5" />}
@@ -407,8 +408,8 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           labelTe="నక్షత్రం"
           valueTe={`${day.nakshatra.nameTe} · ${day.nakshatra.pada}`}
           subTe={`${day.nakshatra.nameEn} · ${day.nakshatra.lordTe} · ${moonNak?.deityTe ?? ''}`}
-          start={day.nakshatra.startTime}
-          end={day.nakshatra.endTime}
+          start={day.nakshatra.startClock}
+          end={day.nakshatra.endClock}
           percent={day.nakshatra.percentElapsed}
           accent="#9B8FD4"
           icon={<Star className="w-3.5 h-3.5" />}
@@ -417,8 +418,8 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           labelTe="యోగం"
           valueTe={day.yoga.nameTe}
           subTe={`${day.yoga.nameEn} · ${day.yoga.isAuspicious ? 'శుభం' : 'అశుభం'}`}
-          start={day.yoga.startTime}
-          end={day.yoga.endTime}
+          start={day.yoga.startClock}
+          end={day.yoga.endClock}
           percent={day.yoga.percentElapsed}
           accent={day.yoga.isAuspicious ? '#5BBFB5' : '#D47B7B'}
           icon={<Sparkles className="w-3.5 h-3.5" />}
@@ -427,8 +428,8 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           labelTe="కరణం"
           valueTe={day.karana.nameTe}
           subTe={day.karana.typeTe}
-          start={day.karana.startTime}
-          end={day.karana.endTime}
+          start={day.karana.startClock}
+          end={day.karana.endClock}
           percent={day.karana.percentElapsed}
           accent={day.karana.isBhadra ? '#D47B7B' : '#8FBFA0'}
           icon={<CircleDot className="w-3.5 h-3.5" />}
@@ -453,6 +454,7 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
             {[
               ['సూర్యోదయం', day.sunriseHms],
               ['సూర్యాస్తమయం', day.sunsetHms],
+              ['సూర్యోదయ లగ్నం', `${RASI_SHORT_TE[day.lagnaAtSunrise.signIndex]} ${day.lagnaAtSunrise.formatted}`],
               ['మధ్యాహ్నం', day.solarNoon],
               ['దినమానం', day.dinmanaTe],
               ['రాత్రిమానం', day.ratrimanaTe],
@@ -482,8 +484,8 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           <SectionTitle icon={<MoonStar className="w-4 h-4" />}>చంద్ర గణన</SectionTitle>
           <div className="grid grid-cols-2 gap-2 text-[12px]">
             {[
-              ['చంద్రోదయం', day.moonriseHms],
-              ['చంద్రాస్తమయం', `${day.moonsetHms}${day.moonsetNextDay ? ' (+1)' : ''}`],
+              ['చంద్రోదయం', day.moonriseClock],
+              ['చంద్రాస్తమయం', `${day.moonsetClock}`],
               [
                 'చంద్ర రాశి',
                 `${RASI_SHORT_TE[day.moonSignIndex]}${
@@ -509,6 +511,26 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
               {taraForMe?.te ?? '—'}
             </span>{' '}
             ({taraForMe?.good ? 'శుభం' : 'అశుభం'})
+          </div>
+          <div className="mt-3">
+            <div className="mb-1 text-[10px] uppercase tracking-wider text-[#EDE8E0]/35">
+              పాదము — {day.nakshatra.nameTe} (ఇప్పుడు {day.nakshatra.pada}వ పాదం)
+            </div>
+            <div className="space-y-0.5 text-[11px]">
+              {day.nakshatra.padaEnds.map((p) => (
+                <div
+                  key={p.pada}
+                  className={`flex items-center justify-between gap-2 rounded px-2 py-0.5 ${
+                    p.pada === day.nakshatra.pada ? 'bg-[#9B8FD4]/15 text-[#EDE8E0]' : 'text-[#EDE8E0]/55'
+                  }`}
+                >
+                  <span>
+                    {p.pada} చ · {day.nakshatra.nameTe}
+                  </span>
+                  <span className="font-mono-tabular">{p.endClock}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
 

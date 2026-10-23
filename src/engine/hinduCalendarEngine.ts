@@ -22,6 +22,7 @@
 import * as Astronomy from 'astronomy-engine';
 import {
   ayanamsaDegrees,
+  ascendantTropical,
   civilDateAt,
   civilWeekdayAt,
   dateFromJd,
@@ -313,6 +314,9 @@ export interface AngaInfo {
   startTime: string;
   endTime: string;
   percentElapsed: number;
+  /** యాప్ శైలి గడియారం (24+ గంటలు, `*` = మరుసటి తేదీ) */
+  startClock: string;
+  endClock: string;
   nextNameTe?: string;
   noteTe?: string;
   extra?: Record<string, string>;
@@ -335,6 +339,11 @@ export interface DayPanchanga {
   sunsetHms: string;
   moonriseHms: string;
   moonsetHms: string;
+  /** యాప్ శైలి గడియారం — అర్ధరాత్రి దాటితే 24+ గంటలు, `*` గుర్తు */
+  sunriseClock: string;
+  sunsetClock: string;
+  moonriseClock: string;
+  moonsetClock: string;
   moonsetNextDay: boolean;
   solarNoon: string;
   dayLengthMs: number;
@@ -344,6 +353,8 @@ export interface DayPanchanga {
   tithi: AngaInfo & { pakshaTe: string; pakshaEn: string; percent: number };
   nakshatra: AngaInfo & {
     pada: number;
+    /** నాలుగు పాదాల ముగింపు క్షణాలు (1..4) */
+    padaEnds: { pada: number; endJd: number; endTime: string; endClock: string }[];
     lordTe: string;
     deityTe: string;
     ganaTe: string;
@@ -365,6 +376,8 @@ export interface DayPanchanga {
   ayanamsaFormatted: string;
   sunSignIndex: number;
   moonSignIndex: number;
+  /** సూర్యోదయ క్షణంలో లగ్నం (ప్రస్తుత చట్రంలో — నిరయనం/సాయనం) */
+  lagnaAtSunrise: { signIndex: number; signTe: string; degInSign: number; absDeg: number; formatted: string };
   /** సూర్యుడు తదుపరి రాశిలోకి ప్రవేశించే క్షణం (సంక్రమణి) */
   sunSignEnd: RasiPravesa | null;
   /** చంద్రుడు తదుపరి రాశిలోకి ప్రవేశించే క్షణం */
@@ -392,6 +405,10 @@ export interface HinduEraInfo {
   samvatsaraIndex: number; // 1..60
   samvatsaraTe: string;
   samvatsaraEn: string;
+  /** ఉత్తర భారత (విక్రమ సంవత్) నామం — దక్షిణ లెక్క కంటే 14 ముందు */
+  samvatsaraUttaraIndex: number;
+  samvatsaraUttaraTe: string;
+  samvatsaraUttaraEn: string;
   shakaYear: number;
   vikramYear: number;
   gujaratiYear: number;
@@ -482,6 +499,24 @@ function jdToMs(jd: number): number {
 
 function timeStr(jd: number | null, tz: number): string {
   return jd === null ? '—' : formatLocalHM(jd, tz);
+}
+
+/**
+ * పంచాంగ దినం (సూర్యోదయాది) గడియారం — "హిందూ క్యాలెండర్" యాప్ శైలి:
+ * అర్ధరాత్రి దాటిన సమయాలను 24+ గంటలుగా (24:43:44) రాసి `*` పెడుతుంది.
+ * ఇది "ఈ సమయం మరుసటి తేదీన" అని అనుమానం లేకుండా చెప్పే సంప్రదాయం.
+ */
+function appClock(jd: number | null, dateISO: string, tz: number): string {
+  if (jd === null) return '—';
+  const midnight = localMidnightJd(dateISO, tz);
+  const total = Math.round((jd - midnight) * 86_400);
+  const abs = Math.abs(total);
+  const h = Math.floor(abs / 3600);
+  const m = Math.floor((abs % 3600) / 60);
+  const sec = abs % 60;
+  const sign = total < 0 ? '−' : '';
+  const mark = total >= 86_400 ? '*' : '';
+  return `${sign}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}${mark}`;
 }
 
 function windowFromJd(
@@ -818,10 +853,18 @@ export function resolveHinduEra(dateISO: string, geo: GeoContext, mode: Sidereal
     return Math.max(1, diff + 1);
   })();
 
+  const samvatsaraFinal = samvatsaraIndex === 0 ? 60 : samvatsaraIndex;
+  // ఉత్తర భారత (విక్రమ) లెక్క: దక్షిణ (శక) లెక్క కంటే 14 సంవత్సరాలు ముందు —
+  // 2026-27: దక్షిణ పరాభవ (40) · ఉత్తర రౌద్ర (54).
+  const uttaraIdx = ((samvatsaraFinal - 1 + 14) % 60) + 1;
+  const uttara = SAMVATSARA_NAMES[uttaraIdx - 1] ?? SAMVATSARA_NAMES[0];
   return {
-    samvatsaraIndex: samvatsaraIndex === 0 ? 60 : samvatsaraIndex,
+    samvatsaraIndex: samvatsaraFinal,
     samvatsaraTe: samvatsara.te,
     samvatsaraEn: samvatsara.en,
+    samvatsaraUttaraIndex: uttaraIdx,
+    samvatsaraUttaraTe: uttara.te,
+    samvatsaraUttaraEn: uttara.en,
     shakaYear,
     vikramYear: shakaYear + 135,
     gujaratiYear: shakaYear + 134,
@@ -1833,6 +1876,27 @@ export function computeDayPanchanga(
   const nEnd = nWindow.endJd;
   const nPercent = nWindow.percent;
   const nak = TELUGU_NAKSHATRAS[nIdx];
+  // పాద సరిహద్దులు — నక్షత్రాన్ని నాలుగు 3°20' భాగాలుగా; యాప్ "పాదము" పట్టిక అదే.
+  const padaEnds: { pada: number; endJd: number; endTime: string; endClock: string }[] = (() => {
+    const quarter = 360 / 27 / 4;
+    const base = nIdx * (360 / 27);
+    const out: { pada: number; endJd: number; endTime: string; endClock: string }[] = [];
+    let from = nWindow.startJd;
+    for (let p = 1; p <= 4; p++) {
+      const jd =
+        p === 4
+          ? nEnd
+          : findLongitudeCrossing(
+              (j) => siderealLongitude('Moon', j, mode),
+              base + p * quarter,
+              from,
+              13.2
+            );
+      out.push({ pada: p, endJd: jd, endTime: timeStr(jd, tz), endClock: appClock(jd, dateISO, tz) });
+      from = jd;
+    }
+    return out;
+  })();
 
   // ----- Yoga
   const yWindow = yogaWindow(sunriseJd, mode);
@@ -2167,6 +2231,12 @@ export function computeDayPanchanga(
   const sunSid = siderealLongitude('Sun', sunriseJd, mode);
   const sunNak = Math.floor(sunSid / (360 / 27)) % 27;
 
+  // సూర్యోదయ లగ్నం — సాయన చట్రంలో అయితే ట్రాపికల్ లగ్నమే (అయనాంశం 0).
+  const lagnaAbs = norm360(
+    ascendantTropical(sunriseJd, geo.lat, geo.lng) - ayanamsaDegrees(sunriseJd, mode)
+  );
+  const lagnaSign = Math.floor(lagnaAbs / 30) % 12;
+
   return {
     dateISO,
     geo,
@@ -2189,6 +2259,10 @@ export function computeDayPanchanga(
     sunsetHms: formatLocalHMS(sunsetJd, tz),
     moonriseHms: rs.moonriseJd === null ? '—' : formatLocalHMS(rs.moonriseJd, tz),
     moonsetHms: rs.moonsetJd === null ? '—' : formatLocalHMS(rs.moonsetJd, tz),
+    sunriseClock: appClock(sunriseJd, dateISO, tz),
+    sunsetClock: appClock(sunsetJd, dateISO, tz),
+    moonriseClock: appClock(rs.moonriseJd, dateISO, tz),
+    moonsetClock: appClock(rs.moonsetJd, dateISO, tz),
     moonsetNextDay: rs.moonsetJd !== null && civilDateAt(rs.moonsetJd, tz) !== dateISO,
     solarNoon: timeStr(solarNoonJd, tz),
     dayLengthMs: dayLenJd * 86_400_000,
@@ -2203,6 +2277,8 @@ export function computeDayPanchanga(
       endJd: tEnd,
       startTime: timeStr(tWindow.startJd, tz),
       endTime: timeStr(tEnd, tz),
+      startClock: appClock(tWindow.startJd, dateISO, tz),
+      endClock: appClock(tEnd, dateISO, tz),
       percentElapsed: Number(tPercent.toFixed(1)),
       nextNameTe: tithiNameTe((tIdx + 1) % 30),
       pakshaTe,
@@ -2217,7 +2293,10 @@ export function computeDayPanchanga(
       endJd: nEnd,
       startTime: timeStr(nWindow.startJd, tz),
       endTime: timeStr(nEnd, tz),
+      startClock: appClock(nWindow.startJd, dateISO, tz),
+      endClock: appClock(nEnd, dateISO, tz),
       percentElapsed: Number(nPercent.toFixed(1)),
+      padaEnds,
       pada: nakshatraPadaAt(sunriseJd, mode),
       lordTe: nak?.lordTe ?? '—',
       deityTe: nak?.deityTe ?? '—',
@@ -2234,6 +2313,8 @@ export function computeDayPanchanga(
       endJd: yEnd,
       startTime: timeStr(yWindow.startJd, tz),
       endTime: timeStr(yEnd, tz),
+      startClock: appClock(yWindow.startJd, dateISO, tz),
+      endClock: appClock(yEnd, dateISO, tz),
       percentElapsed: Number(yPercent.toFixed(1)),
       meaningTe: INAUSPICIOUS_YOGA_INDEXES.includes(yIdx) ? 'అశుభ యోగం — శుభ కార్యాలు వర్జించాలి' : 'శుభ యోగం',
       isAuspicious: !INAUSPICIOUS_YOGA_INDEXES.includes(yIdx),
@@ -2247,6 +2328,8 @@ export function computeDayPanchanga(
       endJd: kEnd,
       startTime: timeStr(kWindow.startJd, tz),
       endTime: timeStr(kEnd, tz),
+      startClock: appClock(kWindow.startJd, dateISO, tz),
+      endClock: appClock(kEnd, dateISO, tz),
       percentElapsed: Number((((elong % 6) / 6) * 100).toFixed(1)),
       typeTe: kName.isBhadra ? 'చర కరణం (భద్ర)' : 'చర కరణం',
       isBhadra: kName.isBhadra,
@@ -2264,6 +2347,13 @@ export function computeDayPanchanga(
     ayanamsaFormatted: degToDMSString(ayanamsaDegrees(sunriseJd, mode)),
     sunSignIndex: Math.floor(sunSid / 30) % 12,
     moonSignIndex: moonSign,
+    lagnaAtSunrise: {
+      signIndex: lagnaSign,
+      signTe: TELUGU_RASIS[lagnaSign]?.nameTe ?? '—',
+      degInSign: Number((lagnaAbs % 30).toFixed(2)),
+      absDeg: Number(lagnaAbs.toFixed(2)),
+      formatted: degToDMSString(lagnaAbs % 30),
+    },
     sunSignEnd: sunPravesa,
     moonSignEnd: moonPravesa,
     sunNakshatraIndex: sunNak,

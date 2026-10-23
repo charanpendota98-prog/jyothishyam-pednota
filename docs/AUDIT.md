@@ -937,4 +937,77 @@ One honest caveat, measured not assumed: Drik's own library computes in the
 *identities* never differ but their *end minutes* can differ by up to 2. The
 Drik gate therefore runs our engine in `true_citra`, which is Drik's own frame.
 
-`npm run verify:conventions` → **17 gates, 0 failures** · full suite **8,946**.
+### 16.1 Second screenshot — 24 Oct 2026, field by field
+
+The user asked for the next day in the same frame. Everything the app prints,
+against our engine run in `sayana + 'app'`:
+
+| field | app (24 Oct 2026) | ours | Δ |
+|---|---|---|---|
+| sunrise | 06:11:51 | 06:11:54 | +3 s |
+| sunset | 17:45:25 | 17:45:30 | +5 s |
+| day length | 11:33:33 | 11:33:36 | +3 s |
+| night length | 12:26:47 | 12:26:44 | −3 s |
+| moonrise | 16:20:46 | 16:21:03 | +17 s |
+| moonset | 29:06:32 (next day) | 29:06:06* | −26 s |
+| tithi Trayodaśī | 13:36:10 | 13:37:13 | +63 s |
+| nakṣatra Aśvinī | 24:43:44 (next day) | 24:45:05* | +81 s |
+| yoga Vyatīpāta | 27:50:51 (next day) | 27:52:00* | +69 s |
+| karaṇa Taitila | 13:36:10 | 13:37:13 | +63 s |
+| Aśvinī pāda 1 / 2 / 3 | 07:16:36 / 13:08:12 / 18:57:13 | 07:17:56 / 13:09:32 / 18:58:33 | +80 s |
+| solar tithi | 2 · Mārgaśīra | మార్గశిరం 2 | ✓ |
+| māsa amānta / pūrṇimānta | Kārtīka / Kārtīka | కార్తీకం / కార్తీకం | ✓ |
+| chāndra rāśi | Meṣa | మేష | ✓ |
+| saura rāśi | Vṛścika | వృశ్చిక | ✓ |
+| ṛtu | Hemanta | హేమంత (సౌర) | ✓ |
+| samvatsara (south) | Parabhava | పరాభవ | ✓ |
+| samvatsara (north) | Raudra | రౌద్ర | ✓ (added this pass: south + 14) |
+| Vikram / Śaka / Kāśī | 2083 / 1948 / 5127 | 2083 / 1948 / 5127 | ✓ |
+| Gujarati samvat | 2083 | **2082** | see below |
+| lagna at sunrise | Vṛścika 0°38′ (210.63°) | Vṛścika 0°03′ (210.05°) | see below |
+
+Two honest divergences, both measured:
+
+* **Gujarati 2083.** The app's month is Kārtīka from ~12 Oct *because it is
+  sāyana*. Gujarat's real new year is Kārtīka Śukla Pratipadā on the nirayana
+  reckoning — **10 Nov 2026** (Bestu Varas). Its 2083 is internally consistent
+  with its own frame and externally 4 weeks early.
+* **Lagna.** Our 210.05° matches Swiss Ephemeris at the app's own sunrise
+  (06:11:51 → 210.04°). The app's 210.63° corresponds to **06:14:0x**, i.e. the
+  *Drik* sunrise — the app mixes the two rise definitions inside one screen.
+  We print the lagna of the sunrise we display, which is the only self-
+  consistent choice.
+
+### 16.2 What breaks if the whole app went sāyana
+
+Asked directly by the user ("అన్నీ యాప్ లాగా పెడితే ఏం ప్రమాదం?"). Measured,
+not argued — same engine, only the frame changed:
+
+| | nirayana (śāstra) | sāyana |
+|---|---|---|
+| Vijaya Daśamī 2026 | 21 Oct | 21 Sep |
+| Dīpāvalī 2026 | 8 Nov | 9 Oct |
+| Ugādi 2027 | 7 Apr | 9 Mar |
+| Gujarati new year | 10 Nov (2083) | ~12 Oct |
+| Moon's nakṣatra on 24 Oct | Uttara-bhādra (Saturn) | Aśvinī (Ketu) |
+
+Consequences, in the order they hurt a customer:
+
+1. **Festivals move ~30 days.** Nobody celebrates Dīpāvalī on 9 October; a
+   pañcāṅga that prints it is simply wrong, however self-consistent the frame is.
+2. **Janma-nakṣatra changes**, so the Vimśottarī sequence changes owner and
+   balance — a 20-year Venus daśā can become a 6-year Sun daśā for the same
+   birth data. Every daśā, antardaśā and gochara prediction that follows is
+   invalid.
+3. **Rāśi, bhāva and navāṁśa shift by 24.23°**, i.e. roughly one sign. Horoscope
+   statements (lagna, 7th-house marriage reading, ṣaḍbala) all move.
+4. **Muhūrta and vivāha dates shift**, which is the one thing a client can
+   check against the temple calendar and lose faith over.
+
+So the boundary is deliberate and now enforced in code: the **calendar day view**
+opens in the app's convention (that is what the user compares against), while
+**festivals, muhūrta, daśā, gochara and the jāṭakam** are computed nirayana.
+The day card always prints the nirayana cross-reading underneath, so the two
+frames are never confused.
+
+`npm run verify:conventions` → **31 gates, 0 failures** · full suite **8,960**.
