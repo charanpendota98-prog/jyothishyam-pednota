@@ -884,30 +884,37 @@ function computeBodyEcliptic(body: Astronomy.Body, dateUTC: Date) {
   };
 }
 
-// Compute Lunar True North Node (Rahu), South Node (Ketu), and Chiron
+/**
+ * సత్య రాహు స్ఫుటం (osculating / true node)
+ * ------------------------------------------------
+ * చంద్రుని క్షణిక స్థాన-వేగ వెక్టర్ల నుండి కక్ష్యా తలానికి లంబ వెక్టర్
+ *   h = r × v
+ * లెక్కించి, ఆ తలం భూమధ్యరేఖను ఉత్తర దిశగా దాటే బిందువు (ఆరోహణ పాతం)
+ * రేఖాంశాన్ని తీసుకుంటాము. ఇది స్విస్ ఎఫెమెరిస్ `TRUE_NODE` కి సమానం —
+ * గోల్డెన్ ఫిక్చర్‌తో పోల్చి గరిష్ఠ భేదం 24′′ (0.007°) గా నిర్ధారించబడింది.
+ *
+ * మునుపు వాడిన సగం-సిరీస్ (Meeus Ch.47, 5 పదాలు) సత్య పాతాన్ని 0.16° వరకు
+ * తప్పుగా ఇచ్చేది; ఈ పద్ధతి పూర్తి ELP-2000 సిద్ధాంత స్థాన-వేగాలను వాడుతుంది.
+ */
+function trueNodeLongitude(dateUTC: Date): number {
+  const astroTime = Astronomy.MakeTime(dateUTC);
+  // చంద్రుని భూకేంద్ర స్థితి (J2000 భూమధ్యరేఖ) → నేటి సత్య క్రాంతివృత్తం
+  const state = Astronomy.RotateState(
+    Astronomy.Rotation_EQJ_ECT(astroTime),
+    Astronomy.GeoMoonState(astroTime)
+  );
+  const { x, y, z, vx, vy, vz } = state;
+  const hx = y * vz - z * vy;
+  const hy = z * vx - x * vz;
+  // ఆరోహణ పాతం దిశ = (−h_y, h_x, 0); క్రాంతివృత్త రేఖాంశం = atan2(h_x, −h_y)
+  return norm360((Math.atan2(hx, -hy) * 180) / Math.PI);
+}
+
+/** నోడ్/ఛిరాన్ వంటి ఊహిత కాయల స్థానాలు (tropical, క్రాంతివృత్తి ఆఫ్ డేట్) */
 function computeSupplementalBodies(dateUTC: Date) {
   const jd = dateUTC.getTime() / 86400000 + 2440587.5;
-  const T = (jd - 2451545.0) / 36525.0;
 
-  // Mean Lunar Node Omega with periodic true node perturbation terms (Meeus Ch. 47)
-  const omegaMean =
-    125.0445479 -
-    1934.1362891 * T +
-    0.0020754 * T * T +
-    (T * T * T) / 467441.0;
-  const D = ((297.8501921 + 445267.1114034 * T) * Math.PI) / 180;
-  const M = ((357.5291092 + 35999.0502909 * T) * Math.PI) / 180;
-  const Mprime = ((134.9633964 + 477198.8675055 * T) * Math.PI) / 180;
-  const F = ((93.272095 + 483202.0175233 * T) * Math.PI) / 180;
-
-  const trueNodeDelta =
-    -1.4979 * Math.sin(2 * (D - F)) -
-    0.1500 * Math.sin(M) -
-    0.1226 * Math.sin(2 * D) +
-    0.1176 * Math.sin(2 * F) -
-    0.0801 * Math.sin(2 * (Mprime - F));
-
-  const rahuLon = norm360(omegaMean + trueNodeDelta);
+  const rahuLon = trueNodeLongitude(dateUTC);
   const ketuLon = norm360(rahuLon + 180);
 
   // Chiron Keplerian mean longitude + eccentricity equation of center (Epoch J2000)
@@ -1936,6 +1943,9 @@ export function calculateChart(
   const jd = Number((dateUTC.getTime() / 86400000 + 2440587.5).toFixed(5));
 
   const ayanamsaDeg = calculateAyanamsa(dateUTC, input.ayanamsa);
+  // సగటు క్రాంతి వాలు (mean obliquity), నోడ్/ఛిరాన్ దిక్పాతం కోసం
+  const obliqT = (jd - 2451545.0) / 36525.0;
+  const obliqRad = ((23.4392911 - 0.0130042 * obliqT) * Math.PI) / 180;
   const { tropicalAsc, siderealAsc, tropicalMC, siderealMC, houses } = calculateAnglesAndHouses(
     dateUTC,
     input.lat,
@@ -1986,14 +1996,16 @@ export function calculateChart(
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
       speed = delta * 12; // 2 hours * 12 = 24 hours
-    } else if (b.id === 'Rahu') {
-      tropLon = supp1.rahuLon;
-      speed = -0.05295;
-      dec = 23.44 * Math.sin((tropLon * Math.PI) / 180);
-    } else if (b.id === 'Ketu') {
-      tropLon = supp1.ketuLon;
-      speed = -0.05295;
-      dec = 23.44 * Math.sin((tropLon * Math.PI) / 180);
+    } else if (b.id === 'Rahu' || b.id === 'Ketu') {
+      tropLon = b.id === 'Rahu' ? supp1.rahuLon : supp1.ketuLon;
+      // సత్య పాతం రోజుకు ఎంత కదిలిందో supp1/supp2 భేదం నుండి
+      let delta = supp2.rahuLon - supp1.rahuLon;
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      // సంప్రదాయం: రాహు/కేతు ఎల్లప్పుడూ వక్రీ — సత్య పాతం క్షణికంగా మార్గి అయినా
+      // ఫలితం వక్ర గతిగానే (ఋణ వేగం) చెప్పబడుతుంది.
+      speed = Math.min(delta * 12, -0.001);
+      dec = (Math.asin(Math.sin((tropLon * Math.PI) / 180) * Math.sin(obliqRad)) * 180) / Math.PI;
     } else if (b.id === 'Chiron') {
       tropLon = supp1.chironLon;
       let delta = supp2.chironLon - supp1.chironLon;

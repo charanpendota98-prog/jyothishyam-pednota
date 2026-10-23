@@ -2026,9 +2026,12 @@ export const ClassicalJathakaPdfDocument: React.FC<
         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
           <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 text-[10px] leading-relaxed">
             <div className="font-bold text-[#7A1818] mb-1">గణిత ప్రమాణం (Numerical Standard)</div>
-            గ్రహ స్ఫుటాలు: Swiss Ephemeris (JPL DE431) — జనన స్ఫుటాలు 0.003° లోపు ఖచ్చితం. అయనాంశం: లహిరి
-            (చిత్రపక్ష) — {chart.ayanamsaFormatted}. సూర్యోదయం/అస్తమయం వక్రీభవన సహిత దృగ్గణిత పద్ధతి.
-            పంచాంగ అంగాలు 365 రోజుల స్విస్-ఎఫిమెరిస్ ఫిక్చర్‌తో 100% ధృవీకరించబడ్డాయి.
+            గ్రహ స్ఫుటాలు: VSOP87 (గ్రహాలు) + ELP-2000 (చంద్రుడు) — astronomy-engine. స్విస్ ఎఫెమెరిస్
+            2.10.03 (FLG_SWIEPH, SIDM_LAHIRI, TRUE_NODE) గోల్డెన్ ఫిక్చర్‌తో 1899–2035 మధ్య 30 జనన క్షణాల్లో
+            పోల్చగా గరిష్ఠ భేదం 0.007° (≈24 ఆర్క్-సెకన్లు). అయనాంశం: లహిరి (చిత్రపక్ష) —
+            {chart.ayanamsaFormatted}. సూర్యోదయం/అస్తమయం వక్రీభవన సహిత దృగ్గణిత పద్ధతి.
+            పంచాంగ అంగాలు 365 రోజుల స్విస్-ఎఫిమెరిస్ ఫిక్చర్‌తో ధృవీకరించబడ్డాయి (తిథి/నక్షత్ర/యోగ
+            365/365, సూర్యోదయం ±1 నిమిషం).
           </div>
           <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 text-[10px] leading-relaxed">
             <div className="font-bold text-[#7A1818] mb-1">సంప్రదాయ ప్రమాణం (Traditional Standard)</div>

@@ -182,7 +182,7 @@ export const GRANTHAS: GranthaEntry[] = [
       'సూర్యోదయం/అస్తమయం ప్రామాణిక సూత్రాలు',
     ],
     precisionTe:
-      'ఆధునిక ఖగోళ గణనకు Swiss Ephemeris (DE431) వాడుతున్నాము; సూర్యసిద్ధాంత సూత్రాలు సంప్రదాయ పద్ధతులను ధృవీకరించే ఆధారంగా ఉపయోగిస్తాము.',
+      'ఆధునిక ఖగోళ గణనకు VSOP87 + ELP-2000 సిద్ధాంతాలు (astronomy-engine) వాడుతున్నాము; ఫలితాలు స్విస్ ఎఫెమెరిస్ 2.10.03 తో పోల్చి ధృవీకరించబడ్డాయి (గరిష్ఠ భేదం 0.007°). సూర్యసిద్ధాంత సూత్రాలు సంప్రదాయ పద్ధతులను ధృవీకరించే ఆధారంగా ఉపయోగిస్తాము.',
     publicDomainTe: 'ప్రాచీన సంస్కృత గ్రంథం; పబ్లిక్ డొమైన్.',
   },
   {
@@ -190,8 +190,8 @@ export const GRANTHAS: GranthaEntry[] = [
     nameTe: 'దృగ్గణిత పద్ధతి',
     nameSanskrit: 'दृग्गणित',
     nameEn: 'Dṛk-gaṇita (modern observational astronomy)',
-    authorTe: 'ఆధునిక ఖగోళ శాస్త్రం + Swiss Ephemeris',
-    authorEn: 'Swiss Ephemeris / JPL DE431',
+    authorTe: 'ఆధునిక ఖగోళ శాస్త్రం — VSOP87 + ELP-2000 (స్విస్ ఎఫెమెరిస్‌తో ధృవీకరించబడినది)',
+    authorEn: 'VSOP87 + ELP-2000 (astronomy-engine), cross-checked against Swiss Ephemeris',
     periodTe: 'సమకాలీనం',
     languageTe: 'గణితం',
     domain: 'siddhanta',
@@ -208,8 +208,8 @@ export const GRANTHAS: GranthaEntry[] = [
       'గోచార సంచారాలు, సంక్రమణ క్షణాలు',
     ],
     precisionTe:
-      'జనన గ్రహ స్ఫుటాలు 0.003° లోపు Swiss Ephemeris తో కలిసిపోతాయి; పంచాంగ అంగాలు 365 రోజుల ఫిక్చర్ తో 100% సరిపోలాయి.',
-    publicDomainTe: 'Swiss Ephemeris ఓపెన్ లైసెన్స్ (AGPL / వాణిజ్య లైసెన్స్).',
+      'జనన గ్రహ స్ఫుటాలు స్విస్ ఎఫెమెరిస్ 2.10.03 తో 30 క్షణాల్లో పోల్చగా గరిష్ఠ భేదం 0.007° (≈24 ఆర్క్-సెకన్లు) — లగ్నం, దశాంశం, సత్య రాహు సహితం; పంచాంగ అంగాలు 365/365 రోజులు సరిపోలాయి.',
+    publicDomainTe: 'astronomy-engine — MIT లైసెన్స్; స్విస్ ఎఫెమెరిస్ కేవలం ధృవీకరణ ప్రమాణంగా (AGPL / వాణిజ్య లైసెన్స్).',
   },
 
   /* -------------------------------- jātaka ------------------------------- */

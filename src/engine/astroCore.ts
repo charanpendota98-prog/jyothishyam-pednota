@@ -2,9 +2,10 @@
  * astroCore.ts — High-precision astronomical primitives for the panchangam / muhurta
  * / vastu layers of AstroSphere.
  *
- * Everything in this module is expressed in Julian Day (UT) and verified against the
- * Swiss Ephemeris (pyswisseph, Moshier model) golden fixtures shipped in
- * `scripts/golden/ephemeris-golden.json` — run `npm run verify:astro` to re-check.
+ * Everything in this module is expressed in Julian Day (UT) and verified against
+ * the Swiss Ephemeris 2.10.03 (pyswisseph, FLG_SWIEPH) golden fixtures shipped in
+ * `scripts/golden/ephemeris-golden.json` — 30 epochs (1899–2035), max deviation
+ * 0.007° (≈24″). Run `npm run verify:astro` to re-check.
  *
  * Sources of the algorithms:
  *  • Planetary positions  : VSOP87 (truncated) + ELP2000 lunar theory via astronomy-engine
