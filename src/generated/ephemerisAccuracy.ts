@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED — ఈ ఫైలును చేతితో మార్చవద్దు.
  * మూలం: scripts/verify-astro.ts (npm run verify:astro)
- * ప్రమాణం: Swiss Ephemeris 2.10.03, SIDM_LAHIRI, TRUE_NODE, whole-sign houses, FLG_SWIEPH
+ * ప్రమాణం: Swiss Ephemeris 2.10.03, SIDM_LAHIRI, whole-sign houses, FLG_SWIEPH; Rahu/Ketu are TRUE_NODE, RahuMean/KetuMean are MEAN_NODE (పంచాంగ సంప్రదాయం)
  * తయారీ: scripts/golden/make-ephemeris-golden.py (pyswisseph)
  */
 export interface EphemerisAccuracyRow {
@@ -14,12 +14,12 @@ export interface EphemerisAccuracyRow {
 }
 
 export const EPHEMERIS_ACCURACY = {
-  "source": "Swiss Ephemeris 2.10.03, SIDM_LAHIRI, TRUE_NODE, whole-sign houses, FLG_SWIEPH",
+  "source": "Swiss Ephemeris 2.10.03, SIDM_LAHIRI, whole-sign houses, FLG_SWIEPH; Rahu/Ketu are TRUE_NODE, RahuMean/KetuMean are MEAN_NODE (పంచాంగ సంప్రదాయం)",
   "fixtureEpochs": 30,
   "firstUtc": "1900-06-15T00:00:00",
   "lastUtc": "2030-12-31T23:59:00",
-  "measurements": 630,
-  "passed": 630,
+  "measurements": 660,
+  "passed": 660,
   "failed": 0,
   "rows": [
     {
@@ -176,15 +176,23 @@ export const EPHEMERIS_ACCURACY = {
     },
     {
       "key": "Rahu",
-      "labelTe": "రాహు",
-      "maxDeg": 0.006374,
-      "maxArcsec": 22.95,
+      "labelTe": "రాహు (మధ్యమ)",
+      "maxDeg": 0.004688,
+      "maxArcsec": 16.88,
       "tolDeg": 0.03,
-      "where": "New York 1975"
+      "where": "random 14"
     },
     {
       "key": "Ketu",
-      "labelTe": "కేతు",
+      "labelTe": "కేతు (మధ్యమ)",
+      "maxDeg": 0.004688,
+      "maxArcsec": 16.88,
+      "tolDeg": 0.03,
+      "where": "random 14"
+    },
+    {
+      "key": "RahuTrue",
+      "labelTe": "రాహు (సత్య)",
       "maxDeg": 0.006374,
       "maxArcsec": 22.95,
       "tolDeg": 0.03,

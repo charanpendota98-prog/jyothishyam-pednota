@@ -542,6 +542,23 @@ export const ClassicalJathakaPdfDocument: React.FC<
             ))}
           </tbody>
         </table>
+
+        {/* రాహు పాత సంప్రదాయం — మధ్యమ (పంచాంగం) మరియు సత్య (ఆస్కులేటింగ్) రెండూ */}
+        <div className="mt-2 border-t border-[#8B6914]/40 pt-1.5 text-[9.5px] leading-snug text-[#5C3A21]">
+          <strong className="text-[#7A1818]">రాహు పాత సంప్రదాయం:</strong>{' '}
+          ఈ గ్రంథం మధ్యమ రాహును (తెలుగు పంచాంగ పత్రికలు, Astro-Vision ముద్రిత జాతకాల ప్రమాణం) వాడుతుంది —
+          మధ్యమ రాహు{' '}
+          <span className="font-semibold">
+            {TELUGU_RASIS[Math.floor(chart.nodeSphuta.meanSiderealLon / 30)]?.nameTe.split(' ')[0]}{' '}
+            {(chart.nodeSphuta.meanSiderealLon % 30).toFixed(2)}°
+          </span>
+          , సత్య రాహు{' '}
+          <span className="font-semibold">
+            {TELUGU_RASIS[Math.floor(chart.nodeSphuta.trueSiderealLon / 30)]?.nameTe.split(' ')[0]}{' '}
+            {(chart.nodeSphuta.trueSiderealLon % 30).toFixed(2)}°
+          </span>{' '}
+          (భేదం {chart.nodeSphuta.differenceDeg.toFixed(2)}°). కేతువు ఎల్లప్పుడూ రాహువుకు సరిగ్గా 180° ఎదురుగా.
+        </div>
       </section>
 
       {/* ===================================================================== */}

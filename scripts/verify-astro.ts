@@ -53,6 +53,7 @@ const TOL: Record<string, number> = {
   Pluto: 0.03,
   Rahu: 0.03,
   Ketu: 0.03,
+  RahuTrue: 0.03,
   asc: 0.03,
   mc: 0.05,
 };
@@ -131,20 +132,32 @@ for (const c of golden.cases) {
   record('asc', diff(chart.ascendant.siderealLon, c.asc), c.label, chart.ascendant.siderealLon, c.asc);
   record('mc', diff(chart.midheaven.siderealLon, c.mc), c.label, chart.midheaven.siderealLon, c.mc);
 
+  // రాహు/కేతు: జాతకం మధ్యమ పాతాన్ని వాడుతుంది (పంచాంగ సంప్రదాయం), కాబట్టి
+  // సూచన మధ్యమ స్ఫుటంతో పోలుస్తాము; సత్య స్ఫుటం కూడా విడిగా పరీక్షించబడుతుంది.
   for (const [id, ref] of Object.entries(c.planets)) {
+    if (id === 'RahuMean' || id === 'KetuMean' || id === 'RahuTrue' || id === 'KetuTrue') continue;
+    const key = id === 'Rahu' ? 'RahuMean' : id === 'Ketu' ? 'KetuMean' : id;
+    const refVal = (c.planets as Record<string, number>)[key] ?? ref;
     const p = chart.planets.find((x) => x.id === id);
     if (!p) {
       failures.push(`${id} గ్రహం ఇంజిన్‌లో లేదు (${c.label})`);
       continue;
     }
-    record(id, diff(p.siderealLon, ref), c.label, p.siderealLon, ref);
+    record(id, diff(p.siderealLon, refVal), c.label, p.siderealLon, refVal);
+  }
+  const pTrue = (c.planets as Record<string, number>);
+  const trueRahuRef = pTrue.RahuTrue;
+  if (trueRahuRef !== undefined) {
+    record('RahuTrue', diff(chart.nodeSphuta.trueSiderealLon, trueRahuRef), c.label,
+      chart.nodeSphuta.trueSiderealLon, trueRahuRef);
   }
 }
 
 const LABEL: Record<string, string> = {
   ayanamsa: 'అయనాంశం', Sun: 'సూర్యుడు', Moon: 'చంద్రుడు', Mars: 'కుజుడు', Mercury: 'బుధుడు',
   Jupiter: 'గురువు', Venus: 'శుక్రుడు', Saturn: 'శని', Uranus: 'యురేనస్', Neptune: 'నెప్ట్యూన్',
-  Pluto: 'ప్లూటో', Rahu: 'రాహు', Ketu: 'కేతు', asc: 'లగ్నం', mc: 'మధ్యాకాశం',
+  Pluto: 'ప్లూటో', Rahu: 'రాహు (మధ్యమ)', Ketu: 'కేతు (మధ్యమ)', RahuTrue: 'రాహు (సత్య)',
+  asc: 'లగ్నం', mc: 'మధ్యాకాశం',
   ...Object.fromEntries(AYANAMSA_MODES.map((m) => ['ay:' + m.id, m.label])),
 };
 
@@ -179,7 +192,7 @@ const ledger = {
   })),
   // ప్రధాన ఏడు గ్రహాలు + లగ్నం/అయనాంశం మాత్రమే (యురేనస్ మొ. బాహ్య గ్రహాలు విడిగా)
   classicalMaxDeg: Math.max(
-    ...['ayanamsa', 'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu', 'asc', 'mc']
+    ...['ayanamsa', 'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu', 'RahuTrue', 'asc', 'mc']
       .filter((k) => maxErr[k])
       .map((k) => maxErr[k].err)
   ),

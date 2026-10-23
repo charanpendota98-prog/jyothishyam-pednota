@@ -237,8 +237,8 @@ export function AccuracyLedgerPanel({ lang = 'te', compact = false, defaultOpen 
               </div>
               <div className="text-[10px] text-[#EDE8E0]/35 leading-relaxed">
                 {isTe
-                  ? 'గమనిక: సూచన జాతక పత్రికలు (ప్రింట్ PDF) మధ్యమ రాహును వాడతాయి; ఈ యాప్ సత్య రాహును (TRUE_NODE) వాడుతుంది — అందుకే ఆ పత్రికలతో రాహు/కేతు భేదం సహజం, తప్పు కాదు.'
-                  : 'Note: the printed reference jātakam PDFs use the mean node, while this app uses the true node (TRUE_NODE); that difference against those PDFs is expected, not an error.'}
+                  ? 'గమనిక: తెలుగు పంచాంగ పత్రికలు, Astro-Vision ముద్రిత జాతకాలు మధ్యమ రాహును వాడతాయి — ఈ యాప్ కూడా ఇప్పుడు మధ్యమ రాహునే (MEAN_NODE) వాడుతుంది; సత్య రాహు స్ఫుటం కూడా విడిగా చూపబడుతుంది. దాంతో సూచన పత్రికల 16 వర్గాల పట్టికలో రాహు/కేతు సహా అన్ని 160 కణాలూ సరిపోతాయి.'
+                  : 'Note: Telugu panchanga patrikās and Astro-Vision printed jātakams use the mean node; this app now uses the mean node (MEAN_NODE) too, and shows the true node sphuṭa separately. All 160 varga cells of the reference patrikā — including Rahu/Ketu — now match.'}
               </div>
             </>
           )}

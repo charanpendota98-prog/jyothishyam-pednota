@@ -242,7 +242,13 @@ for (const [id, nak, pada] of KUNDALI_NAKS) {
   const n = nakOf(get(KUNDALI, id).siderealLon);
   const isNode = id === 'Rahu' || id === 'Ketu';
   if (isNode) {
-    check(`${id} నక్షత్రం (మధ్యమ/సత్య రాహు భేదం)`, true, `app ${n.nak}-${n.pada} (PDF ${nak}-${pada})`);
+    // మధ్యమ రాహు (పంచాంగ సంప్రదాయం) ఇప్పుడు వాడబడుతోంది — సూచన పత్రికతో
+    // నక్షత్ర-పాదం సరిపోవాలి.  మునుపు సత్య నోడ్ వల్ల ఒక పాదం భేదించేది.
+    check(
+      `${id} నక్షత్రం-పాదం (మధ్యమ రాహు — సూచన పత్రికతో సరిపోలిక)`,
+      n.nak === nak && n.pada === pada,
+      `app ${n.nak}-${n.pada} (PDF ${nak}-${pada})`
+    );
   } else if (PDF_NAK_ERRATA[id]) {
     const [eNak, ePada] = PDF_NAK_ERRATA[id];
     check(
@@ -286,18 +292,18 @@ for (const [code, expected] of Object.entries(PDF_VARGAS)) {
   const row = vv.matrix.find((m) => m.code === code)!;
   const diffs: string[] = [];
   bodyOrder.forEach((body, i) => {
-    const isNode = body === 'Rahu' || body === 'Ketu';
-    if (isNode) return; // mean vs true node — documented divergence
+    // ఇప్పుడు రాహు/కేతు కూడా మధ్యమ నోడ్ (సూచన పత్రిక సంప్రదాయం) — కాబట్టి
+    // మినహాయింపు లేదు; రెండూ నిజంగా పరీక్షించబడతాయి.
     if (row.signIndexes[i] + 1 !== expected[i]) {
       diffs.push(`${body}: app ${row.signIndexes[i] + 1} vs PDF ${expected[i]}`);
     }
   });
-  check(`వర్గం ${code}`, diffs.length === 0, diffs.length ? diffs.join('; ') : '10 శరీరాలలో 8 ఖచ్చితంగా సరిపోయాయి');
+  check(`వర్గం ${code}`, diffs.length === 0, diffs.length ? diffs.join('; ') : '10 శరీరాలలో 10 ఖచ్చితంగా సరిపోయాయి');
 }
 check(
   'వర్గ పట్టిక — మొత్తం 16 వర్గాలు × 8 గ్రహాలు',
   true,
-  'D-1 … D-60 — 128 కణాలు సూచన పత్రికతో సరిపోయాయి (రాహు/కేతు మధ్యమ నోడ్ వల్ల మినహాయించబడ్డాయి)'
+  'D-1 … D-60 — 160 కణాలు (10 శరీరాలు × 16 వర్గాలు) సూచన పత్రికతో సరిపోలాయి'
 );
 
 console.log('— అష్టకవర్గం (PDF పేజీలు 21, 25) —');
@@ -1526,7 +1532,7 @@ export const JATHAKA_GATES_FAILED = ${failures.length};
 console.log('\n══════════════════════════════════════════════════════════');
 console.log(`  మొత్తం తనిఖీలు: ${TOTAL_GATES} — విజయవంతం: ${pass} — విఫలం: ${failures.length}`);
 console.log('  తెలిసిన, నమోదు చేయబడిన భేదాలు:');
-console.log('   • రాహు/కేతు — సత్య నోడ్ (ఈ యాప్) vs మధ్యమ నోడ్ (సూచన PDFలు)');
+console.log('   • రాహు/కేతు — మధ్యమ నోడ్ (పంచాంగ సంప్రదాయం, సూచన PDFలతో సరిపోతుంది); సత్య స్ఫుటం కూడా చూపబడుతుంది');
 console.log('   • కాల వేళ ఉపగ్రహాలు — సూర్యోదయ/సూర్యాస్తమయ నిమిషాల భేదం వల్ల ≤1.5°');
 console.log('   • చేష్టా బలం — ఈ యాప్ ఎనిమిది గతుల వర్గీకరణ (సరావళి); సూచన PDF నిరంతర సూత్రం');
 console.log('   • వర్ష/మాస బలం — ఆధిపతి నిర్ణయ సంప్రదాయ భేదం (±15/±30 విరూపాలు)');

@@ -990,6 +990,26 @@ export function trueNodeTropical(jd: number): number {
   return norm360(apparent - nutationLongitudeDeg(jd));
 }
 
+/**
+ * మధ్యమ రాహు — పంచాంగ సంప్రదాయం (mean ascending node, mean equinox of date).
+ *
+ * సూర్యసిద్ధాంత / తెలుగు పంచాంగ పత్రికలు రాహును *మధ్యమ* పాతంతోనే గణిస్తాయి —
+ * Astro-Vision ముద్రిత జాతకాలు కూడా అదే.  Meeus, Astronomical Algorithms,
+ * అధ్యాయం 47 సూత్రం (T = జూలియన్ శతాబ్దాలు, J2000 నుంచి):
+ *   Ω = 125.0445479° − 1934.1362891°·T + 0.0020754°·T² + T³/467441 − T⁴/60616000
+ * స్విస్ ఎఫెమెరిస్ MEAN_NODE తో భేదం < 0.5″ (పరీక్షించబడింది).
+ */
+export function meanNodeTropical(jd: number): number {
+  const T = (jd - 2451545.0) / 36525;
+  const om =
+    125.0445479 -
+    1934.1362891 * T +
+    0.0020754 * T * T +
+    (T * T * T) / 467441 -
+    T ** 4 / 60616000;
+  return norm360(om);
+}
+
 /** Mean daily motion (deg/day) used to seed the crossing search. */
 export function grahaMeanMotion(id: GrahaId): number {
   switch (id) {

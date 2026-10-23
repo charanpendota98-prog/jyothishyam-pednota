@@ -3,6 +3,7 @@ import { computeShadbalaDeep, type ShadbalaRow as ShadbalaDeepRow } from './shad
 import {
   civilDateAt,
   civilWeekdayAt,
+  meanNodeTropical,
   deltaCancriTrueTropicalLongitude,
   trueObliquityDeg,
   nutationLongitudeDeg,
@@ -455,6 +456,18 @@ export interface CompleteChartResult {
     formattedDMS: string;
   };
   planets: PlanetPosition[];
+  /**
+   * రాహు స్ఫుటం — రెండు సంప్రదాయాలూ ఒకచోట.
+   *   • mean  = మధ్యమ రాహు (పంచాంగ పత్రికలు, Astro-Vision ముద్రిత జాతకాలు)
+   *   • true  = సత్య రాహు (ఆస్కులేటింగ్ పాతం; కొన్ని ఆధునిక సాఫ్ట్‌వేర్లు)
+   * జాతక గణనలో ఏది వాడబడిందో `convention` చెబుతుంది.
+   */
+  nodeSphuta: {
+    convention: 'mean' | 'true';
+    meanSiderealLon: number;
+    trueSiderealLon: number;
+    differenceDeg: number;
+  };
   houses: HouseCusp[];
   aspects: AspectItem[];
   vedicYogas: VedicYoga[];
@@ -947,11 +960,17 @@ function trueNodeLongitude(dateUTC: Date): number {
   return norm360((Math.atan2(hx, -hy) * 180) / Math.PI);
 }
 
+/** రాహు పాత సంప్రదాయం — 'mean' = పంచాంగ పత్రికా ప్రమాణం (మధ్యమ రాహు). */
+export const NODE_CONVENTION: 'mean' | 'true' = 'mean';
+
 /** నోడ్/ఛిరాన్ వంటి ఊహిత కాయల స్థానాలు (tropical, క్రాంతివృత్తి ఆఫ్ డేట్) */
 function computeSupplementalBodies(dateUTC: Date) {
   const jd = dateUTC.getTime() / 86400000 + 2440587.5;
 
-  const rahuLon = trueNodeLongitude(dateUTC);
+  const rahuTrueLon = trueNodeLongitude(dateUTC);
+  const rahuMeanLon = meanNodeTropical(jd);
+  // పంచాంగ సంప్రదాయం: జాతకంలో రాహు = మధ్యమ పాతం (NODE_CONVENTION), సత్యం విడిగా నిల్వ.
+  const rahuLon = NODE_CONVENTION === 'mean' ? rahuMeanLon : rahuTrueLon;
   const ketuLon = norm360(rahuLon + 180);
 
   // Chiron Keplerian mean longitude + eccentricity equation of center (Epoch J2000)
@@ -965,6 +984,8 @@ function computeSupplementalBodies(dateUTC: Date) {
   return {
     rahuLon,
     ketuLon,
+    rahuTrueLon,
+    rahuMeanLon,
     chironLon,
   };
 }
@@ -1104,7 +1125,9 @@ export function calculateVimshottariDasha(
   const fractionRemaining = 1 - degInNak / nakSpan;
 
   const startLordIndex = nakIndex % 9;
-  const MS_PER_YEAR = 365.2425 * 86400 * 1000;
+  // దశా సంవత్సరం = 365.25 రోజుల సౌర సంవత్సరం (పత్రికా సంప్రదాయం) —
+  // vimshottariDeepEngine తో ఒకే మూలం కావాలి, లేకుంటే రెండు దశా పట్టికలు భేదిస్తాయి.
+  const MS_PER_YEAR = 365.25 * 86400 * 1000;
 
   const fmtLocalDate = (ms: number) =>
     new Date(ms + tzOffsetHours * 3600 * 1000).toISOString().slice(0, 10);
@@ -2210,6 +2233,22 @@ export function calculateChart(
       formattedDMS: formatDMS(activeMC % 30),
     },
     planets,
+    nodeSphuta: {
+      convention: NODE_CONVENTION,
+      meanSiderealLon: Number(
+        norm360(supp1.rahuMeanLon - nutationLongitudeDeg(jd) - ayanamsaDeg).toFixed(4)
+      ),
+      trueSiderealLon: Number(
+        norm360(supp1.rahuTrueLon - nutationLongitudeDeg(jd) - ayanamsaDeg).toFixed(4)
+      ),
+      differenceDeg: Number(
+        Math.abs(
+          (((supp1.rahuMeanLon - supp1.rahuTrueLon) % 360) + 360) % 360 > 180
+            ? ((((supp1.rahuMeanLon - supp1.rahuTrueLon) % 360) + 360) % 360) - 360
+            : (((supp1.rahuMeanLon - supp1.rahuTrueLon) % 360) + 360) % 360
+        ).toFixed(4)
+      ),
+    },
     houses,
     aspects,
     vedicYogas,

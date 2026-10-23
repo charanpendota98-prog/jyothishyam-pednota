@@ -13,8 +13,13 @@
  * order is the fixed Vimśottarī order Ketu → Śukra → Sūrya → Candra → Kuja →
  * Rāhu → Guru → Śani → Budha.
  *
- * Year length: the engine uses the sidereal year 365.2425 d (mean Gregorian
- * year). Printed patrikās often use 365.25 d; the difference over a 16-year
+ * Year length: 365.25 d — the solar year of the printed Telugu patrikā
+ * (Vimśottarī is counted in solar years: BPHS 46-53, and this is what
+ * Astro-Vision / panchangam daśā tables use).  Earlier this file mixed
+ * 365.2425 d for dates with 365.25 d for the "years-months-days" text, which
+ * made the printed balance disagree with the printed dates.  Both now use
+ * DA_SHA_YEAR_DAYS below.  (The mean Gregorian year 365.2425 d is *not* a
+ * sidereal year — 365.25636 d is — so the old label was wrong too.)
  * mahādaśā is ≈ 3 hours, i.e. well under one day. The verification harness
  * therefore pins dates to ±2 days and never to the minute.
  *
@@ -49,7 +54,8 @@ export const DASHA_LEVEL_NAMES_TE: Record<DashaLevelId, string> = {
   PrD: 'ప్రాణదశ',
 };
 
-const MS_PER_YEAR = 365.2425 * 86400 * 1000;
+const DA_SHA_YEAR_DAYS = 365.25;
+const MS_PER_YEAR = DA_SHA_YEAR_DAYS * 86400 * 1000;
 const DAY_MS = 86400 * 1000;
 
 export interface DashaNode {
@@ -110,9 +116,9 @@ export function formatLocalDateOnly(ms: number, tzOffsetHours: number): string {
 /** Width in Telugu units, using the classical 30-day month / 360-day year. */
 export function widthTeFromMs(ms: number): string {
   const totalDays = ms / DAY_MS;
-  if (totalDays >= 365.25) {
-    const years = Math.floor(totalDays / 365.25);
-    const rem = totalDays - years * 365.25;
+  if (totalDays >= DA_SHA_YEAR_DAYS) {
+    const years = Math.floor(totalDays / DA_SHA_YEAR_DAYS);
+    const rem = totalDays - years * DA_SHA_YEAR_DAYS;
     const months = Math.floor(rem / 30.4375);
     const days = Math.round(rem - months * 30.4375);
     return `${years} సం. ${months} నె. ${days} రో.`;
@@ -289,7 +295,7 @@ export function computeVimshottariDeep(chart: CompleteChartResult): VimshottariD
     moonLon: Number(moonLon.toFixed(4)),
     mahadashas,
     birthChain,
-    yearLengthTe: '365.2425 రోజులు (సైడీరియల్ సంవత్సరం)',
+    yearLengthTe: '365.25 రోజులు (సౌర సంవత్సరం — పత్రికా సంప్రదాయం)',
     methodNoteTe:
       'వింశోత్తరీ దశ: చంద్రుని నక్షత్ర స్థానం నుండి దశాధిపతిని, మిగిలిన అంశాన్ని నిర్ణయిస్తారు. ప్రతి ఉపదశ = మాతృ దశా కాలం × ఉపదశాధిపతి సంవత్సరాలు ÷ 120. ప్రతి స్థాయిలో మొదటి ఉపదశ ఆ స్థాయి అధిపతితోనే ప్రారంభమవుతుంది. పంచ స్థాయిలు — మహాదశ, భుక్తి, ప్రత్యంతర, సూక్ష్మ, ప్రాణ.',
   };
