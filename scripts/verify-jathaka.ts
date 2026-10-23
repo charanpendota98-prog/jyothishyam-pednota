@@ -1235,7 +1235,7 @@ check(
 check(
   'గ్రంథ అధ్యాయాల సంఖ్య — ఒకే మూలం (JATHAKAM_CHAPTERS) నుండి, UI లో నిజమైన అంకె',
   JATHAKAM_CHAPTERS.length === JATHAKAM_SECTION_COUNT + 1 &&
-    JATHAKAM_SECTION_COUNT === 19 &&
+    JATHAKAM_SECTION_COUNT === 20 &&
     BOOK_HTML.includes('అన్ని అధ్యాయాలు'),
   `${JATHAKAM_SECTION_COUNT} అధ్యాయాలు · ${JATHAKAM_CHAPTERS.length} ఎంపికలు`
 );

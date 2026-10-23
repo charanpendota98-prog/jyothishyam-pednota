@@ -174,7 +174,7 @@ const HOUSE_NAMES_TE: string[] = [
 /**
  * Computes exact KP Star Lord and Sub-Lord (249 subdivisions) for any sidereal longitude (0-360)
  */
-function computeKpStarAndSubLord(siderealLon: number): {
+export function computeKpStarAndSubLord(siderealLon: number): {
   nakIndex: number;
   nakNameTe: string;
   starLordId: string;

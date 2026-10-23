@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Printer,
+  Scale,
   BookOpen,
   Compass,
   Sparkles,
@@ -37,6 +38,7 @@ import { computeAvakahada } from '../engine/avakahadaEngine.ts';
 import { computeYogaVichara } from '../engine/yogaVicharaEngine.ts';
 import { computeJeevitaVistara } from '../engine/jeevitaVistaraEngine.ts';
 import { computePanditaVicharam } from '../engine/panditaVicharamEngine.ts';
+import { computeSampradayaSamanyaya } from '../engine/sampradayaSamanyayaEngine.ts';
 import { computeAntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
 import { computeGrahaSahayaka, AREAS as SAHAYAKA_AREAS } from '../engine/grahaSahayakaEngine.ts';
 import {
@@ -60,6 +62,7 @@ interface SampoornaJathakamProps {
 type JathakamChapter =
   | 'all'
   | 'pandita_vicharam'
+  | 'sampradaya_samanyaya'
   | 'sampoorna_jeevita_charitra'
   | 'sookshma_nadi_kp'
   | 'siddhanta_verifications'
@@ -100,6 +103,7 @@ const VARGA_TABS: { code: VargaDivision; labelTe: string; subtitleTe: string }[]
 export const JATHAKAM_CHAPTERS: { id: JathakamChapter; labelTe: string; icon: React.ReactNode }[] = [
     { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (అన్ని అధ్యాయాలు)', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'pandita_vicharam', labelTe: 'పండిత విచారణ — జాతకం అసలు ఏమిటి? (స్తంభాలు · బలం · భావాలు · నేరుగా సమాధానాలు)', icon: <Award className="w-3.5 h-3.5" /> },
+    { id: 'sampradaya_samanyaya', labelTe: 'పండిత విచారణ–2. షట్-సంప్రదాయ సమన్వయం (పారాశరీ · జైమిని · అష్టకవర్గ · వింశోత్తరి · కేపీ)', icon: <Scale className="w-3.5 h-3.5" /> },
     { id: 'sampoorna_jeevita_charitra', labelTe: '0. సంపూర్ణ జీవిత చరిత్ర (0–100 సం. 7 పర్వాలు & నవగ్రహ ఫలితాలు)', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'sookshma_nadi_kp', labelTe: '0A. 100% కుండలి సూక్ష్మ నాడి, భావాధిపతి, KP సబ్-లార్డ్ & 18 మూల గ్రంథాలు', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'tajika_varshaphala', labelTe: '0B. తాజిక వర్షఫలం & 12-నెలల దినచర్య ఫలితాలు (Varshaphala & 12-Month)', icon: <Calendar className="w-3.5 h-3.5" /> },
@@ -162,6 +166,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
   const yogaVichara = useMemo(() => computeYogaVichara(chart), [chart]);
   const lifeVistara = useMemo(() => computeJeevitaVistara(chart), [chart]);
   const pandita = useMemo(() => computePanditaVicharam(chart), [chart]);
+  const samanyaya = useMemo(() => computeSampradayaSamanyaya(chart), [chart]);
   const avPhala = useMemo(() => computeAshtakavargaPhala(chart), [chart]);
   const adBook = useMemo(() => computeAntardashaPhalaBook(chart), [chart]);
   const sahayaka = useMemo(() => computeGrahaSahayaka(chart), [chart]);
@@ -745,6 +750,131 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================================== */}
+      {/* పండిత విచారణ–2: షట్-సంప్రదాయ సమన్వయం */}
+      {/* ==================================================================================== */}
+      {showSection('sampradaya_samanyaya') && (
+        <div className="space-y-5 print-page-break">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-widest text-[#5BBFB5] font-bold flex items-center gap-2">
+                <Scale className="w-4 h-4" /> పండిత విచారణ–2 · షట్-సంప్రదాయ సమన్వయం
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[#EDE8E0] mt-1">
+                ఒకే జాతకం — ఐదు స్వతంత్ర పద్ధతులు · ఏకాభిప్రాయం ఎక్కడ, భేదం ఎక్కడ?
+              </h2>
+              <p className="text-[11.5px] text-[#EDE8E0]/60 mt-1 max-w-3xl leading-relaxed">
+                ప్రతి భావానికి పారాశరీ, అష్టకవర్గ, జైమిని, వింశోత్తరి, కేపీ — ఐదు గణనలు విడివిడిగా జరిగి, స్కోరుతో సహా చూపబడతాయి.
+                ఒక్క పద్ధతి చెప్పినది తీర్పు కాదు; ఏకీభవిస్తే బలంగా, భిన్నిస్తే కారణంతో చెబుతాము. ప్రతి సంఖ్య మీ కుండలి నుంచే.
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] text-[#EDE8E0]/45">లగ్నం · జన్మ నక్షత్రం</div>
+              <div className="font-bold text-[#E4C68C] text-sm">{samanyaya.lagnaRasiTe} · {samanyaya.lagnaMasaTe}</div>
+            </div>
+          </div>
+
+          {/* కారకులు */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {samanyaya.karakas.map((k) => (
+              <div key={k.code} className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+                <div className="text-[10px] text-[#EDE8E0]/45">{k.labelTe} · {k.code}</div>
+                <div className="text-[12.5px] font-bold text-[#E4C68C]">{k.planetTe}</div>
+                <div className="text-[9.5px] text-[#EDE8E0]/40 font-mono-tabular">{k.degreeInSign.toFixed(2)}°</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-[#5BBFB5]/30 bg-[#0C1120] px-4 py-3 space-y-1.5">
+            <div className="text-[11px] font-bold text-[#5BBFB5]">సమగ్ర స్థితి</div>
+            <p className="text-[11.5px] text-[#EDE8E0]/85 leading-relaxed">{samanyaya.samasyayaTe}</p>
+            <p className="text-[11px] text-[#C9A96E]/90 leading-relaxed">{samanyaya.prabhutvaTe}</p>
+          </div>
+
+          {/* భావాలు */}
+          <div className="space-y-3">
+            {samanyaya.domains.map((d) => {
+              const tone = d.consensusScore >= 0.6 ? '#5BBFB5' : d.consensusScore <= -0.6 ? '#E39A6B' : '#C9A96E';
+              return (
+                <div key={d.house} className="rounded-xl border border-white/10 bg-[#090C18]/80 overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 border-b border-white/8 bg-white/[0.02]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold"
+                        style={{ backgroundColor: `${tone}22`, color: tone }}>{d.house}</span>
+                      <span className="text-[12.5px] font-semibold text-[#EDE8E0] truncate">{d.domainTe}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10.5px]">
+                      <span className="font-mono-tabular" style={{ color: tone }}>
+                        సగటు {d.consensusScore > 0 ? '+' : ''}{d.consensusScore.toFixed(2)}
+                      </span>
+                      <span className="text-[#EDE8E0]/40 font-mono-tabular">వ్యాప్తి {d.spread.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="px-3.5 py-2.5 space-y-2">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[10.5px]">
+                        <thead>
+                          <tr className="text-[9.5px] uppercase tracking-wider text-[#EDE8E0]/35">
+                            <th className="text-left font-normal pb-1 w-20">పద్ధతి</th>
+                            <th className="text-right font-normal pb-1 w-14">స్కోరు</th>
+                            <th className="text-left font-normal pb-1 pl-3">గణన (సంఖ్యలతో)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {d.verdicts.map((v) => (
+                            <tr key={v.schoolTe} className="border-t border-white/5 align-top">
+                              <td className="py-1.5 pr-2 text-[#EDE8E0]/85 whitespace-nowrap">{v.schoolTe}</td>
+                              <td className="py-1.5 pr-1 text-right font-mono-tabular"
+                                style={{ color: v.score >= 1 ? '#6FD2C7' : v.score <= -1 ? '#E39A6B' : '#EDE8E0/55' }}>
+                                {v.score > 0 ? '+' : ''}{v.score.toFixed(2)}
+                              </td>
+                              <td className="py-1.5 pl-3 text-[#EDE8E0]/70 leading-relaxed">
+                                {v.evidenceTe}
+                                <div className="text-[9.5px] text-[#EDE8E0]/30 mt-0.5">{v.ruleTe}</div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <p className="text-[11px] text-[#EDE8E0]/80 leading-relaxed">{d.consensusTe}</p>
+                    <p className="text-[11px] leading-relaxed" style={{ color: tone }}>{d.phalaTe}</p>
+                    <p className="text-[10px] text-[#EDE8E0]/40 leading-relaxed">{d.polarityTe}</p>
+
+                    {d.windows.length > 0 && (
+                      <div className="rounded-lg border border-[#C9A96E]/20 bg-[#C9A96E]/5 px-2.5 py-2">
+                        <div className="text-[10px] font-bold text-[#C9A96E] mb-1">కాల కిటికీలు (వింశోత్తరి భుక్తి నుంచి)</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {d.windows.map((w, i) => (
+                            <span key={i} className="rounded-md bg-[#090C18] border border-white/10 px-2 py-1 text-[9.5px] text-[#EDE8E0]/75">
+                              <span className="font-mono-tabular text-[#5BBFB5]">{w.fromISO} → {w.toISO}</span>
+                              {' · '}{w.lordTe}{' · '}{w.widthTe}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {d.pariseelanaTe.map((p, i) => (
+                      <p key={i} className="text-[9.5px] text-[#EDE8E0]/35 leading-relaxed">◦ {p}</p>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-lg border border-[#5BBFB5]/25 bg-[#0C1120] px-3.5 py-3">
+            <div className="text-[11px] font-bold text-[#5BBFB5] mb-1">ఈ అధ్యాయం పద్ధతులు</div>
+            <ul className="text-[10.5px] text-[#EDE8E0]/70 leading-relaxed list-disc pl-4 space-y-0.5">
+              {samanyaya.paddhatiTe.map((x, i) => <li key={i}>{x}</li>)}
+            </ul>
           </div>
         </div>
       )}
