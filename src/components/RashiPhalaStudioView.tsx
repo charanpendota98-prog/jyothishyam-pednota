@@ -36,6 +36,7 @@ import {
   type PhalaGeo,
 } from '../engine/rashiPhalaluPanditEngine.ts';
 import SourceStrip from './SourceStrip.tsx';
+import MuhurtaPlannerPanel from './MuhurtaPlannerPanel.tsx';
 
 type Period = 'day' | 'week' | 'month' | 'year';
 
@@ -152,6 +153,7 @@ export default function RashiPhalaStudioView({ chart, lang = 'te' }: Props) {
       `${day.chandrabalaTe}`,
       `${day.tarabalaTe}`,
       `దశ: ${day.dashaTe}`,
+      `కక్ష్య: ${day.kakshya.filter((k) => k.verdict === 'bindu').map((k) => k.grahaTe).join(', ') || 'బిందువు లేదు'}`,
       '',
       '✅ అనుకూలం:',
       ...day.favourable.map((x) => `• ${x}`),
@@ -468,6 +470,35 @@ export default function RashiPhalaStudioView({ chart, lang = 'te' }: Props) {
               </div>
             </div>
 
+            <div className="rounded-lg bg-white/[0.03] p-3">
+              <div className="text-[11px] text-[#C9A96E] mb-1">
+                {isTe
+                  ? 'కక్ష్యా గోచారం (రాశిలో 3°45′ సూక్ష్మత — అష్టకవర్గ బిందువు)'
+                  : 'Kakshya transit (3°45′ precision — ashtakavarga bindu)'}
+              </div>
+              <div className="grid gap-1 sm:grid-cols-2">
+                {day.kakshya.map((k) => (
+                  <div key={k.graha} className="flex items-center gap-2 text-[10.5px]">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        k.verdict === 'bindu' ? 'bg-emerald-400' : 'bg-rose-400'
+                      }`}
+                    />
+                    <span className="text-[#EDE8E0]/85 w-16 shrink-0">{k.grahaTe}</span>
+                    <span className="text-[#EDE8E0]/50 font-mono-tabular shrink-0">
+                      {k.kakshyaNumber}/8
+                    </span>
+                    <span className="text-[#EDE8E0]/45">{k.contributorTe}</span>
+                    <span
+                      className={`ml-auto ${k.verdict === 'bindu' ? 'text-emerald-300' : 'text-rose-300'}`}
+                    >
+                      {k.verdict === 'bindu' ? (isTe ? 'బిందువు' : 'bindu') : isTe ? 'బిందువు లేదు' : 'no bindu'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="text-[10px] text-[#EDE8E0]/35 leading-snug">{day.sourceNoteTe}</div>
           </>
         )}
@@ -615,6 +646,8 @@ export default function RashiPhalaStudioView({ chart, lang = 'te' }: Props) {
           </>
         )}
       </div>
+
+      <MuhurtaPlannerPanel chart={chart} lang={lang} initialYear={y} />
 
       {/* ---- పండుగలు ---- */}
       <div className="bg-[#0F1326] border border-white/10 rounded-xl p-4 no-print">

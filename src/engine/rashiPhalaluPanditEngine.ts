@@ -38,6 +38,11 @@ import {
   type KalaWindow,
 } from './hinduCalendarEngine.ts';
 import { computeGocharaReport, type GocharaReport } from './gocharaVedhaEngine.ts';
+import {
+  computeKakshyaTransits,
+  kakshyaStrength,
+  type KakshyaTransitEntry,
+} from './ashtakavargaKakshyaEngine.ts';
 import { TELUGU_NAKSHATRAS, TELUGU_RASIS } from './teluguJathakam.ts';
 import type { CompleteChartResult } from './ephemeris.ts';
 
@@ -159,6 +164,8 @@ export interface DayPhala {
   windows: PhalaWindow[];
   cautions: string[];
   gocharaHighlights: { grahaTe: string; houseFromMoon: number; verdictTe: string; themeTe: string }[];
+  /** ఏడు గ్రహాల కక్ష్యా స్థానం (3°45′ సూక్ష్మత) */
+  kakshya: KakshyaTransitEntry[];
   sourceNoteTe: string;
 }
 
@@ -378,13 +385,13 @@ function scoreChandrabala(sky: SkySnapshot, chart: CompleteChartResult): PhalaSc
   const house = ((sky.moonSignIndex - janma + 12) % 12) + 1;
   const goodHouses = [1, 2, 3, 5, 6, 7, 9, 10, 11];
   const isGood = goodHouses.includes(house);
-  const score = house === 8 || house === 12 ? 5 : house === 4 ? 9 : isGood ? 25 : 14;
+  const score = house === 8 || house === 12 ? 4 : house === 4 ? 7 : isGood ? 20 : 11;
   return {
     key: 'chandrabala',
     labelTe: 'చంద్రబలం',
     labelEn: 'Chandrabala',
     score,
-    max: 25,
+    max: 20,
     reasonTe: `చంద్రుడు ${TELUGU_RASIS[sky.moonSignIndex].nameTe}లో — జన్మ రాశి ${TELUGU_RASIS[janma].nameTe} నుంచి ${house}వ భావం. ${
       house === 8
         ? 'అష్టమ చంద్రుడు — శరీరం, మనస్సు నిదానం కావాలి.'
@@ -406,13 +413,13 @@ function scoreTarabala(sky: SkySnapshot, chart: CompleteChartResult): PhalaScore
   const nameTe = TARA_NAMES_TE[t];
   const good = TARA_GOOD[t];
   const isJanma = t === 0;
-  const score = good ? 20 : isJanma ? 11 : 5;
+  const score = good ? 15 : isJanma ? 8 : 4;
   return {
     key: 'tarabala',
     labelTe: 'తారాబలం',
     labelEn: 'Tarabala',
     score,
-    max: 20,
+    max: 15,
     reasonTe: `నేటి నక్షత్రం ${TELUGU_NAKSHATRAS[sky.moonNakIndex]?.nameTe ?? ''} — జన్మ నక్షత్రం ${TELUGU_NAKSHATRAS[janmaNak]?.nameTe ?? ''} నుంచి ${nameTe}. ${
       good
         ? 'శుభ తార — ప్రారంభాలు, ప్రయాణం, కొత్త పనులకు అనుకూలం.'
@@ -509,6 +516,23 @@ function scoreDasha(chart: CompleteChartResult, dateISO: string): PhalaScorePart
   };
 }
 
+/**
+ * కక్ష్యా బలం — అష్టకవర్గ బిందువు ఉన్న కక్ష్యల్లో గ్రహం నడుస్తున్నాదా.
+ * ఇది భావ-స్థాయి గోచారానికి 3°45′ సూక్ష్మతను జోడిస్తుంది.
+ */
+function scoreKakshya(entries: KakshyaTransitEntry[]): PhalaScorePart {
+  const st = kakshyaStrength(entries);
+  return {
+    key: 'kakshya',
+    labelTe: 'కక్ష్యా బలం',
+    labelEn: 'Kakshya strength',
+    score: Math.round(st.ratio * 10),
+    max: 10,
+    reasonTe: st.summaryTe,
+    sourceTe: 'బృహత్ పరాశర హోరా శాస్త్రం — అష్టకవర్గ కక్ష్యా ఫలం',
+  };
+}
+
 /* ------------------------------------------------------------------ *
  *  రోజు ఫలం (పూర్తి)
  * ------------------------------------------------------------------ */
@@ -534,11 +558,13 @@ export function computeDayPhala(
   const p = computeDayPanchanga(dateISO, geoCtx, { siderealMode: mode });
   const sky = skyFromPanchanga(dateISO, geo, chart, p, mode);
 
+  const kakshyaTransits = computeKakshyaTransits(chart, sky.jd + 0.5, mode);
   const parts = [
     scoreChandrabala(sky, chart),
     scoreTarabala(sky, chart),
     scoreGochara(sky),
     scorePanchanga(sky),
+    scoreKakshya(kakshyaTransits),
     scoreDasha(chart, dateISO),
   ];
   const score = Math.max(0, Math.min(100, Math.round(parts.reduce((s, x) => s + x.score, 0))));
@@ -622,8 +648,9 @@ export function computeDayPhala(
       verdictTe: g.verdictTe,
       themeTe: g.houseThemeTe,
     })),
+    kakshya: kakshyaTransits,
     sourceNoteTe:
-      'బలాలు: ముహూర్త చింతామణి (చంద్ర/తారా బలం, తిథి-కరణ నిషేధాలు) · బృహత్ సంహిత 104.4, ఫలదీపిక 26 (గోచార-వేధ) · బృహత్ పరాశర హోరా శాస్త్రం 46–47 (వింశోత్తరీ)',
+      'బలాలు: ముహూర్త చింతామణి (చంద్ర/తారా బలం, తిథి-కరణ నిషేధాలు) · బృహత్ సంహిత 104.4, ఫలదీపిక 26 (గోచార-వేధ) · బృహత్ పరాశర హోరా శాస్త్రం అష్టకవర్గ (కక్ష్య) · BPHS 46–47 (వింశోత్తరీ)',
   };
 }
 
@@ -706,6 +733,7 @@ function fastDay(
     scoreTarabala(sky, chart),
     scoreGochara(sky),
     scorePanchanga(sky),
+    scoreKakshya(computeKakshyaTransits(chart, sky.jd, mode)),
     scoreDasha(chart, dateISO),
   ];
   const score = Math.max(0, Math.min(100, Math.round(parts.reduce((s, x) => s + x.score, 0))));

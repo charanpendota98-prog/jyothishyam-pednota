@@ -84,6 +84,23 @@ import { generateSampoornaLifeChronicle } from '../src/engine/sampoornaLifeChron
 import { VastuShastraView } from '../src/components/VastuShastraView';
 import VastuPlanDrawing from '../src/components/VastuPlanDrawing';
 import RashiPhalaStudioView from '../src/components/RashiPhalaStudioView.tsx';
+import {
+  ASHTAKAVARGA_OFFSETS,
+  KAKSHYA_ORDER,
+  KAKSHYA_SPAN,
+} from '../src/engine/ashtakavargaTables.ts';
+import {
+  computeKakshyaTransits,
+  kakshyaOf,
+  kakshyaStrength,
+} from '../src/engine/ashtakavargaKakshyaEngine.ts';
+import {
+  searchYearMuhurta,
+  ACTIVITY_LAGNAS,
+} from '../src/engine/annualMuhurtaEngine.ts';
+import { MUHURTA_ACTIVITIES } from '../src/engine/muhurtaEngine.ts';
+import { ascendantTropical, ayanamsaDegrees } from '../src/engine/astroCore.ts';
+import { TELUGU_RASIS as RASI_NAMES_TE } from '../src/engine/rasiNames.ts';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -2661,6 +2678,196 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
       ((trueChart.planets.find((x) => x.id === 'Ketu')!.siderealLon - trueRahu.siderealLon + 540) % 360) - 180
     ) < 1e-6 || Math.abs(trueChart.planets.find((x) => x.id === 'Ketu')!.siderealLon - ((trueRahu.siderealLon + 180) % 360)) < 1e-6,
     `${trueRahu.siderealLon.toFixed(4)} ↔ ${trueChart.planets.find((x) => x.id === 'Ketu')!.siderealLon.toFixed(4)}`
+  );
+}
+
+/* ================================================================== *
+ *  కక్ష్యా (అష్టకవర్గ) గేట్లు
+ * ================================================================== */
+{
+  // 1) బిందు పట్టికల మొత్తాలు — శాస్త్రీయ సంఖ్యలు
+  const CLASSICAL_TOTALS: Record<string, number> = {
+    Sun: 48, Moon: 49, Mars: 39, Mercury: 54, Jupiter: 56, Venus: 52, Saturn: 39,
+  };
+  let tableSum = 0;
+  for (const [planet, rules] of Object.entries(ASHTAKAVARGA_OFFSETS)) {
+    const total = rules.reduce((a, r) => a + r.length, 0);
+    tableSum += total;
+    check(
+      `అష్టకవర్గ పట్టిక ${planet} — మొత్తం ${CLASSICAL_TOTALS[planet]}`,
+      total === CLASSICAL_TOTALS[planet],
+      `${total} (సాక్షి వారీగా: ${rules.map((r) => r.length).join(',')})`
+    );
+  }
+  check('అష్టకవర్గ పట్టికల మొత్తం = 337', tableSum === 337, `${tableSum}`);
+
+  // 2) కక్ష్యా సరిహద్దులు — 3°45′ చొప్పున, క్రమం శని…లగ్నం
+  const boundary: [number, string][] = [
+    [0, 'Saturn'], [3.74, 'Saturn'], [3.75, 'Jupiter'], [7.5, 'Mars'], [11.25, 'Sun'],
+    [15, 'Venus'], [18.75, 'Mercury'], [22.5, 'Moon'], [26.25, 'Lagna'], [29.99, 'Lagna'],
+  ];
+  check(
+    'కక్ష్యా విభజన — 3°45′ సరిహద్దులు, క్రమం శని→లగ్నం',
+    boundary.every(([deg, want]) => kakshyaOf(deg).contributor === want) &&
+      KAKSHYA_ORDER.length === 8 &&
+      Math.abs(KAKSHYA_SPAN - 3.75) < 1e-9,
+    boundary.map(([d]) => `${d}°→${kakshyaOf(d).contributor}`).join(' ')
+  );
+
+  // 3) కక్ష్యా బిందువులు = భిన్నాష్టకవర్గ సంఖ్యలు
+  {
+    const g = (CHARAN_REF as any).ashtakavarga as { bhinnashtakavarga: Record<string, number[]> };
+    const planetSigns: Record<string, number> = {};
+    for (const pl of CHARAN_REF.planets) planetSigns[pl.id] = pl.d1Sign;
+    let mismatches = 0;
+    for (const planet of Object.keys(ASHTAKAVARGA_OFFSETS)) {
+      for (let sign = 0; sign < 12; sign++) {
+        const bav = g.bhinnashtakavarga[planet][sign];
+        // ఆ రాశిలో ఏయే కక్ష్యలకు బిందువు ఉంది?
+        const binduKakshyas = KAKSHYA_ORDER.filter((contributor) => {
+          const cIdx = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Lagna'].indexOf(contributor);
+          const refSign = contributor === 'Lagna' ? CHARAN_REF.ascendant.signIndex : planetSigns[contributor];
+          return ASHTAKAVARGA_OFFSETS[planet][cIdx]
+            .map((off) => (refSign + off - 1) % 12)
+            .includes(sign);
+        }).length;
+        if (binduKakshyas !== bav) mismatches += 1;
+      }
+    }
+    check(
+      'కక్ష్యా బిందువుల సంఖ్య = భిన్నాష్టకవర్గ బిందువులు (7 గ్రహాలు × 12 రాశులు)',
+      mismatches === 0,
+      `భేదాలు ${mismatches}/84`
+    );
+  }
+
+  // 4) గోచార కక్ష్యా నివేదిక
+  {
+    const entries = computeKakshyaTransits(CHARAN_REF, 2461337.0);
+    check(
+      'కక్ష్యా గోచారం — ఏడు గ్రహాలు, ప్రతిదానికీ కక్ష్య 1…8 మరియు సాక్షి',
+      entries.length === 7 &&
+        entries.every(
+          (e) => e.kakshyaNumber >= 1 && e.kakshyaNumber <= 8 && e.contributorTe.length > 1 && e.phalaTe.length > 20
+        ),
+      entries.map((e) => `${e.grahaTe}:${e.kakshyaNumber}/${e.contributor}`).join(' ')
+    );
+    const st = kakshyaStrength(entries);
+    check(
+      'కక్ష్యా బలం — 0…1 మధ్య, బిందు సంఖ్య మొత్తానికి సరిపోతుంది',
+      st.ratio >= 0 && st.ratio <= 1 && st.binduCount <= st.total,
+      `${(st.ratio * 100).toFixed(0)}% · ${st.binduCount}/${st.total}`
+    );
+  }
+}
+
+/* ================================================================== *
+ *  లగ్న సంధులు — స్విస్ ఎఫెమెరిస్ గోల్డెన్ ఫిక్చర్ (5 రోజులు × 13 సంధులు)
+ * ================================================================== */
+{
+  const golden = JSON.parse(readFileSync('scripts/golden/lagna-golden.json', 'utf8')) as {
+    cases: { date: string; lat: number; lng: number; tz: number; transitions: [number, number][] }[];
+  };
+  let worstMin = 0;
+  let signErrors = 0;
+  let compared = 0;
+  for (const c of golden.cases) {
+    const [y, m, d] = c.date.split('-').map(Number);
+    const jd0 = Date.UTC(y, m - 1, d) / 86400000 + 2440587.5;
+    const step = 1 / 1440;
+    let prev = -1;
+    const mine: { h: number; s: number }[] = [];
+    for (let j = jd0; j < jd0 + 1; j += step) {
+      const asc = ((ascendantTropical(j, c.lat, c.lng) - ayanamsaDegrees(j, 'lahiri')) % 360 + 360) % 360;
+      const s = Math.floor(asc / 30);
+      if (s !== prev) {
+        mine.push({ h: (j - jd0) * 24, s });
+        prev = s;
+      }
+    }
+    for (let i = 0; i < Math.min(mine.length, c.transitions.length); i++) {
+      compared += 1;
+      if (mine[i].s !== c.transitions[i][1]) signErrors += 1;
+      worstMin = Math.max(worstMin, Math.abs(mine[i].h - c.transitions[i][0]) * 60);
+    }
+  }
+  check(
+    'లగ్న సంధులు — స్విస్ ఎఫెమెరిస్ తో భేదం ≤ 2 నిమిషాలు, రాశి క్రమం సరైనది',
+    worstMin <= 2 && signErrors === 0,
+    `${compared} సంధులు · గరిష్ఠ భేదం ${worstMin.toFixed(2)} నిమిషాలు · రాశి తప్పులు ${signErrors}`
+  );
+}
+
+/* ================================================================== *
+ *  ఏడాది ముహూర్త ప్లానర్ — నియమ పాలన
+ * ================================================================== */
+{
+  const report = searchYearMuhurta('vivaha', 2027, 17.385, 78.4867, 5.5, {
+    chart: CHARAN_REF,
+    placeTe: 'హైదరాబాద్',
+    limit: 10,
+  });
+  const cfg = MUHURTA_ACTIVITIES.vivaha;
+  check(
+    'ముహూర్త ప్లానర్ — 365 రోజులు స్కాన్, అభ్యర్థులు ఉన్నాయి',
+    report.scanned === 365 && report.candidates.length > 0 && report.passed >= report.candidates.length,
+    `స్కాన్ ${report.scanned} · వడపోత దాటినవి ${report.passed} · చూపినవి ${report.candidates.length}`
+  );
+  check(
+    'ముహూర్త ప్లానర్ — ప్రతి తేదీ ఆ సంవత్సరానికే, అవరోహణ స్కోరు క్రమం',
+    report.candidates.every((c) => c.dateISO.startsWith('2027')) &&
+      report.candidates.every((c, i) => i === 0 || report.candidates[i - 1].score >= c.score),
+    report.candidates.map((c) => c.score).join(',')
+  );
+  // నియమ పాలన — తిథి/నక్షత్ర/వారం
+  let ruleBreaks = 0;
+  let windowBreaks = 0;
+  for (const c of report.candidates) {
+    const p = computeDayPanchanga(c.dateISO, {
+      lat: 17.385, lng: 78.4867, tzOffsetHours: 5.5, placeName: 'హైదరాబాద్',
+    } as Parameters<typeof computeDayPanchanga>[1]);
+    const tIdx = p.tithi.number - 1;
+    const nIdx = p.nakshatra.number - 1;
+    if (cfg.avoidTithiIndices.includes(tIdx)) ruleBreaks += 1;
+    if (cfg.avoidVaras.includes(p.weekday.index)) ruleBreaks += 1;
+    const nakEn = p.nakshatra.nameEn;
+    if (cfg.avoidNakshatraNames.some((n) => n.toLowerCase() === nakEn?.toLowerCase())) ruleBreaks += 1;
+    // కిటికీలు శాస్త్ర లగ్నాల్లోనే, అశుభ కాలాలపై లేవు
+    const hhmm = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    for (const w of c.windows) {
+      const a = hhmm(w.startTime);
+      const b = hhmm(w.endTime);
+      const bad = p.kalas.filter((k) => k.quality === 'inauspicious');
+      for (const k of bad) {
+        const c1 = hhmm(k.startTime);
+        const c2 = hhmm(k.endTime) > c1 ? hhmm(k.endTime) : c1 + 1;
+        if (Math.min(b, c2) - Math.max(a, c1) > 0) windowBreaks += 1;
+      }
+      const lagnaName = w.lagnaTe.replace(' లగ్నం', ' రాశి');
+      const idx = RASI_NAMES_TE.findIndex((r) => r.nameTe === lagnaName);
+      if (!ACTIVITY_LAGNAS.vivaha.includes(idx)) windowBreaks += 1;
+    }
+  }
+  check(
+    'ముహూర్త ప్లానర్ — ఏ అభ్యర్థీ నిషిద్ధ తిథి/వారం/నక్షత్రాన్ని దాటలేదు',
+    ruleBreaks === 0,
+    `నియమ భంగాలు ${ruleBreaks}`
+  );
+  check(
+    'ముహూర్త ప్లానర్ — లగ్న కిటికీలు శాస్త్ర లగ్నాల్లోనే; రాహు/యమ/గుళిక/దుర్ముహూర్తంపై లేవు',
+    windowBreaks === 0,
+    `విండో భంగాలు ${windowBreaks} · ${report.candidates.reduce((a, c) => a + c.windows.length, 0)} కిటికీలు`
+  );
+  check(
+    'ముహూర్త ప్లానర్ — ప్రతి లగ్న కిటికీ కనీసం 15 నిమిషాలు',
+    report.candidates.every((c) =>
+      c.windows.every((w) => {
+        const [sh, sm] = w.startTime.split(':').map(Number);
+        const [eh, em] = w.endTime.split(':').map(Number);
+        return eh * 60 + em - (sh * 60 + sm) >= 15;
+      })
+    ),
+    report.candidates.map((c) => c.windows.length).join(',')
   );
 }
 
