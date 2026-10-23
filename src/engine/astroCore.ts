@@ -604,6 +604,58 @@ export function nextYogaBoundaryJd(jd: number, mode: SiderealMode = 'lahiri'): n
   return yogaWindow(jd, mode).endJd;
 }
 
+/* ------------------------------------------------------------------ *
+ *  వర్జ్యం (విషఘటి / త్యాజ్యం)
+ * ------------------------------------------------------------------ *
+ *  ఒక నక్షత్రం నడుస్తున్న కాలంలో నిర్దిష్ట భాగం "త్యాజ్యం" — ఆ సమయంలో
+ *  శుభ కార్యాలు వర్జించాలి. ప్రతి నక్షత్రానికి ప్రారంభ ఘటి స్థానం స్థిరం
+ *  (నక్షత్ర కాలాన్ని 60 ఘటులుగా విభజించి), వర్జ్యం 4 ఘటుల పొడవు.
+ *  ఆధారం: డ్రిక్ పంచాంగ ట్యుటోరియల్ "Nakshatra Thyajyam"
+ *  (drikpanchang.com/tutorials/panchang-utilities/nakshatra-thyajyam.html),
+ *  reliableastrology.com/nakVishGhati.htm — మరియు `drik-panchanga` ప్యాకేజీ
+ *  ఇదే పట్టికను వాడుతుంది (varjyam()).
+ */
+export const VARJYAM_START_GHATIS: readonly number[] = [
+  50, 24, 30, 40, 14, 21, 30, 20, 32, 30, 20, 18, 21, 20, 14, 14, 10, 14, 56, 24, 20, 10, 10, 18, 16, 24, 30,
+];
+
+/** వర్జ్యం పొడవు — నక్షత్ర కాలంలో 4/60 (నాలుగు ఘటులు) */
+const VARJYAM_SPAN_GHATIS = 4;
+
+export interface VarjyamWindow {
+  nakIndex: number;
+  startJd: number;
+  endJd: number;
+}
+
+/**
+ * సూర్యోదయాది దినంలో (sunrise → next sunrise) ఏ వర్జ్యం కాలమైనా తగిలితే
+ * వాటన్నింటిని ఇస్తుంది — డ్రిక్ ఆ రోజు చూపే జాబితాకు సమానం.
+ */
+export function varjyamWindowsForDay(
+  sunriseJd: number,
+  nextSunriseJd: number,
+  mode: SiderealMode = 'lahiri'
+): VarjyamWindow[] {
+  const out: VarjyamWindow[] = [];
+  // సూర్యోదయానికి కొంచెం ముందు మొదలైన నక్షత్రం కూడా కావాలి → ఒక నక్షత్రం వెనకికి.
+  let cursor = sunriseJd - 1.2;
+  for (let guard = 0; guard < 5 && cursor < nextSunriseJd; guard++) {
+    const win = nakshatraWindow(cursor, mode);
+    const duration = win.endJd - win.startJd;
+    if (duration > 0) {
+      const startGhati = VARJYAM_START_GHATIS[win.index];
+      const startJd = win.startJd + (startGhati / 60) * duration;
+      const endJd = startJd + (VARJYAM_SPAN_GHATIS / 60) * duration;
+      if (endJd > sunriseJd && startJd < nextSunriseJd) {
+        out.push({ nakIndex: win.index + 1, startJd, endJd });
+      }
+    }
+    cursor = win.endJd + 1e-4;
+  }
+  return out;
+}
+
 export function nextKaranaBoundaryJd(jd: number): number {
   return karanaWindow(jd).endJd;
 }
@@ -683,11 +735,21 @@ function apparentAltitude(
 function limbFunction(body: Astronomy.Body, observer: Astronomy.Observer, jd: number): number {
   if (RISE_CONVENTION === 'hindu') {
     const time = Astronomy.MakeTime(dateFromJd(jd));
-    const eq = Astronomy.Equator(body, time, observer, true, true);
-    // 'normal' = వక్రీభవనం సహితం; హిందూ సంప్రదాయానికి వక్రీభవనం తీసేస్తాము
-    const hor = Astronomy.Horizon(time, observer, eq.ra, eq.dec, 'normal');
-    const refr = Astronomy.Refraction('normal', hor.altitude);
-    return hor.altitude - refr;
+    // హిందూ సంప్రదాయం (స్విస్ `BIT_HINDU_RISING`):
+    //   1. **భూకేంద్ర** స్థానం — చంద్రుని దృష్టి భేదం (parallax ≈ 57′) తీసేయాలి
+    //   2. విషువత్ అక్షాంశం (ecliptic latitude) **సున్నా** — గ్రహం భ్రమణ మార్గం
+    //      (ecliptic) మీద ఉన్నట్టే లెక్కిస్తారు. చంద్రునికి ఇది ±5° —
+    //      హైదరాబాద్ 2026-01-01: 15:43 → **15:49** (డ్రిక్ విలువ)
+    //   3. వక్రీభవనం లేదు (airless) — బింబ కేంద్రం క్షితిజంపై
+    const geo = Astronomy.GeoVector(body, time, true);
+    const ecl = Astronomy.SphereFromVector(Astronomy.RotateVector(Astronomy.Rotation_EQJ_ECL(), geo));
+    const onEcliptic = Astronomy.VectorFromSphere({ lon: ecl.lon, lat: 0, dist: ecl.dist }, time);
+    const eqOfDate = Astronomy.EquatorFromVector(
+      Astronomy.RotateVector(Astronomy.Rotation_ECL_EQD(time), onEcliptic)
+    );
+    // వక్రీభవనం లేకుండా (geometric altitude) — 'normal' ఇస్తే తిరిగి జోడిస్తుంది.
+    const hor = Astronomy.Horizon(time, observer, eqOfDate.ra, eqOfDate.dec);
+    return hor.altitude;
   }
   const sd = semiDiameterDeg(body, jd, observer);
   return apparentAltitude(body, jd, observer) + sd;
@@ -768,8 +830,24 @@ function upperLimbEvent(
     limitDays,
     horizonAltitude
   );
-  if (!coarse) return null;
-  return refineLimbCrossing(body, observer, jdFromDate(coarse.date), direction) ?? jdFromDate(coarse.date);
+  if (coarse) {
+    const refined = refineLimbCrossing(body, observer, jdFromDate(coarse.date), direction);
+    if (refined !== null) return refined;
+  }
+  // బహుళ అక్షాంశాల్లో బింబం క్షితిజాన్ని తాకి తాకనట్టు కదిలే రోజుల్లో స్థూల
+  // అన్వేషణ (SearchAltitude) ఘటనను కోల్పోతుంది. అప్పుడు 5 నిమిషాల అడుగులతో
+  // స్వయంగా స్కాన్ చేసి, సంజ్ఞ మారే చోట ద్విభాజన చేస్తాము.
+  const STEP = 5 / 1440;
+  let prevJd = startJd;
+  let prevVal = limbFunction(body, observer, prevJd);
+  for (let jd = startJd + STEP; jd <= startJd + limitDays; jd += STEP) {
+    const val = limbFunction(body, observer, jd);
+    const crossed = direction > 0 ? prevVal < 0 && val >= 0 : prevVal > 0 && val <= 0;
+    if (crossed) return refineLimbCrossing(body, observer, (prevJd + jd) / 2, direction) ?? jd;
+    prevJd = jd;
+    prevVal = val;
+  }
+  return null;
 }
 
 function searchEvent(
@@ -821,6 +899,10 @@ function computeRiseSet(
   const midnightJd = localMidnightJd(dateISO, tzOffsetHours);
   const sunriseJd = searchEvent(Astronomy.Body.Sun, +1, midnightJd, lat, lng);
   const sunsetJd = searchEvent(Astronomy.Body.Sun, -1, midnightJd, lat, lng);
+  // చంద్రోదయ/చంద్రాస్తమయం — పంచాంగ దినం (సూర్యోదయం → మరుసటి సూర్యోదయం)
+  // లోని మొదటి ఘటన. డ్రిక్ పంచాంగం కూడా ఇదే గీతను వాడుతుంది (drik-panchanga
+  // `_moon_event_in_window`). సూర్యోదయానికి కొన్ని నిమిషాల ముందు/తర్వాత
+  // జరిగే ఘటన ఏ రోజుకు చెందుతుందనేది ఈ గీతపై ఆధారపడి ఉంటుంది.
   const moonAnchor = sunriseJd ?? midnightJd;
   const moonriseJd = searchEvent(Astronomy.Body.Moon, +1, moonAnchor, lat, lng);
   const moonsetJd = searchEvent(Astronomy.Body.Moon, -1, moonAnchor, lat, lng);

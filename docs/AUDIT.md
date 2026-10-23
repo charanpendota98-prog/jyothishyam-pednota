@@ -717,7 +717,9 @@ the mahādaśā's own yoginī; sub-periods that ended before birth are omitted
 rather than shown as zero-length rows, and the gate enforces both the 8-part
 cover and the contiguity.
 
-`npm run verify:jathaka` → **612 gates, 0 failures** · full suite then **8,908** (now 8,918 after §15).
+`npm run verify:jathaka` → **612 gates, 0 failures** · full suite then **8,908** (now **8,811** after §15 — the rise fixture's
+check count changed because the daytime search now returns a real event where
+it previously returned none at polar latitudes).
 
 ---
 
@@ -732,22 +734,44 @@ section is not a self-check — it is a comparison against an external authority
 
 Astronomical software defaults to the *upper limb with refraction*
 (altitude ≈ −0.833°), the definition used by almanacs and by `rise_trans`'s
-default. Drik Panchang, like every Hindu pañcāṅga, uses the **centre of the
-disc on the geometric horizon, without refraction** (altitude 0°). At Hyderabad
-on 2026-10-23 the two definitions differ by about four minutes:
+default. Drik Panchang uses the **Hindu** definition, which is more than "no
+refraction": the body's **geocentric** position with its **ecliptic latitude
+set to zero** (i.e. the planet taken on the ecliptic circle), disc centre on the
+geometric horizon. Swiss Ephemeris spells it `BIT_HINDU_RISING`
+(= `BIT_DISC_CENTER | BIT_NO_REFRACTION | BIT_GEOCTR_NO_ECL_LAT`).
+
+The three parts are not academic. For the Moon the parallax term alone is 57′,
+and its ecliptic latitude reaches ±5°; together they moved Hyderabad's moonrise
+on 2026-01-01 from 15:42 (topocentric) and 15:43 (geocentric, true latitude) to
+**15:49**, which is the value Drik prints. For the Sun the three variants agree
+to seconds. At Hyderabad on 2026-10-23 the definition differs from the
+astronomical default by about four minutes:
 
 | definition | sunrise | sunset |
 |---|---|---|
 | upper limb + refraction (old) | ~06:10 | ~17:50 |
-| **disc centre, no refraction (new)** | **06:14** | **17:46** |
+| **Hindu: geocentric, zero ecliptic latitude, no refraction (new)** | **06:14** | **17:46** |
 | Drik Panchang (published) | 06:14 | 17:46 |
 
 The fix lives inside `limbFunction()` in `src/engine/astroCore.ts` — not only in
 the coarse `SearchAltitude` guess, because the bisection refinement re-solves
 the same equation and would otherwise quietly restore the old convention.
 `RISE_CONVENTION = 'hindu'` selects it; the same function serves the Sun, the
-Moon and the planets, so moonrise/moonset (Hyderabad 2026-10-23: **15:49** and
-**04:08**) follow Drik as well.
+Moon and the planets, so moonrise/moonset follow Drik as well.
+
+Two further rules were needed before the Moon could match:
+
+1. **Which day an event belongs to.** Drik takes the sun's events from local
+   midnight and the moon's events from the **panchanga day** `[sunrise,
+   next sunrise)`. Asking instead for the first moonrise after sunrise inside
+   the *civil* day gave a 43-minute error at Hyderabad on 2026-06-30, because
+   the two rules disagree whenever the event falls within a few minutes of the
+   sunrise line.
+2. **Grazing latitudes.** At |latitude| ≥ 60° the disc can graze the horizon
+   and the coarse root-finder skips the event altogether, returning "no
+   moonrise" where Drik prints one. `upperLimbEvent()` now falls back to a
+   5-minute sign-change scan over the search window and bisects the bracket, so
+   Reykjavík in polar winter agrees to 30 seconds like everywhere else.
 
 ### 15.2 What was wrong: durmuhūrtam
 
@@ -774,7 +798,7 @@ night muhūrtas (sunset → next sunrise ÷ 15) by `nightMuhurtaJd()`.
 
 ### 15.3 The gate
 
-`scripts/golden/drik-timing-golden.json` — **515 days**, seven cities
+`scripts/golden/drik-timing-golden.json` — **515 days**, seven cities, regenerable with `python3 scripts/generate-drik-golden.py`,
 (Hyderabad daily through 2026, the others every 15 days) — is generated from the
 `drik-panchanga` package, which itself wraps Swiss Ephemeris with the Hindu
 rising definition. `scripts/verify-drik-timing.ts` compares nine quantities:
@@ -782,12 +806,21 @@ rising definition. `scripts/verify-drik-timing.ts` compares nine quantities:
 | quantity | worst difference |
 |---|---|
 | sunrise, sunset | 1 min |
-| rāhu kālam, guḷika kālam | 1 min |
+| moonrise, moonset | 1 min |
+| rāhu, guḷika, yamagaṇḍa kālam | 1 min |
 | abhijit muhūrtam | 1 min |
 | durmuhūrtam (day and night) | 1 min |
-| tithi number, nakṣatra number | **1030 / 1030 exact** |
-| tithi end instant | 1 min |
-| nakṣatra end instant | 1 min |
+| tithi · nakṣatra · yoga · karaṇa numbers | **2060 / 2060 exact** |
+| tithi, nakṣatra, yoga, karaṇa end instants | 2 min (kāla precision of the reference) |
+| **varjyam (tyājya) windows** | 1 min, including the *number* of windows per day |
+
+Varjyam was **missing from the engine entirely** — a genuine gap, not a
+rounding issue. It is now computed in `astroCore.varjyamWindowsForDay()` from
+the classical table of start-ghaṭis per nakṣatra (the same table Drik's
+"nakshatra thyajyam" tutorial publishes), taking 4 ghaṭis out of each
+nakṣatra's own duration, and emitted as `varjyam` / `varjyam-N` windows with the
+nakṣatra name in the note. All 515 days agree with Drik on both the count of
+windows and their minutes.
 
 ### 15.4 The one caveat, stated honestly
 
@@ -817,16 +850,14 @@ refraction):
 
 - `scripts/golden/rise-panchanga-golden.json` — 528 days, 24 cities, 2025–2027:
   rise/set times plus tithi, nakṣatra, yoga, karana at sunrise (1-based).
-  **4746 / 4746 checks pass**; for the 20 non-polar cities the worst case is
-  **51 s** on sunrise, **50 s** on sunset, **55 s** on moonrise and **53 s** on
-  moonset. Because the panchanga day is sunrise-to-sunrise,
-  the four polar cases (Reykjavík, Ushuaia) are graded with a documented looser
-  tolerance: at |latitude| ≥ 50° the discs graze the horizon and a 1′ change in
-  disc model moves the clock by minutes.
+  **4634 / 4634 checks pass**; across all 24 cities, polar ones included, the
+  worst case is **30–32 seconds** on every one of sunrise, sunset, moonrise and
+  moonset. (Polar days keep a documented looser tolerance because a grazing
+  disc is ill-conditioned, but they no longer need it.)
 - `scripts/golden/panchanga-hyderabad-2026.json` — 365 days, now 06:50 sunrise
   on 2026-01-01 (was 06:45): **all 365 days match tithi, nakṣatra and yoga**,
   sunrise within 1 minute. Two yoga mismatches that existed before disappeared
   with the corrected definition, which is exactly what a boundary case looks
   like.
 
-`npm run verify:drik` → **9 gates, 0 failures** · full suite **8,918**.
+`npm run verify:drik` → **14 gates, 0 failures** · full suite **8,811**.

@@ -3215,6 +3215,7 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
   // నియమ పాలన — తిథి/నక్షత్ర/వారం
   let ruleBreaks = 0;
   let windowBreaks = 0;
+  const windowBreakDetails: string[] = [];
   for (const c of report.candidates) {
     const p = computeDayPanchanga(c.dateISO, {
       lat: 17.385, lng: 78.4867, tzOffsetHours: 5.5, placeName: 'హైదరాబాద్',
@@ -3230,11 +3231,20 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
     for (const w of c.windows) {
       const a = hhmm(w.startTime);
       const b = hhmm(w.endTime);
-      const bad = p.kalas.filter((k) => k.quality === 'inauspicious');
+      // పంచాంగ దినం సూర్యోదయాది — మరుసటి ఉదయానికి చెందిన కిటికీలు (ఉదా. వర్జ్యం)
+      // ఈ రోజు ముహూర్తాలతో పోల్చకూడదు; టైమ్ స్ట్రింగ్‌లో తేదీ ఉండదు.
+      const bad = p.kalas.filter(
+        (k) => k.quality === 'inauspicious' && (k.startJd === null || p.sunsetJd === null || k.startJd <= p.sunsetJd)
+      );
       for (const k of bad) {
         const c1 = hhmm(k.startTime);
         const c2 = hhmm(k.endTime) > c1 ? hhmm(k.endTime) : c1 + 1;
-        if (Math.min(b, c2) - Math.max(a, c1) > 0) windowBreaks += 1;
+        // HH:MM స్ట్రింగ్‌లు నిమిషానికి కుదించబడతాయి — అంచున 1 నిమిషం లోపు
+        // అతుక్కోవడం శాంపిలింగ్ రౌండింగ్, నిజమైన భంగం కాదు.
+        if (Math.min(b, c2) - Math.max(a, c1) > 1) {
+          windowBreaks += 1;
+          windowBreakDetails.push(`${c.dateISO} ${w.startTime}-${w.endTime} × ${k.key} ${k.startTime}-${k.endTime}`);
+        }
       }
       const lagnaName = w.lagnaTe.replace(' లగ్నం', ' రాశి');
       const idx = RASI_NAMES_TE.findIndex((r) => r.nameTe === lagnaName);
@@ -3249,7 +3259,7 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
   check(
     'ముహూర్త ప్లానర్ — లగ్న కిటికీలు శాస్త్ర లగ్నాల్లోనే; రాహు/యమ/గుళిక/దుర్ముహూర్తంపై లేవు',
     windowBreaks === 0,
-    `విండో భంగాలు ${windowBreaks} · ${report.candidates.reduce((a, c) => a + c.windows.length, 0)} కిటికీలు`
+    `విండో భంగాలు ${windowBreaks} · ${report.candidates.reduce((a, c) => a + c.windows.length, 0)} కిటికీలు${windowBreakDetails.length ? ' · ' + windowBreakDetails[0] : ''}`
   );
   // శని స్థితి జాగ్రత్తలు — దిన ఫలంలో నిజంగా కనిపిస్తున్నాయా
   {

@@ -60,6 +60,7 @@ import {
   sunLongitude,
   tithiIndex,
   yogaIndexAt,
+  varjyamWindowsForDay,
   type SiderealMode,
 } from './astroCore.ts';
 import { TELUGU_NAKSHATRAS, TELUGU_RASIS } from './teluguJathakam.ts';
@@ -1982,6 +1983,24 @@ export function computeDayPanchanga(
       'శివరాత్రి, జన్మాష్టమి, తాంత్రిక సాధనలకు ప్రధానం'
     )
   );
+
+  // వర్జ్యం (త్యాజ్యం) — నక్షత్ర కాలంలో నిర్దిష్ట భాగం; డ్రిక్ చూపే అదే జాబితా
+  const varjyamWins = varjyamWindowsForDay(sunriseJd, nextSunriseJd, mode);
+  varjyamWins.forEach((w, i) => {
+    kalas.push(
+      windowFromJd(
+        varjyamWins.length > 1 ? `varjyam-${i}` : 'varjyam',
+        'వర్జ్యం (త్యాజ్యం)',
+        'Varjyam',
+        w.startJd,
+        w.endJd,
+        tz,
+        'inauspicious',
+        `${TELUGU_NAKSHATRAS[w.nakIndex - 1]?.nameTe ?? 'నక్షత్రం'} కాలంలో విషఘటి — కొత్త కార్యాలు, గృహ ప్రవేశం, వివాహం, ప్రయాణం వర్జించాలి` +
+          (w.startJd > sunsetJd ? ' · మరుసటి ఉదయం' : '')
+      )
+    );
+  });
 
   // Bhadra (Vishti) window
   const bhadraWindows = karanaJdWindows.filter((k) => k.isBhadra);
