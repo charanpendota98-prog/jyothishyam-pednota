@@ -14,8 +14,11 @@ export interface PdfExportOptions {
   jpegQuality?: number;
 }
 
-/** 960 CSS px వెడల్పు కల పుట → A4 లో 198 mm వెడల్పు. DPI లెక్కకు మూలం. */
-const PAGE_RENDER_WIDTH_PX = 960;
+/**
+ * ఎగుమతి సమయంలో పుట 194 mm (733 px @96dpi) వెడల్పుతో రెండర్ అవుతుంది —
+ * అదే A4 ముద్రణ కొలత. DPI లెక్క ఈ వెడల్పు మీదే.
+ */
+const PAGE_RENDER_WIDTH_PX = 733;
 const A4_PRINTABLE_WIDTH_MM = 198;
 const MM_PER_INCH = 25.4;
 
@@ -24,9 +27,13 @@ export function renderDpi(renderScale: number): number {
   return Math.round((PAGE_RENDER_WIDTH_PX * renderScale) / (A4_PRINTABLE_WIDTH_MM / MM_PER_INCH));
 }
 
-/** ముద్రణ ప్రమాణం — 300 DPI కి సరిపోయే కనీస స్కేల్ (2.45 ≈ 302 DPI). */
-export const PRINT_RENDER_SCALE = 2.45;
-export const SCREEN_RENDER_SCALE = 1.85;
+/** ముద్రణ ప్రమాణం — 733 px × 3.2 = 2346 px / 198 mm ≈ 301 DPI. */
+export const PRINT_RENDER_SCALE = 3.2;
+/** వేగవంతమైన ప్రివ్యూ — ~208 DPI. */
+export const SCREEN_RENDER_SCALE = 2.2;
+
+/** A4 ముద్రణ లేఅవుట్‌ను తెరపై అమలు చేసే క్లాస్ (index.css లో నియమాలు). */
+export const A4_EXPORT_CLASS = 'pdf-a4-export';
 
 export interface PdfExportProgress {
   isExporting: boolean;
@@ -274,11 +281,13 @@ export async function exportClassicalJathakaToPdf(
     // Give UI thread a frame to paint progress bar
     await new Promise((resolve) => setTimeout(resolve, 40));
 
-    // Temporarily force desktop A4 width so mobile phones also export crisp A4 tables
+    // A4 ముద్రణ కొలతలు — మొబైల్‌లోనూ, డెస్క్‌టాప్‌లోనూ ఒకే లేఅవుట్.
+    // 194 mm వెడల్పు + pt ఫాంట్లు (index.css: .pdf-a4-export) — అచ్చులో నిజమైన పరిమాణం.
     const prevWidth = pageEl.style.width;
     const prevMaxWidth = pageEl.style.maxWidth;
-    pageEl.style.width = '960px';
-    pageEl.style.maxWidth = '960px';
+    pageEl.style.width = '194mm';
+    pageEl.style.maxWidth = '194mm';
+    pageEl.classList.add(A4_EXPORT_CLASS);
 
     try {
       const canvas = await html2canvas(pageEl, {
@@ -286,7 +295,7 @@ export async function exportClassicalJathakaToPdf(
         useCORS: true,
         backgroundColor: '#FFFEFA',
         logging: false,
-        windowWidth: 1080,
+        windowWidth: 820,
         onclone: (clonedDoc, clonedEl) => {
           sanitizeCloneForHtml2Canvas(clonedDoc, clonedEl, '#FFFEFA');
         },
@@ -336,6 +345,7 @@ export async function exportClassicalJathakaToPdf(
     } finally {
       pageEl.style.width = prevWidth;
       pageEl.style.maxWidth = prevMaxWidth;
+      pageEl.classList.remove(A4_EXPORT_CLASS);
     }
   }
 

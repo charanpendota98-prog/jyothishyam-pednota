@@ -1569,6 +1569,39 @@ check(
     'quality 0.96 · SLOW'
   );
   check(
+    'PDF ఎగుమతి — తెరపైనే A4 ముద్రణ కొలతలు (194mm + pt ఫాంట్లు), లేకపోతే అచ్చులో పాఠ్యం 5.8pt కి పడిపోతుంది',
+    (() => {
+      const css = readFileSync('src/index.css', 'utf8');
+      const block = css.slice(css.indexOf('.pdf-a4-export .classical-grantha-page'));
+      return (
+        expSrc.includes('A4_EXPORT_CLASS') &&
+        expSrc.includes("pageEl.style.width = '194mm'") &&
+        /width:\s*194mm/.test(block) &&
+        /font-size:\s*7\.9pt/.test(block)
+      );
+    })(),
+    'pdf-a4-export మోడ్'
+  );
+  check(
+    'PDF ఎగుమతి మోడ్ మరియు ముద్రణ CSS — పుట వెడల్పు ఒకటే (194mm); ఒకటి మారితే రెండూ మారాలి',
+    (() => {
+      const css = readFileSync('src/index.css', 'utf8');
+      const widths = [...css.matchAll(/(?:width|max-width):\s*(\d+)mm\s*!important/g)].map((m) => m[1]);
+      return widths.filter((w) => w === '194').length >= 4;
+    })(),
+    '194mm × 4 నియమాలు'
+  );
+  check(
+    'PDF ముద్రిత పాఠ్య పరిమాణం — బాడీ ≥ 7.5pt, పట్టిక ≥ 6.4pt (అచ్చులో చదవగలిగే కనీసం)',
+    (() => {
+      const css = readFileSync('src/index.css', 'utf8');
+      const body = Number((css.match(/\.pdf-a4-export \.classical-grantha-page \{[^}]*font-size:\s*([\d.]+)pt/) ?? [])[1]);
+      const table = Number((css.match(/\.pdf-a4-export \.classical-grantha-page table \{[^}]*font-size:\s*([\d.]+)pt/) ?? [])[1]);
+      return body >= 7.5 && table >= 6.4;
+    })(),
+    'బాడీ 7.9pt · పట్టిక 6.7pt'
+  );
+  check(
     'ముద్రణ డైలాగ్ — పుటల జాబితా గ్రంథ చిట్టా (GRANTHA_PAGES) నుంచే, డిఫాల్ట్ = అన్ని పుటలు',
     modalSrc.includes('GRANTHA_PAGES.map') &&
       modalSrc.includes('ALL_JATHAKA_PAGES') &&

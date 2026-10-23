@@ -449,6 +449,51 @@
   border-radius: 0.75rem;
 }
 
+.pdf-a4-export .classical-grantha-page {
+  width: 194mm !important;
+  max-width: 194mm !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 3.5mm 4.5mm !important;
+  border-width: 1.2pt !important;
+  box-shadow: none !important;
+  font-size: 7.9pt !important;
+  line-height: 1.26 !important;
+}
+
+.pdf-a4-export .classical-grantha-page table {
+  font-size: 6.7pt !important;
+  line-height: 1.18 !important;
+}
+
+.pdf-a4-export .classical-grantha-page th,
+.pdf-a4-export .classical-grantha-page td {
+  padding: 0.55mm 0.85mm !important;
+}
+
+.pdf-a4-export .classical-grantha-page .text-\[7\.4px\],
+.pdf-a4-export .classical-grantha-page .text-\[7\.6px\],
+.pdf-a4-export .classical-grantha-page .text-\[7\.8px\],
+.pdf-a4-export .classical-grantha-page .text-\[8px\],
+.pdf-a4-export .classical-grantha-page .text-\[8\.2px\],
+.pdf-a4-export .classical-grantha-page .text-\[8\.4px\],
+.pdf-a4-export .classical-grantha-page .text-\[8\.5px\],
+.pdf-a4-export .classical-grantha-page .text-\[8\.6px\] {
+  font-size: 6.4pt !important;
+}
+
+.pdf-a4-export .classical-grantha-page .text-\[9px\],
+.pdf-a4-export .classical-grantha-page .text-\[9\.5px\],
+.pdf-a4-export .classical-grantha-page .text-\[10px\],
+.pdf-a4-export .classical-grantha-page .text-\[10\.5px\] {
+  font-size: 7.6pt !important;
+}
+
+.pdf-a4-export .classical-grantha-page .text-\[11px\],
+.pdf-a4-export .classical-grantha-page .text-\[12px\] {
+  font-size: 8.4pt !important;
+}
+
 .classical-pdf-page {
   background: #FCF9F2;
   color: #1A120B;
@@ -510,7 +555,52 @@
     margin: 0 !important;
   }
 
-  .classical-pdf-page {
+  .pdf-a4-export .classical-grantha-page {
+  width: 194mm !important;
+  max-width: 194mm !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 3.5mm 4.5mm !important;
+  border-width: 1.2pt !important;
+  box-shadow: none !important;
+  font-size: 7.9pt !important;
+  line-height: 1.26 !important;
+}
+
+.pdf-a4-export .classical-grantha-page table {
+  font-size: 6.7pt !important;
+  line-height: 1.18 !important;
+}
+
+.pdf-a4-export .classical-grantha-page th,
+.pdf-a4-export .classical-grantha-page td {
+  padding: 0.55mm 0.85mm !important;
+}
+
+.pdf-a4-export .classical-grantha-page .text-\[7\.4px\],
+.pdf-a4-export .classical-grantha-page .text-\[7\.6px\],
+.pdf-a4-export .classical-grantha-page .text-\[7\.8px\],
+.pdf-a4-export .classical-grantha-page .text-\[8px\],
+.pdf-a4-export .classical-grantha-page .text-\[8\.2px\],
+.pdf-a4-export .classical-grantha-page .text-\[8\.4px\],
+.pdf-a4-export .classical-grantha-page .text-\[8\.5px\],
+.pdf-a4-export .classical-grantha-page .text-\[8\.6px\] {
+  font-size: 6.4pt !important;
+}
+
+.pdf-a4-export .classical-grantha-page .text-\[9px\],
+.pdf-a4-export .classical-grantha-page .text-\[9\.5px\],
+.pdf-a4-export .classical-grantha-page .text-\[10px\],
+.pdf-a4-export .classical-grantha-page .text-\[10\.5px\] {
+  font-size: 7.6pt !important;
+}
+
+.pdf-a4-export .classical-grantha-page .text-\[11px\],
+.pdf-a4-export .classical-grantha-page .text-\[12px\] {
+  font-size: 8.4pt !important;
+}
+
+.classical-pdf-page {
     max-width: 100% !important;
     width: 100% !important;
     margin: 0 !important;
@@ -560,6 +650,11 @@
     break-before: page !important;
   }
 
+  /* ══ PDF ఎగుమతి మోడ్ (screen) ═══════════════════════════════════════════
+     html2canvas ప్రింట్ CSS చదవదు. అందుకే ఎగుమతి సమయంలో `.pdf-a4-export`
+     క్లాస్ పెట్టి, ముద్రణకు ఉద్దేశించిన అదే కొలతలను (194mm వెడల్పు, pt ఫాంట్లు)
+     తెరపై అమలు చేస్తాము. లేకపోతే 960px స్క్రీన్ లేఅవుట్ A4 లోకి కుదించబడి
+     పాఠ్యం 5.8pt కి పడిపోతుంది — అచ్చులో చదవలేము. */
   /* ── A4 గ్రంథ పుట — ప్రతి అధ్యాయం ఒకే A4 ఆకుపై ──────────────────────── */
   /* ఇది అమ్మే పత్రిక కాబట్టి పుట పరిమాణం ఖచ్చితంగా A4 (210×297mm) ఉండాలి.
      8mm అంచులు వదిలి, లోపలి పాడింగ్ తగ్గించి, ఫాంట్ సైజు కుదించి —
