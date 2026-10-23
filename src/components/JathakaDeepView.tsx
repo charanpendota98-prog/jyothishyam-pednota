@@ -666,8 +666,8 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
             <p className="flex items-center gap-1.5 text-[#5BBFB5]">
               <BadgeCheck className="w-3.5 h-3.5" />
               {isTe
-                ? '308 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) + 360 స్విస్-ఎఫెమెరిస్ స్ఫుట కొలతలు — npm run verify'
-                : '308 pin-to-pin checks against 3 reference jathakam PDFs + 360 ephemeris measurements vs Swiss Ephemeris.'}
+                ? '308 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) + 630 స్విస్-ఎఫెమెరిస్ స్ఫుట కొలతలు — npm run verify'
+                : '308 pin-to-pin checks against 3 reference jathakam PDFs + 630 ephemeris measurements vs Swiss Ephemeris.'}
             </p>
             <p className="flex items-center gap-1.5 text-[#C9A96E]">
               <Sparkles className="w-3.5 h-3.5" />

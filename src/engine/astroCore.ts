@@ -37,8 +37,10 @@ export interface SiderealModeInfo {
   nameTe: string;
   nameEn: string;
   noteTe: string;
-  /** constant offset from Lahiri (deg) — true_citra is computed dynamically */
+  /** J2000 క్షణంలో లహిరి నుండి భేదం (డిగ్రీలు) */
   deltaFromLahiri: number;
+  /** శతాబ్దానికి ఆ భేదం ఎంత మారుతుందో (నక్షత్ర స్వకీయ చలనం — చిత్రా, పుష్య) */
+  deltaPerCentury: number;
 }
 
 /**
@@ -52,48 +54,55 @@ export const SIDEREAL_MODES: SiderealModeInfo[] = [
     nameEn: 'Chitrapaksha (Lahiri)',
     noteTe: 'రాష్ట్రీయ పంచాంగ్ ప్రామాణికం; చిత్ర నక్షత్రం 180° అని నిర్ణయించబడింది.',
     deltaFromLahiri: 0,
+    deltaPerCentury: 0,
   },
   {
     id: 'raman',
     nameTe: 'బి.వి. రామన్ అయనాంశ',
     nameEn: 'B. V. Raman',
     noteTe: 'డా. బి.వి. రామన్ గ్రంథాల ఆధారిత అయనాంశ.',
-    deltaFromLahiri: -1.4463,
+    deltaFromLahiri: -1.446303,
+    deltaPerCentury: 0,
   },
   {
     id: 'kp',
     nameTe: 'కృష్ణమూర్తి పద్ధతి (KP)',
     nameEn: 'Krishnamurti Paddhati',
     noteTe: 'కే.ఎస్. కృష్ణమూర్తి సుబ్-లార్డ్ పద్ధతికి ప్రామాణిక అయనాంశ.',
-    deltaFromLahiri: -0.09686,
+    deltaFromLahiri: -0.096854,
+    deltaPerCentury: 0,
   },
   {
     id: 'fagan_bradley',
     nameTe: 'ఫాగన్-బ్రాడ్లీ (పాశ్చాత్య సైడెరియల్)',
     nameEn: 'Fagan–Bradley',
     noteTe: 'ఆల్డెబరాన్ 15° వృషభంలో స్థిరపరచబడిన పాశ్చాత్య సైడెరియల్ విధానం.',
-    deltaFromLahiri: 0.8832,
+    deltaFromLahiri: 0.883206,
+    deltaPerCentury: 0,
   },
   {
     id: 'yukteshwar',
     nameTe: 'శ్రీ యుక్తేశ్వర్ అయనాంశ',
     nameEn: 'Sri Yukteshwar',
     noteTe: 'యుగ ప్రక్రియ ఆధారిత అయనాంశ (The Holy Science).',
-    deltaFromLahiri: -1.37829,
+    deltaFromLahiri: -1.378291,
+    deltaPerCentury: 0,
   },
   {
     id: 'true_citra',
     nameTe: 'నిజ చిత్రా (డైనమిక్ స్పైకా)',
     nameEn: 'True Chitra Paksha',
     noteTe: 'చిత్ర (స్పైకా) నక్షత్ర నిజ స్థానం ఆధారంగా ప్రతి క్షణం మారే అయనాంశ.',
-    deltaFromLahiri: 0,
+    deltaFromLahiri: -0.017096,
+    deltaPerCentury: -0.001308,
   },
   {
     id: 'pushya',
     nameTe: 'పుష్య పక్షం',
     nameEn: 'True Pushya',
     noteTe: 'పుష్య (డెల్టా కర్కాటక) నక్షత్రాన్ని 16° కర్కాటకంలో స్థిరపరచిన విధానం.',
-    deltaFromLahiri: -1.1355,
+    deltaFromLahiri: -1.130015,
+    deltaPerCentury: 0.001146,
   },
 ];
 
@@ -234,28 +243,51 @@ export function lahiriAyanamsa(jd: number): number {
 
 const SPICA_RA_HOURS = 13 + 25 / 60 + 11.579 / 3600;
 const SPICA_DEC_DEG = -(11 + 9 / 60 + 40.75 / 3600);
-let spicaRegistered = false;
+/** డెల్టా కర్కాటక (ఆసెల్లస్ ఆస్ట్రాలిస్) — పుష్య నక్షత్రపు ప్రధాన తార */
+const DELTA_CNC_RA_HOURS = 8 + 44 / 60 + 41.099 / 3600;
+const DELTA_CNC_DEC_DEG = 18 + 9 / 60 + 15.35 / 3600;
+const registeredStars = new Set<Astronomy.Body>();
 
-/** True (apparent) tropical longitude of Spica = true Chitra ayanamsa + 180°. */
-export function spicaTrueTropicalLongitude(jd: number): number {
-  if (!spicaRegistered) {
-    Astronomy.DefineStar(Astronomy.Body.Star1, SPICA_RA_HOURS, SPICA_DEC_DEG, 250);
-    spicaRegistered = true;
+/**
+ * ఒక నక్షత్రపు *నిజ* (apparent) నిరయన రేఖాంశం — అయనాంశ కోసం.
+ * నక్షత్ర స్థానం: J2000 భూమధ్యరేఖీయ నిర్దేశాంకాలు; తర్వాత భూమధ్యరేఖ-ఆఫ్-డేట్ →
+ * నేటి సత్య క్రాంతివృత్తం (అయన చలనం + పోషణ + వార్షిక విపర్యయం సహితం).
+ * స్విస్ ఎఫెమెరిస్ SIDM_TRUE_CITRA / SIDM_TRUE_PUSHYA తో భేదం < 0.006°.
+ */
+function starApparentLongitude(
+  jd: number,
+  body: Astronomy.Body,
+  raHours: number,
+  decDeg: number
+): number {
+  if (!registeredStars.has(body)) {
+    Astronomy.DefineStar(body, raHours, decDeg, 200);
+    registeredStars.add(body);
   }
   const time = Astronomy.MakeTime(dateFromJd(jd));
-  const eq = Astronomy.Equator(Astronomy.Body.Star1, time, new Astronomy.Observer(0, 0, 0), true, true);
+  const eq = Astronomy.Equator(body, time, new Astronomy.Observer(0, 0, 0), true, true);
   const vec = Astronomy.VectorFromSphere(new Astronomy.Spherical(eq.dec, eq.ra * 15, 1), time);
   const ecl = Astronomy.SphereFromVector(Astronomy.RotateVector(Astronomy.Rotation_EQD_ECT(time), vec));
   return norm360(ecl.lon);
 }
 
+/** True (apparent) tropical longitude of Spica = true Chitra ayanamsa + 180°. */
+export function spicaTrueTropicalLongitude(jd: number): number {
+  return starApparentLongitude(jd, Astronomy.Body.Star1, SPICA_RA_HOURS, SPICA_DEC_DEG);
+}
+
+/** True Pushya ayanamsa: డెల్టా కర్కాటక నిజ రేఖాంశం − 106° (కర్కాటకం 16°). */
+export function deltaCancriTrueTropicalLongitude(jd: number): number {
+  return starApparentLongitude(jd, Astronomy.Body.Star2, DELTA_CNC_RA_HOURS, DELTA_CNC_DEC_DEG);
+}
+
 /** Ayanamsa (deg) for a given JD and sidereal mode. */
 export function ayanamsaDegrees(jd: number, mode: SiderealMode = 'lahiri'): number {
-  if (mode === 'true_citra') {
-    return norm360(spicaTrueTropicalLongitude(jd) - 180);
-  }
+  // నిజ చిత్రా / పుష్య — స్థిర గుణకం కాదు; నక్షత్రపు నిజ స్థానం నుండి ప్రతి క్షణం లెక్కిస్తాము.
+  if (mode === 'true_citra') return norm360(spicaTrueTropicalLongitude(jd) - 180);
+  if (mode === 'pushya') return norm360(deltaCancriTrueTropicalLongitude(jd) - 106);
   const meta = SIDEREAL_MODE_BY_ID[mode] ?? SIDEREAL_MODE_BY_ID.lahiri;
-  return lahiriAyanamsa(jd) + meta.deltaFromLahiri;
+  return lahiriAyanamsa(jd) + meta.deltaFromLahiri + meta.deltaPerCentury * julianCenturies(jd);
 }
 
 /* ------------------------------------------------------------------ *
@@ -696,22 +728,26 @@ export type GrahaId =
   | 'Rahu'
   | 'Ketu';
 
-/** True lunar node (Rahu) tropical longitude — Meeus Ch. 47 mean node + periodic terms. */
+/**
+ * సత్య రాహు — ఆస్కులేటింగ్ (true) పాతం యొక్క సాయన రేఖాంశం.
+ *
+ * చంద్రుని క్షణిక స్థితి-వేగ వెక్టర్ల నుండి కక్ష్యా తలానికి లంబ వెక్టర్
+ *   h = r × v
+ * లెక్కించి, ఆ తలం క్రాంతివృత్తాన్ని ఉత్తర దిశగా దాటే బిందువును తీసుకుంటాము.
+ * ఇది స్విస్ ఎఫెమెరిస్ `TRUE_NODE` కి సమానం (గరిష్ఠ భేదం ≈24″, 30 క్షణాల్లో).
+ *
+ * మునుపు వాడిన Meeus అధ్యాయం 47 సగం-సిరీస్ 0.16° వరకు తేడా ఇచ్చేది.
+ */
 export function trueNodeTropical(jd: number): number {
-  const T = julianCenturies(jd);
-  const omegaMean =
-    125.0445479 - 1934.1362891 * T + 0.0020754 * T * T + (T * T * T) / 467441.0;
-  const D = ((297.8501921 + 445267.1114034 * T) * Math.PI) / 180;
-  const M = ((357.5291092 + 35999.0502909 * T) * Math.PI) / 180;
-  const Mprime = ((134.9633964 + 477198.8675055 * T) * Math.PI) / 180;
-  const F = ((93.272095 + 483202.0175233 * T) * Math.PI) / 180;
-  const delta =
-    -1.4979 * Math.sin(2 * (D - F)) -
-    0.15 * Math.sin(M) -
-    0.1226 * Math.sin(2 * D) +
-    0.1176 * Math.sin(2 * F) -
-    0.0801 * Math.sin(2 * (Mprime - F));
-  return norm360(omegaMean + delta);
+  const time = Astronomy.MakeTime(dateFromJd(jd));
+  const state = Astronomy.RotateState(
+    Astronomy.Rotation_EQJ_ECT(time),
+    Astronomy.GeoMoonState(time)
+  );
+  const { x, y, z, vx, vy, vz } = state;
+  const hx = y * vz - z * vy;
+  const hy = z * vx - x * vz;
+  return norm360((Math.atan2(hx, -hy) * 180) / Math.PI);
 }
 
 /** Mean daily motion (deg/day) used to seed the crossing search. */

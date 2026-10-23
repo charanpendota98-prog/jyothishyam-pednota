@@ -1,3 +1,20 @@
+"""
+make-ephemeris-golden.py — స్విస్ ఎఫెమెరిస్ గోల్డెన్ ఫిక్చర్ తయారీ
+==========================================================================
+ఈ స్క్రిప్ట్ మన `calculateChart` ఇంజిన్ పరీక్షించడానికి సూచన విలువలను
+(గ్రహ స్ఫుటాలు, లగ్నం, మధ్యాకాశం, 7 అయనాంశ విధానాలు) స్విస్ ఎఫెమెరిస్
+నుండి తయారు చేస్తుంది.
+
+అమర్చడం:
+    python3 -m venv .venv-swe && .venv-swe/bin/pip install pyswisseph
+ఉపయోగం:
+    .venv-swe/bin/python scripts/golden/make-ephemeris-golden.py
+    npm run verify:astro          # ఈ ఫిక్చర్ తో ఇంజిన్‌ను పోల్చి పరీక్షిస్తుంది
+
+స్థిరత్వం: యాదృచ్ఛిక క్షణాలు seed=7 తో ఉత్పత్తి అవుతాయి — ప్రతిసారీ ఒకే
+JSON వస్తుంది (git diff శూన్యం). స్విస్ ఎఫెమెరిస్ వెర్షన్ మారితే మాత్రమే
+విలువలు సూక్ష్మంగా మారవచ్చు; అప్పుడు `source` ఫీల్డ్ కూడా మారుతుంది.
+"""
 import swisseph as swe, json, random
 
 swe.set_sid_mode(swe.SIDM_LAHIRI)
@@ -6,8 +23,21 @@ FLAGS = swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
 # bodies as used by the app (true node for Rahu/Ketu)
 BODIES = [
     ("Sun", swe.SUN), ("Moon", swe.MOON), ("Mars", swe.MARS), ("Mercury", swe.MERCURY),
-    ("Jupiter", swe.JUPITER), ("Venus", swe.VENUS), ("Saturn", swe.SATURN), ("Rahu", swe.TRUE_NODE),
+    ("Jupiter", swe.JUPITER), ("Venus", swe.VENUS), ("Saturn", swe.SATURN),
+    ("Uranus", swe.URANUS), ("Neptune", swe.NEPTUNE), ("Pluto", swe.PLUTO),
+    ("Rahu", swe.TRUE_NODE),
 ]
+
+# యాప్ అందించే అయనాంశ విధానాలు — స్విస్ ఎఫెమెరిస్ సంబంధిత SIDM_* రూపాలు
+AYANAMSA_MODES = {
+    "lahiri": swe.SIDM_LAHIRI,
+    "raman": swe.SIDM_RAMAN,
+    "kp": swe.SIDM_KRISHNAMURTI,
+    "fagan_bradley": swe.SIDM_FAGAN_BRADLEY,
+    "yukteshwar": swe.SIDM_YUKTESHWAR,
+    "true_citra": swe.SIDM_TRUE_CITRA,
+    "pushya": swe.SIDM_TRUE_PUSHYA,
+}
 
 CASES = [
     # (iso_utc, lat, lon, label)
@@ -48,20 +78,29 @@ for iso, lat, lon, label in CASES:
         xx, _ = swe.calc_ut(jd, pid, FLAGS)
         pos[name] = round(xx[0], 6)
     pos["Ketu"] = round((pos["Rahu"] + 180.0) % 360.0, 6)
+    modes = {}
+    for mname, sid in AYANAMSA_MODES.items():
+        swe.set_sid_mode(sid)
+        modes[mname] = round(swe.get_ayanamsa_ut(jd), 6)
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
     # ascendant & MC, sidereal
     cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', swe.FLG_SIDEREAL)
     rows.append({
         "label": label, "utc": iso, "lat": lat, "lon": lon, "jd": round(jd, 6),
         "ayanamsa": round(ay, 6),
+        "ayanamsaModes": modes,
         "asc": round(ascmc[0], 6), "mc": round(ascmc[1], 6),
         "planets": pos,
     })
 
 out = {
     "source": f"Swiss Ephemeris {swe.version}, SIDM_LAHIRI, TRUE_NODE, whole-sign houses, FLG_SWIEPH",
+    "ayanamsaModes": list(AYANAMSA_MODES.keys()),
     "generated_by": "scripts/golden/make-ephemeris-golden.py",
     "cases": rows,
 }
-with open("/home/user/jyothishyam-pednota/scripts/golden/ephemeris-golden.json", "w") as f:
+import os
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ephemeris-golden.json")
+with open(OUT, "w", encoding="utf-8") as f:
     json.dump(out, f)
 print("cases:", len(rows), "size:", len(json.dumps(out))//1024, "KB")

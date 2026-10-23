@@ -1,4 +1,8 @@
 import * as Astronomy from 'astronomy-engine';
+import {
+  deltaCancriTrueTropicalLongitude,
+  spicaTrueTropicalLongitude,
+} from './astroCore.ts';
 
 export type ZodiacTradition = 'western' | 'vedic' | 'hybrid';
 
@@ -108,41 +112,61 @@ export const NAKSHATRAS: NakshatraInfo[] = [
   { index: 26, name: 'Revati', ruler: 'Mercury', deity: 'Pushan', gana: 'Deva (Divine)', yoni: 'Elephant', nadi: 'Antya (Kapha)', symbol: 'Fish / Drum' },
 ];
 
-export const AYANAMSA_METADATA: Record<AyanamsaSystem, { name: string; epochDiffDeg: number; description: string }> = {
+/**
+ * అయనాంశ విధానాలు — ప్రతిదీ లహిరి (చిత్రపక్ష) మూలానికి జోడించే భేదంగా.
+ *
+ * `deltaDeg` = J2000 క్షణంలో భేదం (డిగ్రీలు), `deltaPerCenturyDeg` = శతాబ్దానికి
+ * భేదం ఎంత మారుతుందో (స్పైకా, పుష్య నక్షత్రాల స్వకీయ చలనం వల్ల).
+ * ఈ గుణకాలు స్విస్ ఎఫెమెరిస్ 2.10.03 `get_ayanamsa_ut` కి 1800–2200 మధ్య
+ * అతి సూక్ష్మ వర్గ ఘాత క్షేపణ (least-squares) చేసి పొందినవి; అవశేషం
+ * 0.0001° కంటే తక్కువ — `npm run verify:astro` ప్రతి విధానాన్ని పరీక్షిస్తుంది.
+ */
+export const AYANAMSA_METADATA: Record<
+  AyanamsaSystem,
+  { name: string; deltaDeg: number; deltaPerCenturyDeg: number; description: string }
+> = {
   lahiri: {
     name: 'Chitrapaksha (Lahiri)',
-    epochDiffDeg: 0,
+    deltaDeg: 0,
+    deltaPerCenturyDeg: 0,
     description: 'Official Indian Rashtriya Panchang standard anchored to Spica at 0° Libra.',
   },
   kp: {
     name: 'Krishnamurti Paddhati (KP)',
-    epochDiffDeg: -0.1014,
+    deltaDeg: -0.096854,
+    deltaPerCenturyDeg: 0,
     description: 'Sub-lord Nakshatra system formulated by Prof. K.S. Krishnamurti.',
   },
   raman: {
     name: 'B.V. Raman',
-    epochDiffDeg: -1.4422,
+    deltaDeg: -1.446303,
+    deltaPerCenturyDeg: 0,
     description: 'Classical Jyotish epoch popularized by Dr. B.V. Raman.',
   },
   fagan_bradley: {
     name: 'Fagan-Bradley (Western Sidereal)',
-    epochDiffDeg: +0.8841,
+    deltaDeg: 0.883206,
+    deltaPerCenturyDeg: 0,
     description: 'Standard Western sidereal fiducial benchmark anchored to Aldebaran at 15° Taurus.',
   },
   yukteshwar: {
     name: 'Sri Yukteshwar',
-    epochDiffDeg: -1.3510,
+    deltaDeg: -1.378291,
+    deltaPerCenturyDeg: 0,
     description: 'Yuga-based equinoctial precession calculated in The Holy Science (1894).',
   },
   true_citra: {
     name: 'True Chitra Paksha',
-    epochDiffDeg: -0.0285,
-    description: 'Dynamic true position of Alpha Virginis (Spica) fixed at exactly 180°00\'00".',
+    deltaDeg: -0.017096,
+    deltaPerCenturyDeg: -0.001308,
+    description:
+      'Alpha Virginis (Spica) fixed at 180°00′00″ — నక్షత్ర స్వకీయ చలనం (proper motion) తో కలిపి.',
   },
   pushya: {
     name: 'Pushya Paksha',
-    epochDiffDeg: -1.0450,
-    description: 'Anchored to Delta Cancri (Asellus Australis) at 16°00\' Cancer (Pushya fiducial).',
+    deltaDeg: -1.130015,
+    deltaPerCenturyDeg: 0.001146,
+    description: 'Delta Cancri (Asellus Australis) 16°00′ కర్కాటకంలో స్థిరపరచబడిన విధానం.',
   },
 };
 
@@ -508,9 +532,12 @@ export function calculateAyanamsa(dateUTC: Date, system: AyanamsaSystem): number
   const T = (jd - 2451545.0) / 36525.0;
   // High-precision Chitrapaksha (Lahiri) at J2000.0 = 23° 51' 25.532" = 23.857092°
   // General precession in longitude = 50.2879695" per Julian year = 1.396888° per century
+  // నిజ చిత్రా / పుష్య — నక్షత్రపు నిజ స్థానం నుండి (స్థిర గుణకం కాదు)
+  if (system === 'true_citra') return norm360(spicaTrueTropicalLongitude(jd) - 180);
+  if (system === 'pushya') return norm360(deltaCancriTrueTropicalLongitude(jd) - 106);
   const lahiriBase = 23.857092 + 1.39688804 * T + 0.0003086 * T * T;
-  const delta = AYANAMSA_METADATA[system]?.epochDiffDeg ?? 0;
-  return lahiriBase + delta;
+  const meta = AYANAMSA_METADATA[system] ?? AYANAMSA_METADATA.lahiri;
+  return lahiriBase + meta.deltaDeg + meta.deltaPerCenturyDeg * T;
 }
 
 export type VargaDivisionCode =

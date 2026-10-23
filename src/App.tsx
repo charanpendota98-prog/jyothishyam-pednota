@@ -36,6 +36,7 @@ import { HinduCalendarView } from './components/HinduCalendarView.tsx';
 import { GocharaView } from './components/GocharaView.tsx';
 import { JathakaDeepView } from './components/JathakaDeepView.tsx';
 import { GranthaSourcesView } from './components/GranthaSourcesView.tsx';
+import { AccuracyLedgerPanel } from './components/AccuracyLedgerPanel.tsx';
 import { RoyalWhatsAppSummaryModal } from './components/RoyalWhatsAppSummaryModal.tsx';
 import {
   Bookmark,
@@ -650,14 +651,14 @@ export default function App() {
                   </h1>
                   <p className="text-[13px] sm:text-[13.5px] leading-relaxed text-[#EDE8E0]/60">
                     గ్రహ స్ఫుటాలు VSOP87 + ELP-2000 సిద్ధాంతాలతో (astronomy-engine) — స్విస్ ఎఫెమెరిస్
-                    2.10.03 గోల్డెన్ ఫిక్చర్‌తో 30 జనన క్షణాల్లో 360 కొలతలు, గరిష్ఠ భేదం 0.007° (≈24″).
+                    2.10.03 గోల్డెన్ ఫిక్చర్‌తో 30 జనన క్షణాల్లో 630 కొలతలు, గరిష్ఠ భేదం 0.008° (≈29″).
                     16 వర్గాలు · షడ్బలం · పంచ స్థాయి దశలు · శ్రీపతి భావ సంధులు · అష్టకవర్గం —
                     ప్రామాణిక పత్రికలతో 308 పిన్-టు-పిన్ తనిఖీలు.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 shrink-0">
                   {[
-                    ['0.007°', 'స్విస్ ఎఫెమెరిస్ భేదం'],
+                    ['0.008°', 'స్విస్ ఎఫెమెరిస్ భేదం'],
                     ['308', 'పత్రికా పిన్-టు-పిన్ తనిఖీలు'],
                     ['22', 'మూల గ్రంథాలు'],
                   ].map(([v, l]) => (
@@ -741,6 +742,11 @@ export default function App() {
                   సూర్యోదయం: <strong className="text-[#5BBFB5]">{teJathakam.suryodayamTe}</strong> · {teJathakam.dashaBalanceAtBirthTe.split('(')[0]}
                 </div>
               </div>
+            </div>
+
+            {/* గణన ప్రమాణ పత్రం — జాతకం ఎంత ఖచ్చితంగా లెక్కించబడిందో తెరిచి చూడవచ్చు */}
+            <div className="no-print">
+              <AccuracyLedgerPanel lang={lang} />
             </div>
 
             {/* Mobile Quick Toggle Bar for Birth Form */}

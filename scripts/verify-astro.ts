@@ -12,10 +12,14 @@
  *   • చంద్రుడు      ≤ 0.020°
  *   • గ్రహాలు       ≤ 0.030°
  *   • రాహు/కేతు    ≤ 0.030°  (సత్య నోడ్)
- *   • లగ్నం         ≤ 0.030°  (శ్రీపతి కాదు — సంపూర్ణ రాశి భావ పద్ధతి)
+ *   • యురేనస్/నెప్ట్యూన్/ప్లూటో ≤ 0.030°
+ *   • లగ్నం         ≤ 0.030°  (సంపూర్ణ రాశి భావ పద్ధతి)
+ *   • మధ్యాకాశం     ≤ 0.050°
+ *   • అయనాంశ విధానాలు (7): లహిరి/రామన్/కేపీ/ఫాగన్-బ్రాడ్లీ/యుక్తేశ్వర్ ≤ 0.001°
+ *                            నిజ చిత్రా / పుష్య (నక్షత్ర ఆధారిత) ≤ 0.008°
  */
 
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { calculateChart } from '../src/engine/ephemeris.ts';
 
 interface GoldenCase {
@@ -24,6 +28,7 @@ interface GoldenCase {
   lat: number;
   lon: number;
   ayanamsa: number;
+  ayanamsaModes: Record<string, number>;
   asc: number;
   mc: number;
   planets: Record<string, number>;
@@ -43,11 +48,25 @@ const TOL: Record<string, number> = {
   Jupiter: 0.03,
   Venus: 0.03,
   Saturn: 0.03,
+  Uranus: 0.03,
+  Neptune: 0.03,
+  Pluto: 0.03,
   Rahu: 0.03,
   Ketu: 0.03,
   asc: 0.03,
   mc: 0.05,
 };
+
+/** అయనాంశ విధానాల సహనం — నక్షత్ర ఆధారిత నిజ చిత్రా/పుష్య కొంచెం విశాలం */
+const AYANAMSA_MODES: { id: string; label: string; tol: number }[] = [
+  { id: 'lahiri', label: 'లహిరి (చిత్రపక్ష)', tol: 0.001 },
+  { id: 'raman', label: 'రామన్', tol: 0.001 },
+  { id: 'kp', label: 'కృష్ణమూర్తి (KP)', tol: 0.001 },
+  { id: 'fagan_bradley', label: 'ఫాగన్-బ్రాడ్లీ', tol: 0.001 },
+  { id: 'yukteshwar', label: 'యుక్తేశ్వర్', tol: 0.001 },
+  { id: 'true_citra', label: 'నిజ చిత్రా', tol: 0.008 },
+  { id: 'pushya', label: 'పుష్య', tol: 0.008 },
+];
 
 /** రెండు స్ఫుటాల మధ్య చిన్నదైన కోణీయ భేదం (0…180°) */
 const diff = (a: number, b: number) => {
@@ -64,7 +83,7 @@ const record = (key: string, err: number, label: string, ours: number, ref: numb
   checks += 1;
   const cur = maxErr[key];
   if (!cur || err > cur.err) maxErr[key] = { err, label, ours, ref };
-  if (err <= (TOL[key] ?? 0.03)) pass += 1;
+  if (err <= (TOL[key] ?? AYANAMSA_MODES.find((m) => 'ay:' + m.id === key)?.tol ?? 0.03)) pass += 1;
   else failures.push(`${key}: ${err.toFixed(4)}° (${label}) — app ${ours.toFixed(3)} / ref ${ref.toFixed(3)}`);
 };
 
@@ -91,7 +110,24 @@ for (const c of golden.cases) {
     houseSystem: 'whole_sign',
   } as Parameters<typeof calculateChart>[0]);
 
-  record('ayanamsa', Math.abs(chart.ayanamsaDeg - c.ayanamsa), c.label, chart.ayanamsaDeg, c.ayanamsa);
+  for (const mode of AYANAMSA_MODES) {
+    const ref = c.ayanamsaModes?.[mode.id];
+    if (ref === undefined) continue;
+    const modeChart = calculateChart({
+      name: 'golden',
+      gender: 'male',
+      date,
+      time,
+      lat: c.lat,
+      lng: c.lon,
+      tzOffsetHours: 0,
+      city: c.label,
+      country: 'test',
+      ayanamsa: mode.id,
+      houseSystem: 'whole_sign',
+    } as Parameters<typeof calculateChart>[0]);
+    record('ay:' + mode.id, Math.abs(modeChart.ayanamsaDeg - ref), c.label, modeChart.ayanamsaDeg, ref);
+  }
   record('asc', diff(chart.ascendant.siderealLon, c.asc), c.label, chart.ascendant.siderealLon, c.asc);
   record('mc', diff(chart.midheaven.siderealLon, c.mc), c.label, chart.midheaven.siderealLon, c.mc);
 
@@ -107,19 +143,77 @@ for (const c of golden.cases) {
 
 const LABEL: Record<string, string> = {
   ayanamsa: 'అయనాంశం', Sun: 'సూర్యుడు', Moon: 'చంద్రుడు', Mars: 'కుజుడు', Mercury: 'బుధుడు',
-  Jupiter: 'గురువు', Venus: 'శుక్రుడు', Saturn: 'శని', Rahu: 'రాహు', Ketu: 'కేతు', asc: 'లగ్నం', mc: 'మధ్యాకాశం',
+  Jupiter: 'గురువు', Venus: 'శుక్రుడు', Saturn: 'శని', Uranus: 'యురేనస్', Neptune: 'నెప్ట్యూన్',
+  Pluto: 'ప్లూటో', Rahu: 'రాహు', Ketu: 'కేతు', asc: 'లగ్నం', mc: 'మధ్యాకాశం',
+  ...Object.fromEntries(AYANAMSA_MODES.map((m) => ['ay:' + m.id, m.label])),
 };
 
 console.log('\n  గ్రహం          గరిష్ఠ భేదం   సహనం     స్థితి   ఎక్కడ');
 console.log('  ─────────────────────────────────────────────────────────────────────────');
-for (const key of Object.keys(TOL)) {
+const tolOf = (k: string) => TOL[k] ?? AYANAMSA_MODES.find((m) => 'ay:' + m.id === k)?.tol ?? 0.03;
+
+for (const key of Object.keys(maxErr)) {
   const m = maxErr[key];
-  if (!m) continue;
-  const ok = m.err <= TOL[key];
+  const ok = m.err <= tolOf(key);
   console.log(
-    `  ${(LABEL[key] ?? key).padEnd(12)} ${m.err.toFixed(4).padStart(8)}°  ${TOL[key].toFixed(3).padStart(6)}°   ${ok ? '✓' : '✗'}     ${m.label}`
+    `  ${(LABEL[key] ?? key).padEnd(16)} ${m.err.toFixed(4).padStart(8)}°  ${tolOf(key).toFixed(3).padStart(6)}°   ${ok ? '✓' : '✗'}     ${m.label}`
   );
 }
+
+// ── యాప్ లో చూపడానికి యంత్ర-పఠనీయ ఫలితం ─────────────────────────────────
+const ledger = {
+  source: golden.source,
+  fixtureEpochs: golden.cases.length,
+  firstUtc: golden.cases.map((c) => c.utc).sort()[0],
+  lastUtc: golden.cases.map((c) => c.utc).sort().slice(-1)[0],
+  measurements: checks,
+  passed: pass,
+  failed: failures.length,
+  rows: Object.keys(maxErr).map((k) => ({
+    key: k,
+    labelTe: LABEL[k] ?? k,
+    maxDeg: Number(maxErr[k].err.toFixed(6)),
+    maxArcsec: Number((maxErr[k].err * 3600).toFixed(2)),
+    tolDeg: tolOf(k),
+    where: maxErr[k].label,
+  })),
+  // ప్రధాన ఏడు గ్రహాలు + లగ్నం/అయనాంశం మాత్రమే (యురేనస్ మొ. బాహ్య గ్రహాలు విడిగా)
+  classicalMaxDeg: Math.max(
+    ...['ayanamsa', 'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu', 'asc', 'mc']
+      .filter((k) => maxErr[k])
+      .map((k) => maxErr[k].err)
+  ),
+};
+mkdirSync('src/generated', { recursive: true });
+const tsOut = `/**
+ * AUTO-GENERATED — ఈ ఫైలును చేతితో మార్చవద్దు.
+ * మూలం: scripts/verify-astro.ts (npm run verify:astro)
+ * ప్రమాణం: ${ledger.source}
+ * తయారీ: scripts/golden/make-ephemeris-golden.py (pyswisseph)
+ */
+export interface EphemerisAccuracyRow {
+  key: string;
+  labelTe: string;
+  maxDeg: number;
+  maxArcsec: number;
+  tolDeg: number;
+  where: string;
+}
+
+export const EPHEMERIS_ACCURACY = ${JSON.stringify(ledger, null, 2)} as {
+  source: string;
+  fixtureEpochs: number;
+  firstUtc: string;
+  lastUtc: string;
+  measurements: number;
+  passed: number;
+  failed: number;
+  rows: EphemerisAccuracyRow[];
+  classicalMaxDeg: number;
+};
+`;
+writeFileSync('src/generated/ephemerisAccuracy.ts', tsOut);
+console.log('  ↳ src/generated/ephemerisAccuracy.ts నవీకరించబడింది');
 
 console.log('\n══════════════════════════════════════════════════════════════');
 console.log(`  మొత్తం కొలతలు: ${checks} — సరిపోయినవి: ${pass} — విఫలం: ${failures.length}`);
