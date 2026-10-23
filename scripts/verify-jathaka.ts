@@ -55,6 +55,8 @@ import {
   JATHAKAM_PDF_PAGES,
   ClassicalJathakaPdfDocument,
 } from '../src/components/ClassicalJathakaPdfDocument.tsx';
+import { GRANTHA_PAGES, granthaPartsTe } from '../src/engine/granthaPageMap.ts';
+import { buildGranthaProvenance } from '../src/engine/granthaProvenanceEngine.ts';
 import { generateTeluguSampoornaJathakam } from '../src/engine/teluguJathakam';
 import { generateUpayaPariharaReport } from '../src/engine/upayaPariharaEngine';
 import { generateVerificationAndAnalysisReport } from '../src/engine/jathakaVerifications';
@@ -1278,6 +1280,118 @@ check(
       /12|samanyaya\.domains/.test(pdfSrc),
     `పేజీ టెక్స్ట్ ${pdfSrc.includes('సప్త-సంప్రదాయ సమన్వయం') ? 'ఉంది' : 'లేదు'}`
   );
+
+  // ---- విషయ సూచిక (TOC) & PDF బుక్‌మార్క్‌లు ----
+  check(
+    'గ్రంథ పుట చిట్టా — పుట నంబర్లు 1…N వరుసగా, id లు అనన్యం (TOC/బుక్‌మార్క్‌లకు మూలం)',
+    GRANTHA_PAGES.every((p, i) => p.num === i + 1) &&
+      new Set(GRANTHA_PAGES.map((p) => p.id)).size === GRANTHA_PAGES.length &&
+      GRANTHA_PAGES.every((p) => p.id === `grantha-p${p.num}`),
+    `${GRANTHA_PAGES.length} పుటలు · ${GRANTHA_PAGES[0]?.id} … ${GRANTHA_PAGES[GRANTHA_PAGES.length - 1]?.id}`
+  );
+  {
+    const missingTe = GRANTHA_PAGES.filter((p) => p.num !== 2 && !BOOK_HTML.includes(p.titleTe.slice(0, 14)));
+    check(
+      'ముద్రిత విషయ సూచికలో ప్రతి పుట శీర్షిక ఉంది (తెలుగు)',
+      missingTe.length === 0,
+      `మిస్ అయినవి: ${missingTe.map((p) => p.num).join(',') || 'లేవు'}`
+    );
+    const nonAscii = GRANTHA_PAGES.filter((p) => !/^[\x20-\x7E]+$/.test(p.titleEn) || p.titleEn.length < 8);
+    check(
+      'PDF బుక్‌మార్క్ శీర్షికలు ASCII మాత్రమే (jsPDF outline పరిమితి) — ప్రతి పుటకూ ఒకటి',
+      nonAscii.length === 0 && GRANTHA_PAGES.every((p) => p.titleEn.trim().length > 0),
+      `ASCII కానివి: ${nonAscii.map((p) => p.num).join(',') || 'లేవు'}`
+    );
+    const parts = granthaPartsTe();
+    check(
+      'విషయ సూచిక భాగాలుగా విభజించబడింది — ప్రతి పుట ఒక భాగంలో ఉంది',
+      parts.reduce((a, g) => a + g.pages.length, 0) === GRANTHA_PAGES.length - 1,
+      `${parts.length} భాగాలు · ${parts.map((g) => `${g.pages.length}`).join('+')} పుటలు`
+    );
+    check(
+      'విషయ సూచికలో పుట నంబర్లు PDF పుట సంఖ్యలతో సరిపోతాయి (ఒకే మూలం)',
+      JATHAKAM_PDF_PAGES === GRANTHA_PAGES.length && GRANTHA_PAGES[1]?.num === 2,
+      `JATHAKAM_PDF_PAGES=${JATHAKAM_PDF_PAGES} · TOC పుట=${GRANTHA_PAGES[1]?.num}`
+    );
+    check(
+      'సూచిక పుటలో క్లిక్ చేయగల యాంకర్ లింక్‌లు ఉన్నాయి (grantha-pN) — డిజిటల్ సంచికలో నావిగేషన్',
+      pdfSrc.includes('href={`#${pg.id}`}') && pdfSrc.includes('granthaPartsTe()'),
+      pdfSrc.includes('granthaPartsTe()') ? 'అనుసంధానం ఉంది' : 'లేదు'
+    );
+  }
+
+  // ---- ప్రమాణ పట్టిక (Provenance Audit) ----
+  {
+    const prov = buildGranthaProvenance(KUNDALI);
+    const requiredSubjectsTe = [
+      'అయనాంశం',
+      'లగ్నం (అసెండెంట్)',
+      'షడ్బలం — అగ్రగ్రహం',
+      'సర్వాష్టకవర్గం (SAV)',
+      'వింశోత్తరి — నడుస్తున్న మహాదశ / భుక్తి',
+      'జైమిని చర దశ — నడుస్తున్న రాశి',
+      'తాజిక వర్షఫలం — వర్షేశుడు · ముంథ',
+    ];
+    check(
+      'ప్రమాణ పట్టిక — ప్రతి ప్రధాన వర్గానికీ కనీసం ఒక వరుస (లగ్నం, గ్రహాలు, పంచాంగం, బలం, దశలు)',
+      requiredSubjectsTe.every((t) => prov.rows.some((r) => r.subjectTe.includes(t))) && prov.rows.length >= 25,
+      `${prov.rows.length} వరుసలు`
+    );
+    check(
+      'ప్రమాణ పట్టిక — ప్రతి వరుసకూ సూత్రం, గ్రంథం, కోడ్, గేట్ నిండుగా ఉన్నాయి (ఖాళీ లేదు)',
+      prov.rows.every(
+        (r) =>
+          r.derivationTe.trim().length > 20 &&
+          r.sourceTe.trim().length > 5 &&
+          r.fnTe.trim().length > 5 &&
+          r.gateTe.trim().length > 5 &&
+          r.valueTe.trim().length > 0
+      ),
+      `${prov.rows.filter((r) => r.derivationTe.trim().length <= 20).length} వరుసల్లో సూత్రం సన్నగా ఉంది`
+    );
+    check(
+      'ప్రమాణ పట్టిక — ప్రతి గ్రహానికీ (9) వేరే వరుస ఉంది, విలువలో నక్షత్రం+పాదం ఉంది',
+      ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'].every((id) => {
+        const row = prov.rows.find((r) => r.id === `graha-${id}`);
+        return !!row && /-\d/.test(row.valueTe) && /°/.test(row.valueTe);
+      }),
+      'సూర్యుడు … కేతువు — 9 వరుసలు'
+    );
+    check(
+      'ప్రమాణ పట్టిక — దశా తేదీలు నిజమైన ISO తేదీలు (YYYY-MM-DD), మొహం కాదు',
+      prov.rows
+        .filter((r) => r.id === 'vimshottari' || r.id === 'chara')
+        .every((r) => /\d{4}-\d{2}-\d{2}/.test(r.valueTe)),
+      prov.rows.find((r) => r.id === 'vimshottari')?.valueTe ?? '—'
+    );
+    check(
+      'ప్రమాణ పట్టిక — షడ్బల వరుసలో 6 అంగాల మొత్తం = మొత్తం విరూపాలు',
+      (() => {
+        const r = prov.rows.find((x) => x.id === 'shadbala');
+        if (!r) return false;
+        const nums = [...r.derivationTe.matchAll(/[\d]+\.?\d*/g)].map((m) => Number(m[0]));
+        if (nums.length < 7) return false;
+        const parts = nums.slice(0, 6).reduce((a, b) => a + b, 0);
+        return Math.abs(parts - nums[6]) < 0.6;
+      })(),
+      prov.rows.find((r) => r.id === 'shadbala')?.derivationTe.slice(0, 80) ?? '—'
+    );
+    check(
+      'ప్రమాణ పట్టిక పుట PDF లో ఉంది — “జాతకం చెప్పలేనివి” పరిమితులతో',
+      BOOK_HTML.includes('జాతకం చెప్పలేనివి (కల్పించబడవు)') &&
+        BOOK_HTML.includes('ప్రమాణ పట్టిక') &&
+        prov.unverifiableTe.length >= 4,
+      `${prov.unverifiableTe.length} పరిమితులు`
+    );
+    check(
+      'బుక్‌మార్క్ ఎగుమతి — outline గ్రంథ పుట చిట్టా నుంచే (granthaPageMap)',
+      (() => {
+        const exp = readFileSync('src/utils/pdfBookExporter.ts', 'utf8');
+        return exp.includes('GRANTHA_PAGES') && exp.includes('outline.add') && exp.includes('pageNumber');
+      })(),
+      'pdfBookExporter.ts · outline.add'
+    );
+  }
 }
 check(
   'పుస్తకంలో ఖాళీ గణన లేదు (NaN / undefined ఏ ఫలితంలోనూ లేవు)',
@@ -1528,7 +1642,7 @@ console.log('\n— షడ్బల స్థిరత్వం · పంచా�
 // ─────────────────────────────────────────────────────────────────────────
 //  ముద్రణా గ్రంథం (15 పుటల PDF) — నిజంగా రెండర్ అవుతుందా? (SSR)
 // ─────────────────────────────────────────────────────────────────────────
-console.log('\n— ముద్రణా గ్రంథం (PDF 15 పుటలు) — SSR —');
+console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_PAGES} పుటలు) — SSR —`);
 {
   const jathakam = generateTeluguSampoornaJathakam(KUNDALI);
   const upayaReport = generateUpayaPariharaReport(KUNDALI);
@@ -1554,7 +1668,7 @@ console.log('\n— ముద్రణా గ్రంథం (PDF 15 పుటల
     } as Parameters<typeof ClassicalJathakaPdfDocument>[0])
   );
   check(
-    'PDF గ్రంథం 15 పుటలు సంపూర్ణంగా రెండర్ — ఖాళీ గణన (NaN/undefined) లేదు',
+    `PDF గ్రంథం ${JATHAKAM_PDF_PAGES} పుటలు సంపూర్ణంగా రెండర్ — ఖాళీ గణన (NaN/undefined) లేదు`,
     pdfHtml.length > 150_000 && !/NaN/.test(pdfHtml) && !/>undefined</.test(pdfHtml),
     `${Math.round(pdfHtml.length / 1000)} వేల అక్షరాలు · ${(pdfHtml.match(/class="classical-grantha-page/g) ?? []).length} పుటలు`
   );

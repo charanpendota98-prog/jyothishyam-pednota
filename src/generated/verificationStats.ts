@@ -2,6 +2,6 @@
  * AUTO-GENERATED — ఈ ఫైలును చేతితో మార్చవద్దు.
  * మూలం: scripts/verify-jathaka.ts (npm run verify:jathaka)
  */
-export const JATHAKA_GATES = 335;
-export const JATHAKA_GATES_PASSED = 335;
+export const JATHAKA_GATES = 348;
+export const JATHAKA_GATES_PASSED = 348;
 export const JATHAKA_GATES_FAILED = 0;
