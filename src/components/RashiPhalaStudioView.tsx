@@ -37,6 +37,7 @@ import {
 } from '../engine/rashiPhalaluPanditEngine.ts';
 import SourceStrip from './SourceStrip.tsx';
 import MuhurtaPlannerPanel from './MuhurtaPlannerPanel.tsx';
+import KakshyaTimelinePanel from './KakshyaTimelinePanel.tsx';
 
 type Period = 'day' | 'week' | 'month' | 'year';
 
@@ -658,6 +659,8 @@ export default function RashiPhalaStudioView({ chart, lang = 'te' }: Props) {
           </>
         )}
       </div>
+
+      <KakshyaTimelinePanel chart={chart} year={y} />
 
       <MuhurtaPlannerPanel chart={chart} lang={lang} initialYear={y} />
 

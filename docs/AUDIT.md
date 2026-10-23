@@ -568,3 +568,61 @@ Mīna 16:05–17:37), 25 Oct, 27 Oct, 3 Nov.
 
 `npm run verify:jathaka` now runs **592** gates with 0 failures; the whole
 suite stands at **8,888** mechanical checks.
+
+---
+
+## 12. Two frames in one engine — the nutation defect (23 Oct 2026)
+
+While pinning the kakṣyā boundaries against Swiss Ephemeris, every planetary
+boundary time came out 30–47 minutes late. The cause was not the boundary
+search: the app was computing **planetary** longitudes in one frame and
+**Sun/Moon/ascendant** longitudes in another.
+
+```
+chart path  (ephemeris.ts):  sidereal = tropical − nutation − ayanāṁśa
+transit path (grahaSiderealLongitude):  sidereal = tropical − ayanāṁśa      ← 17″ off
+```
+
+Nutation in longitude is ±17.2″ and is not zero for any date, so every planet
+was systematically +11.9″ (in 2027) away from the chart's own Śphuṭa table.
+A 12″ error moves a Jupiter kakṣyā boundary by ~40 minutes and a Saturn one by
+nearly an hour. Both paths now subtract nutation:
+
+| Measurement | Before | After |
+| --- | --- | --- |
+| Chart planet vs transit-engine planet, same instant | up to 17.2″ | **0.26″** |
+| Our longitude at 399 Swiss kakṣyā boundaries (6 planets, 2027) | 12–18″ | **10.64″ worst (Saturn)** |
+| Jupiter kakṣyā boundary time vs Swiss | 47 min | within the ephemeris residual |
+| Sun/Mars/Venus boundary time vs Swiss | ~35 min | 1–5 min |
+
+The residual that remains (≤ 10.6″) is the `astronomy-engine` VSOP87 solution
+against Swiss's own files on Saturn, not a frame error.
+
+**Consequence for output.** Gōcara and kakṣyā verdicts now agree with the
+Śphuṭa page to a quarter of an arc-second; the rāśi-phala daily score is
+unchanged at 55 for 23 Oct 2026 (the parts re-tally the same), but the
+**timings** of every transit event moved by tens of minutes — the thing a
+practitioner actually reads.
+
+Gate: *“కుండలి మరియు గోచార ఇంజిన్ ఒకే నిరయన చట్రంలో”* pins the two paths together
+at ≤ 2″ so this cannot regress.
+
+### 12.1 A year of kakṣyā, computed rather than described
+
+`kakshyaSegmentsForYear` samples each planet every 6 hours and bisects each
+kakṣyā / rāśi change to one minute; `kakshyaBinduOverlaps` intersects the
+bindu segments of two planets. For the reference chart, 2027:
+
+| Graha | bindu days / 365 |
+| --- | --- |
+| Sun | 182 |
+| Mars | 138 |
+| Mercury | 202 |
+| Jupiter | 285 |
+| Venus | 203 |
+| Saturn | 137 |
+
+Jupiter + Saturn both in bindu kakṣyā: **28 Feb → 31 Mar (31 d)**, **30 Apr →
+3 Jun (34 d)**, **26 Nov → year end (35 d)**. Those are the long windows a
+Telugu pañcāṅgam would call *guru-śani śubha sandhi* — and they are derived,
+not stored. All of it is gated against 399 Swiss crossings.

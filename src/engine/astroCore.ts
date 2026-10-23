@@ -1038,9 +1038,12 @@ export function grahaMeanMotion(id: GrahaId): number {
 /** Nirāyaṇa longitude of any of the nine grahas. */
 export function grahaSiderealLongitude(id: GrahaId, jd: number, mode: SiderealMode = 'lahiri'): number {
   const ay = ayanamsaDegrees(jd, mode);
-  if (id === 'Rahu') return norm360(trueNodeTropical(jd) - ay);
-  if (id === 'Ketu') return norm360(trueNodeTropical(jd) - ay + 180);
-  return norm360(tropicalLongitude(id as TropicalBodyId, jd) - ay);
+  // నిరయనం = సాయన (సత్య విషువత్) − పోషణ − అయనాంశం — స్విస్ ఎఫెమెరిస్ FLG_SIDEREAL క్రమం.
+  // పోషణ (nutation) తీసేయకపోతే గ్రహాలు ±17″ తేడాతో, సూర్య-చంద్రుల కంటే వేరే
+  // చట్రంలో ఉంటాయి — కక్ష్యా/నక్షత్ర సరిహద్దుల సమయం నిమిషాల తేడా వస్తుంది.
+  if (id === 'Rahu') return norm360(toMeanEclipticLongitude(trueNodeTropical(jd), jd) - ay);
+  if (id === 'Ketu') return norm360(toMeanEclipticLongitude(trueNodeTropical(jd), jd) - ay + 180);
+  return norm360(toMeanEclipticLongitude(tropicalLongitude(id as TropicalBodyId, jd), jd) - ay);
 }
 
 export interface SignIngress {

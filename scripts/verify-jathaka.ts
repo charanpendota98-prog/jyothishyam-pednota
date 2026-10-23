@@ -93,7 +93,10 @@ import {
   computeKakshyaTransits,
   kakshyaOf,
   kakshyaStrength,
+  kakshyaSegmentsForYear,
+  kakshyaBinduOverlaps,
 } from '../src/engine/ashtakavargaKakshyaEngine.ts';
+import { grahaSiderealLongitude } from '../src/engine/astroCore.ts';
 import {
   searchYearMuhurta,
   ACTIVITY_LAGNAS,
@@ -2762,6 +2765,105 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
 }
 
 /* ================================================================== *
+ *  ఒకే చట్రం — కుండలి స్ఫుటాలు మరియు గోచార ఇంజిన్ స్ఫుటాలు
+ * ================================================================== */
+{
+  // కుండలి లోని స్ఫుటం `సాయనం − పోషణ − అయనాంశం`. గోచార/కక్ష్యా ఇంజిన్ అదే
+  // చట్రాన్ని వాడాలి; లేకపోతే ±17″ (పోషణ) తేడాతో రెండు వేరు ఫలాలు చెబుతాయి.
+  let worst = 0;
+  let checked = 0;
+  for (const pl of CHARAN_REF.planets) {
+    if (!['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'].includes(pl.id)) continue;
+    const lon = grahaSiderealLongitude(pl.id as never, CHARAN_REF.julianDay, 'lahiri');
+    let d = Math.abs(lon - pl.siderealLon);
+    if (d > 180) d = 360 - d;
+    worst = Math.max(worst, d * 3600);
+    checked += 1;
+  }
+  check(
+    'కుండలి మరియు గోచార ఇంజిన్ ఒకే నిరయన చట్రంలో (పోషణ సర్దుబాటు సరిపోతుంది, భేదం ≤ 2″)',
+    checked === 7 && worst <= 2,
+    `${checked} గ్రహాలు · గరిష్ఠ భేదం ${worst.toFixed(2)}″`
+  );
+}
+
+/* ================================================================== *
+ *  కక్ష్యా కాలరేఖ — స్విస్ సరిహద్దులతో (2027, ఆరు గ్రహాలు)
+ * ================================================================== */
+{
+  const golden = JSON.parse(readFileSync('scripts/golden/kakshya-golden.json', 'utf8')) as {
+    jdStart: number;
+    boundaries: Record<string, number[]>;
+  };
+  let totalRef = 0;
+  let worstArcsec = 0;
+  for (const [graha, list] of Object.entries(golden.boundaries)) {
+    totalRef += list.length;
+    for (const jd of list) {
+      const lon = grahaSiderealLongitude(graha as never, jd, 'lahiri');
+      const d = Math.abs(lon - Math.round(lon / 3.75) * 3.75) * 3600;
+      worstArcsec = Math.max(worstArcsec, d);
+    }
+  }
+  check(
+    'కక్ష్యా సరిహద్దులు — స్విస్ ఎఫెమెరిస్ లెక్కించిన 399 బిందువుల వద్ద మన స్ఫుటం 3.75° గుణిజానికి ≤ 15″',
+    totalRef === 399 && worstArcsec <= 15,
+    `${totalRef} సరిహద్దులు · గరిష్ఠ భేదం ${worstArcsec.toFixed(2)}″`
+  );
+
+  const segs = kakshyaSegmentsForYear(CHARAN_REF, 2027, 5.5, 'lahiri', { minDays: 0 });
+  const mine = new Set(segs.map((s) => `${s.graha}|${s.kakshyaNumber}|${s.signTe}`));
+  // ప్రతి సరిహద్దు సంఖ్య సరిపోతుందా
+  let countsOk = true;
+  for (const [graha, list] of Object.entries(golden.boundaries)) {
+    const n = segs.filter((s) => s.graha === graha).length;
+    if (n !== list.length + 1) countsOk = false;
+  }
+  check(
+    'కక్ష్యా కాలరేఖ — ప్రతి గ్రహానికి విభాగాల సంఖ్య = స్విస్ సరిహద్దులు + 1, కక్ష్య 1…8',
+    countsOk &&
+      segs.every((s) => s.kakshyaNumber >= 1 && s.kakshyaNumber <= 8) &&
+      segs.every((s) => s.startLocal < s.endLocal) &&
+      mine.size > 0,
+    `${segs.length} విభాగాలు · ${Object.entries(golden.boundaries).map(([g, l]) => `${g}:${l.length + 1}`).join(' ')}`
+  );
+
+  // ఒకే గ్రహం విభాగాలు ఖాళీ లేకుండా కలుపుతాయి; బిందు నిర్ణయం మధ్య బిందువు వద్ద నిజమే
+  let gaps = 0;
+  let verdictErrors = 0;
+  for (const graha of Object.keys(golden.boundaries)) {
+    const list = segs.filter((s) => s.graha === graha);
+    const toJd = (local: string) => {
+      const [d, t] = local.split(' ');
+      const [y, m, dd] = d.split('-').map(Number);
+      const [hh, mm] = t.split(':').map(Number);
+      return Date.UTC(y, m - 1, dd, hh, mm) / 86400000 + 2440587.5 - 5.5 / 24;
+    };
+    for (let i = 1; i < list.length; i++) {
+      if (Math.abs(toJd(list[i].startLocal) - toJd(list[i - 1].endLocal)) > 2 / 1440) gaps += 1;
+    }
+    for (const s of list) {
+      const mid = (toJd(s.startLocal) + toJd(s.endLocal)) / 2;
+      const pos = kakshyaOf(grahaSiderealLongitude(graha as never, mid, 'lahiri'));
+      if (pos.kakshyaIndex + 1 !== s.kakshyaNumber) verdictErrors += 1;
+    }
+  }
+  check(
+    'కక్ష్యా కాలరేఖ — విభాగాలు నిరంతరం (ఖాళీ లేదు), మధ్య క్షణం కక్ష్య సంఖ్య సరిపోతుంది',
+    gaps === 0 && verdictErrors === 0,
+    `ఖాళీలు ${gaps} · కక్ష్య తప్పులు ${verdictErrors}`
+  );
+
+  const ov = kakshyaBinduOverlaps(segs, ['Jupiter', 'Saturn']);
+  check(
+    'గురు–శని బిందు కక్ష్యా సంధులు — ఖండనం నుంచే, అతుకులు కలిపి, పొడవు సరైనది',
+    ov.every((o) => o.days > 0.5 && o.grahasTe.length === 2) &&
+      ov.every((o, i) => i === 0 || ov[i - 1].endLocal <= o.startLocal),
+    ov.map((o) => `${o.startLocal}→${o.endLocal} (${Math.round(o.days)}d)`).join(' · ')
+  );
+}
+
+/* ================================================================== *
  *  లగ్న సంధులు — స్విస్ ఎఫెమెరిస్ గోల్డెన్ ఫిక్చర్ (5 రోజులు × 13 సంధులు)
  * ================================================================== */
 {
@@ -2860,7 +2962,7 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
   );
   // శని స్థితి జాగ్రత్తలు — దిన ఫలంలో నిజంగా కనిపిస్తున్నాయా
   {
-    const g = (CHARAN_REF as any).gochara;
+    const g = (CHARAN_REF as any).gocharaSummary ?? (CHARAN_REF as any).gochara ?? {};
     let checked = 0;
     for (const dateISO of ['2026-10-23', '2042-06-15', '2044-03-01', '2052-01-10']) {
       const day = computeDayPhala(CHARAN_REF, dateISO, {
@@ -2875,7 +2977,7 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
     check(
       'శని స్థితి — సాడే సాతి/అష్టమ/కంటక శని జాగ్రత్తలు దిన ఫలంలో కలుపబడ్డాయి',
       checked === 0,
-      `భేదాలు ${checked}/4 · ప్రస్తుతం ${g.sadeSati.active ? 'సాడే సాతి' : 'సాడే సాతి లేదు'}`
+      `భేదాలు ${checked}/4 · ${g.sadeSati?.active ? 'ప్రస్తుతం సాడే సాతి' : 'ప్రస్తుతం సాడే సాతి లేదు'}`
     );
   }
 
