@@ -116,8 +116,10 @@ export interface GrahaAvasthaRow {
   warNoteTe: string;
   /** 0–3: ఎన్ని బల-స్థితులు అనుకూలించాయి (బాలాది భాగం + దీప్తాది + జాగ్రదాది) */
   strengthSteps: number;
-  /** ఈ గ్రహానికి మొత్తం మూల్యాంకనం, ఈ కుండలి నుంచే */
+  /** ఈ గ్రహానికి మొత్తం మూల్యాంకనం, ఈ కుండలి నుంచే (వివరంగా) */
   verdictTe: string;
+  /** ముద్రణ పట్టికకు కుదించిన ఒక వాక్యం — A4 లో వరుస పొడవు నియంత్రణకు */
+  compactTe: string;
 }
 
 export interface GrahaAvasthaReport {
@@ -239,6 +241,13 @@ export function computeGrahaAvastha(chart: CompleteChartResult): GrahaAvasthaRep
           : '—',
       strengthSteps,
       verdictTe: bits.join(' · '),
+      compactTe: (() => {
+        const band =
+          strengthSteps >= 2.5 ? 'పూర్ణ బలం' : strengthSteps >= 1.5 ? 'మంచి బలం' : strengthSteps >= 0.5 ? 'మధ్యమ బలం' : 'బలహీనం';
+        const state = isNode0 ? 'ఛాయా గ్రహం' : `${baladi.nameTe} · ${DEEPTADI_TE[deeptadi].nameTe} · ${JAGRADADI_TE[jagradadi].nameTe}`;
+        const extra = combust ? ' · అస్తంగత' : '';
+        return `${state}${extra} → ${band}`;
+      })(),
     };
   });
 

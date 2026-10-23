@@ -2772,7 +2772,16 @@ export const ClassicalJathakaPdfDocument: React.FC<
                     '—'
                   )}
                 </td>
-                <td className="py-[3px] px-1 align-top">{r.verdictTe}</td>
+                <td className="py-[3px] px-1 align-top">
+                  <div className="font-semibold">{r.compactTe}</div>
+                  <div className="text-[6.8px] text-[#4A3B2C] leading-snug">
+                    {r.combustionDeg !== null
+                      ? `సూర్యునికి ${r.combustionDeg.toFixed(1)}° దూరం — అస్తంగత కోణం లోపు; ఫలం మరుగున`
+                      : r.warResult
+                        ? r.warNoteTe
+                        : `${r.baladiTe === 'యువ' ? 'నిండు బలం' : r.baladiTe === '—' ? 'స్థాన బలమే ప్రధానం' : 'ఫల భాగం పరిమితం'} — ${r.jagradadiTe === 'జాగ్రత్' ? 'మేల్కొని పనిచేస్తుంది' : r.jagradadiTe === 'స్వప్న' ? 'సగం ఫలం' : r.jagradadiTe === 'సుషుప్తి' ? 'ఆలస్యంగా ఫలించే తత్వం' : 'అవస్థలు వర్తించవు'}`}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
