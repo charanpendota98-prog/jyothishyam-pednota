@@ -184,7 +184,12 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
   const mo = useMemo(() => chart.planets.find((p) => p.id === 'Moon'), [chart]);
   const janmaNakshatraIndex = mo ? Math.floor(mo.siderealLon / (360 / 27)) : 0;
 
-  const day: DayPanchanga = useMemo(() => computeDayPanchanga(dateISO, geo), [dateISO, geo]);
+  const [ayanamsaMode, setAyanamsaMode] = useState<'lahiri' | 'sayana'>('lahiri');
+  const [riseMode, setRiseMode] = useState<'hindu' | 'centre-refraction'>('hindu');
+  const day: DayPanchanga = useMemo(
+    () => computeDayPanchanga(dateISO, geo, { siderealMode: ayanamsaMode, riseConvention: riseMode }),
+    [dateISO, geo, ayanamsaMode, riseMode]
+  );
   const monthCells: MonthDayCell[] = useMemo(
     () => getMonthCalendar(monthYear, monthIdx + 1, geo, { todayISO }),
     [monthYear, monthIdx, geo, todayISO]
@@ -287,6 +292,53 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
         </button>
       </div>
 
+      {/* ---------- చట్రం (నిరయన/సాయన) & ఉదయ నిర్వచనం ---------- */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px]">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[#EDE8E0]/45">చట్రం:</span>
+          {([
+            ['lahiri', 'నిరయనం (లహిరి)'],
+            ['sayana', 'సాయనం (ఖగోళ)'],
+          ] as const).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setAyanamsaMode(k)}
+              className={`rounded-md px-2 py-0.5 border ${
+                ayanamsaMode === k
+                  ? 'border-[#C9A96E]/60 bg-[#C9A96E]/15 text-[#E8D3A9]'
+                  : 'border-white/10 text-[#EDE8E0]/55 hover:text-[#EDE8E0]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[#EDE8E0]/45">సూర్యోదయ నిర్వచనం:</span>
+          {([
+            ['hindu', 'డ్రిక్ (కేంద్రం, వక్రీభవనం లేదు)'],
+            ['centre-refraction', 'ఖగోళ (కేంద్రం + వక్రీభవనం)'],
+          ] as const).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setRiseMode(k)}
+              className={`rounded-md px-2 py-0.5 border ${
+                riseMode === k
+                  ? 'border-[#C9A96E]/60 bg-[#C9A96E]/15 text-[#E8D3A9]'
+                  : 'border-white/10 text-[#EDE8E0]/55 hover:text-[#EDE8E0]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="text-[10px] text-[#EDE8E0]/35">
+          {ayanamsaMode === 'sayana'
+            ? 'సాయనం పోలిక కోసం మాత్రమే — జ్యోతిష ప్రమాణం నిరయనం (లహిరి).'
+            : `అయనాంశం ${day.ayanamsaFormatted}`}
+        </span>
+      </div>
+
       {/* ---------- Five angas ---------- */}
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
         <AngaCard
@@ -352,7 +404,16 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
               ['మధ్యాహ్నం', day.solarNoon],
               ['దినమానం', day.dinmanaTe],
               ['రాత్రిమానం', day.ratrimanaTe],
-              ['సూర్య రాశి', RASI_SHORT_TE[day.sunSignIndex]],
+              [
+                'సూర్య రాశి',
+                `${RASI_SHORT_TE[day.sunSignIndex]}${
+                  day.sunSignEnd
+                    ? ` · ${day.sunSignEnd.nextSignTe.replace(' రాశి', '')}లోకి ${
+                        day.sunSignEnd.sameDay ? day.sunSignEnd.time : day.sunSignEnd.dateISO.slice(8) + 'వ తేదీ ' + day.sunSignEnd.time
+                      }`
+                    : ''
+                }`,
+              ],
             ].map(([k, v]) => (
               <div key={k} className="rounded-lg bg-white/[0.03] px-2.5 py-1.5">
                 <div className="text-[9.5px] text-[#EDE8E0]/35">{k}</div>
@@ -371,7 +432,16 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
             {[
               ['చంద్రోదయం', day.moonrise],
               ['చంద్రాస్తమయం', `${day.moonset}${day.moonsetNextDay ? ' (+1)' : ''}`],
-              ['చంద్ర రాశి', RASI_SHORT_TE[day.moonSignIndex]],
+              [
+                'చంద్ర రాశి',
+                `${RASI_SHORT_TE[day.moonSignIndex]}${
+                  day.moonSignEnd
+                    ? ` · ${day.moonSignEnd.nextSignTe.replace(' రాశి', '')}లోకి ${
+                        day.moonSignEnd.sameDay ? day.moonSignEnd.time : day.moonSignEnd.dateISO.slice(8) + 'వ తేదీ ' + day.moonSignEnd.time
+                      }`
+                    : ''
+                }`,
+              ],
               ['నక్షత్రం', `${day.nakshatra.nameTe} ${day.nakshatra.pada}`],
             ].map(([k, v]) => (
               <div key={k} className="rounded-lg bg-white/[0.03] px-2.5 py-1.5">

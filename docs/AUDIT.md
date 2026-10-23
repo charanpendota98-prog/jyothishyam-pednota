@@ -860,4 +860,55 @@ refraction):
   with the corrected definition, which is exactly what a boundary case looks
   like.
 
-`npm run verify:drik` → **14 gates, 0 failures** · full suite **8,811**.
+`npm run verify:drik` → **14 gates, 0 failures** · full suite **8,811** (8,820 after §16).
+
+---
+
+## 16. "మరో పంచాంగ యాప్ వేరే సమయాలు చూపుతోంది" — నిర్వచనాల ప్రశ్న (23 Oct 2026)
+
+The user compared the app with a screenshot of a popular "Hindu Calendar" app for
+**Siddipet, 2026-10-23** and asked why the numbers differ. They do differ — but
+they are answers to *different questions*. Measured, not argued:
+
+| | Hindu Calendar app | our app (Drik convention) | drik-panchanga (reference) |
+|---|---|---|---|
+| sunrise | 06:11:31 | 06:11 (sayana + centre/refraction) · **06:14** (nirayana + Hindu) | **06:14:02** |
+| sunset | 17:46:01 | 17:46 · **17:43** | **17:43:39** |
+| moonrise | 15:43:53 | 15:45 · **15:50** | **15:50:21** |
+| moonset | 04:10:41 (+1) | 04:08 · **04:11** | **04:11:46** |
+| Sun → Vṛścika | 15:06:41 | 15:11 (tropical 210°) | 16 Nov (sidereal) |
+| Moon → Meṣa | 25:22:19 | 01:23 (+1) (tropical 0°) | — |
+| māsa (amānta) | Kārtīka | Kārtīka (tropical) · **Āśvayuja** | **Āśvayuja** |
+
+Two independent differences explain every row:
+
+1. **The other app was in సాయన (tropical) mode** — its own header says so, and the
+   proof is arithmetic: at 15:06:41 IST the Sun's *tropical* longitude is
+   **209.999°**, i.e. exactly 0° Vṛścika; at 25:22:19 the Moon's *tropical*
+   longitude is **359.986°**, i.e. 0° Meṣa. Those are tropical ingresses, 24.23°
+   away from the sidereal ones our app shows (Sun enters Vṛścika on 2026-11-16).
+   The month name follows the same shift, which is why the app printed Kārtīka.
+2. **Rise/set**: that app puts the **disc centre 0.57° above** the horizon
+   (centre + atmospheric refraction). Drik — and this app — use the Hindu
+   definition: geocentric position, ecliptic latitude zeroed, disc centre on the
+   geometric horizon, **no refraction**. That is a ~3-minute difference in the
+   morning and ~2–3 minutes in the evening, exactly as the table shows.
+
+Both conventions are now first-class in the engine (`RISE_CONVENTION`,
+`'sayana'` ayanāṁśa) and selectable in the pañcāṅga screen: *"చట్రం:
+నిరయనం/సాయనం"* and *"సూర్యోదయ నిర్వచనం: డ్రిక్/ఖగోళ"*. With **సాయనం +
+ఖగోళ** the app reproduces the other app's numbers to the minute; with the
+defaults it reproduces Drik to the minute. `scripts/verify-conventions.ts`
+(9 gates) locks both directions so neither can drift.
+
+Also added in the same pass, because the other app showed them and we did not:
+**rāśi-praveśa times** — the exact instant the Sun and the Moon change sign
+(`sunSignEnd`, `moonSignEnd` in `DayPanchanga`), printed in the pañcāṅga cards.
+
+One honest caveat, measured not assumed: Drik's own library computes in the
+**true-citra** ayanāṁśa (24.2098° at 2026) while the app defaults to **Lahiri**
+(24.2314°). The 0.022° gap is worth ≈2 minutes of Moon motion, so tithi/nakṣatra
+*identities* never differ but their *end minutes* can differ by up to 2. The Drik
+gate therefore runs our engine in `true_citra`, which is Drik's own frame.
+
+`npm run verify:conventions` → **9 gates, 0 failures** · full suite **8,820**.

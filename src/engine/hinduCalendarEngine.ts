@@ -43,6 +43,7 @@ import {
   nakshatraIndexAt,
   nakshatraPadaAt,
   nextKaranaBoundaryJd,
+  nextSignIngressJd,
   nextTithiBoundaryJd,
   nextNakshatraBoundaryJd,
   karanaWindow,
@@ -51,6 +52,7 @@ import {
   tithiWindow,
   yogaWindow,
   rataDie,
+  RISE_CONVENTION,
   riseSetForLocalDate,
   sunriseJdForLocalDate,
   sunsetJdForLocalDate,
@@ -61,6 +63,7 @@ import {
   tithiIndex,
   yogaIndexAt,
   varjyamWindowsForDay,
+  type RiseConvention,
   type SiderealMode,
 } from './astroCore.ts';
 import { TELUGU_NAKSHATRAS, TELUGU_RASIS } from './teluguJathakam.ts';
@@ -352,12 +355,27 @@ export interface DayPanchanga {
   ayanamsaFormatted: string;
   sunSignIndex: number;
   moonSignIndex: number;
+  /** సూర్యుడు తదుపరి రాశిలోకి ప్రవేశించే క్షణం (సంక్రమణి) */
+  sunSignEnd: RasiPravesa | null;
+  /** చంద్రుడు తదుపరి రాశిలోకి ప్రవేశించే క్షణం */
+  moonSignEnd: RasiPravesa | null;
   sunNakshatraIndex: number;
   sunNakshatraPada: number;
   kaliAhargana: number;
   julianDay: number;
   rataDie: number;
   mjd: number;
+}
+
+/** రాశి ప్రవేశం (సంక్రమణి) — ఏ రాశిలోకి, ఎప్పుడు */
+export interface RasiPravesa {
+  jd: number;
+  time: string;
+  dateISO: string;
+  nextSignIndex: number;
+  nextSignTe: string;
+  /** ఈ రోజే జరిగితే true (లేకపోతే మరుసటి రోజు) */
+  sameDay: boolean;
 }
 
 export interface HinduEraInfo {
@@ -1752,17 +1770,18 @@ export function festivalsOnDate(dateISO: string, geo: GeoContext, mode: Sidereal
 export function computeDayPanchanga(
   dateISO: string,
   geo: GeoContext,
-  options: { siderealMode?: SiderealMode } = {}
+  options: { siderealMode?: SiderealMode; riseConvention?: RiseConvention } = {}
 ): DayPanchanga {
   const mode = options.siderealMode ?? 'lahiri';
+  const riseConvention = options.riseConvention ?? RISE_CONVENTION;
   const tz = geo.tzOffsetHours;
   const midnightJd = localMidnightJd(dateISO, tz);
-  const rs = riseSetForLocalDate(dateISO, geo.lat, geo.lng, tz);
+  const rs = riseSetForLocalDate(dateISO, geo.lat, geo.lng, tz, riseConvention);
   const sunriseJd = rs.sunriseJd ?? midnightJd + 6 / 24;
   const sunsetJd = rs.sunsetJd ?? midnightJd + 18 / 24;
   const nextSunriseJd = (() => {
     const nextISO = civilDateAt(midnightJd + 1.2, tz);
-    const nextRs = riseSetForLocalDate(nextISO, geo.lat, geo.lng, tz);
+    const nextRs = riseSetForLocalDate(nextISO, geo.lat, geo.lng, tz, riseConvention);
     return nextRs.sunriseJd ?? sunriseJd + 1;
   })();
 
@@ -2108,6 +2127,21 @@ export function computeDayPanchanga(
   }
   if (weekdayIndex === 1 && tIdx % 15 === 0) specialFlags.push({ key: 'somavara-pradosha', te: 'సోమ ప్రదోషం' });
 
+  const toPravesa = (ing: { jd: number; signIndex: number } | null): RasiPravesa | null => {
+    if (!ing) return null;
+    const iso = civilDateAt(ing.jd, tz);
+    return {
+      jd: ing.jd,
+      time: timeStr(ing.jd, tz),
+      dateISO: iso,
+      nextSignIndex: ing.signIndex,
+      nextSignTe: TELUGU_RASIS[ing.signIndex]?.nameTe ?? '—',
+      sameDay: iso === dateISO,
+    };
+  };
+  const sunPravesa = toPravesa(nextSignIngressJd('Sun', sunriseJd, mode));
+  const moonPravesa = toPravesa(nextSignIngressJd('Moon', sunriseJd, mode));
+
   const sunSid = siderealLongitude('Sun', sunriseJd, mode);
   const sunNak = Math.floor(sunSid / (360 / 27)) % 27;
 
@@ -2204,6 +2238,8 @@ export function computeDayPanchanga(
     ayanamsaFormatted: degToDMSString(ayanamsaDegrees(sunriseJd, mode)),
     sunSignIndex: Math.floor(sunSid / 30) % 12,
     moonSignIndex: moonSign,
+    sunSignEnd: sunPravesa,
+    moonSignEnd: moonPravesa,
     sunNakshatraIndex: sunNak,
     sunNakshatraPada: Math.min(4, Math.floor((sunSid % (360 / 27)) / (360 / 108)) + 1),
     kaliAhargana: kaliAhargana(jdToMs(sunriseJd) / 86_400_000 + 2_440_587.5),

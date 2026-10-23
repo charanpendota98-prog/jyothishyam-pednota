@@ -23,8 +23,13 @@ export const JD_UNIX_EPOCH = 2_440_587.5;
 /** Ardra-2 / reference: mean obliquity at J2000 */
 export const J2000_OBLIQUITY = 23.4392911111;
 
+/**
+ * `'sayana'` = సాయన (ఖగోళ/ట్రాపికల్) చట్రం — అయనాంశం సున్నా. జ్యోతిష ప్రమాణం
+ * కాదు (నిరయనమే ప్రమాణం), కానీ వెబ్/యాప్ పంచాంగాలతో పోల్చుకోవడానికి.
+ */
 export type SiderealMode =
   | 'lahiri'
+  | 'sayana'
   | 'raman'
   | 'kp'
   | 'fagan_bradley'
@@ -106,12 +111,12 @@ export const SIDEREAL_MODES: SiderealModeInfo[] = [
   },
 ];
 
-export const SIDEREAL_MODE_BY_ID: Record<SiderealMode, SiderealModeInfo> = SIDEREAL_MODES.reduce(
+export const SIDEREAL_MODE_BY_ID: Record<string, SiderealModeInfo> = SIDEREAL_MODES.reduce(
   (acc, m) => {
     acc[m.id] = m;
     return acc;
   },
-  {} as Record<SiderealMode, SiderealModeInfo>
+  {} as Record<string, SiderealModeInfo>
 );
 
 /* ------------------------------------------------------------------ *
@@ -285,6 +290,8 @@ export function deltaCancriTrueTropicalLongitude(jd: number): number {
 
 /** Ayanamsa (deg) for a given JD and sidereal mode. */
 export function ayanamsaDegrees(jd: number, mode: SiderealMode = 'lahiri'): number {
+  // సాయనం = అయనాంశం లేని (ట్రాపికల్) చట్రం.
+  if (mode === 'sayana') return 0;
   // నిజ చిత్రా / పుష్య — స్థిర గుణకం కాదు; నక్షత్రపు నిజ స్థానం నుండి ప్రతి క్షణం లెక్కిస్తాము.
   // నక్షత్రాల నిజ స్థానాలు సత్య (apparent) చట్రంలో ఉంటాయి; అయనాంశం మాత్రం
   // మధ్యమ (mean) చట్రంలో నిర్వచించబడుతుంది — అందుకే పోషణ తీసివేయడం.
@@ -732,8 +739,13 @@ function apparentAltitude(
  *   • `hindu`      : వక్రీభవనం లేని కేంద్రోన్నతి = 0 (బింబ కేంద్రం క్షితిజంపై)
  *   • `upper-limb` : వక్రీభవన సహిత కేంద్రోన్నతి + బింబ వ్యాసార్ధం = 0
  */
-function limbFunction(body: Astronomy.Body, observer: Astronomy.Observer, jd: number): number {
-  if (RISE_CONVENTION === 'hindu') {
+function limbFunction(
+  body: Astronomy.Body,
+  observer: Astronomy.Observer,
+  jd: number,
+  convention: RiseConvention = RISE_CONVENTION
+): number {
+  if (convention === 'hindu') {
     const time = Astronomy.MakeTime(dateFromJd(jd));
     // హిందూ సంప్రదాయం (స్విస్ `BIT_HINDU_RISING`):
     //   1. **భూకేంద్ర** స్థానం — చంద్రుని దృష్టి భేదం (parallax ≈ 57′) తీసేయాలి
@@ -751,6 +763,12 @@ function limbFunction(body: Astronomy.Body, observer: Astronomy.Observer, jd: nu
     const hor = Astronomy.Horizon(time, observer, eqOfDate.ra, eqOfDate.dec);
     return hor.altitude;
   }
+  if (convention === 'centre-refraction') {
+    const time = Astronomy.MakeTime(dateFromJd(jd));
+    const eq = Astronomy.Equator(body, time, observer, true, true);
+    // 'normal' → వక్రీభవన సహిత కేంద్రోన్నతి; సున్నా అయిన క్షణమే ఉదయాస్తమయం.
+    return Astronomy.Horizon(time, observer, eq.ra, eq.dec, 'normal').altitude;
+  }
   const sd = semiDiameterDeg(body, jd, observer);
   return apparentAltitude(body, jd, observer) + sd;
 }
@@ -765,26 +783,27 @@ function refineLimbCrossing(
   body: Astronomy.Body,
   observer: Astronomy.Observer,
   guessJd: number,
-  direction: 1 | -1
+  direction: 1 | -1,
+  convention: RiseConvention = RISE_CONVENTION
 ): number | null {
   const step = 20 / 1440; // 20 నిమిషాలు
   let lo = guessJd - step;
   let hi = guessJd + step;
-  let gLo = limbFunction(body, observer, lo);
-  let gHi = limbFunction(body, observer, hi);
+  let gLo = limbFunction(body, observer, lo, convention);
+  let gHi = limbFunction(body, observer, hi, convention);
   if (direction > 0 ? !(gLo < 0 && gHi >= 0) : !(gLo > 0 && gHi <= 0)) {
     // bracketing విఫలమైతే కొంచెం విస్తరించి మళ్లీ ప్రయత్నం
     lo = guessJd - 4 * step;
     hi = guessJd + 4 * step;
-    gLo = limbFunction(body, observer, lo);
-    gHi = limbFunction(body, observer, hi);
+    gLo = limbFunction(body, observer, lo, convention);
+    gHi = limbFunction(body, observer, hi, convention);
     if (direction > 0 ? !(gLo < 0 && gHi >= 0) : !(gLo > 0 && gHi <= 0)) return null;
   }
   let a = lo;
   let b = hi;
   for (let i = 0; i < 40 && b - a > 5e-8; i++) {
     const mid = (a + b) / 2;
-    const gm = limbFunction(body, observer, mid);
+    const gm = limbFunction(body, observer, mid, convention);
     const rising = direction > 0;
     if (rising ? gm >= 0 : gm <= 0) b = mid;
     else a = mid;
@@ -804,7 +823,14 @@ function refineLimbCrossing(
  * హోర, దినమానం అన్నీ కదులుతాయి. యాప్ డిఫాల్ట్ = హిందూ (డ్రిక్) సంప్రదాయం,
  * ఎందుకంటే వినియోగదారు పోల్చే ప్రమాణం అదే.
  */
-export const RISE_CONVENTION: 'hindu' | 'upper-limb' = 'hindu';
+export type RiseConvention = 'hindu' | 'centre-refraction' | 'upper-limb';
+
+/**
+ * డిఫాల్ట్ — డ్రిక్ పంచాంగ ప్రమాణం.
+ * `'centre-refraction'` = బింబ కేంద్రం + వాతావరణ వక్రీభవనం (ఖగోళ ప్రమాణం;
+ * చాలా మొబైల్ పంచాంగ యాప్‌లు ఇదే వాడతాయి — ఉదయం ~3 నిమిషాలు ముందుగా).
+ */
+export const RISE_CONVENTION: RiseConvention = 'hindu';
 
 /**
  * గ్రహ బింబం క్షితిజాన్ని దాటే క్షణం (JD, UT). కనబడని సందర్భంలో (ధ్రువ ప్రాంతాలు)
@@ -816,12 +842,16 @@ function upperLimbEvent(
   startJd: number,
   lat: number,
   lng: number,
-  limitDays = 1.5
+  limitDays = 1.5,
+  convention: RiseConvention = RISE_CONVENTION
 ): number | null {
   const observer = new Astronomy.Observer(lat, lng, 0);
   // హిందూ (డ్రిక్) సంప్రదాయం: బింబ కేంద్రం, వక్రీభవనం లేదు → ఎత్తు 0°.
   // ఖగోళ ప్రమాణం: పై అంచు + వక్రీభవనం → ఎత్తు −0.878°.
-  const horizonAltitude = RISE_CONVENTION === 'hindu' ? 0 : -(0.612 + 0.266);
+  const horizonAltitude =
+    convention === 'hindu' ? 0 : convention === 'centre-refraction' ? 0 : -(0.612 + 0.266);
+  // (centre-refraction లో కూడా స్థూల అన్వేషణ 0° దగ్గరే — కానీ refine దాన్ని
+  //  వక్రీభవన సహిత కేంద్రంగా సరిచేస్తుంది; అందుకే స్థూల బ్రాకెట్ చాలు.)
   const coarse = Astronomy.SearchAltitude(
     body,
     observer,
@@ -831,7 +861,7 @@ function upperLimbEvent(
     horizonAltitude
   );
   if (coarse) {
-    const refined = refineLimbCrossing(body, observer, jdFromDate(coarse.date), direction);
+    const refined = refineLimbCrossing(body, observer, jdFromDate(coarse.date), direction, convention);
     if (refined !== null) return refined;
   }
   // బహుళ అక్షాంశాల్లో బింబం క్షితిజాన్ని తాకి తాకనట్టు కదిలే రోజుల్లో స్థూల
@@ -839,11 +869,11 @@ function upperLimbEvent(
   // స్వయంగా స్కాన్ చేసి, సంజ్ఞ మారే చోట ద్విభాజన చేస్తాము.
   const STEP = 5 / 1440;
   let prevJd = startJd;
-  let prevVal = limbFunction(body, observer, prevJd);
+  let prevVal = limbFunction(body, observer, prevJd, convention);
   for (let jd = startJd + STEP; jd <= startJd + limitDays; jd += STEP) {
-    const val = limbFunction(body, observer, jd);
+    const val = limbFunction(body, observer, jd, convention);
     const crossed = direction > 0 ? prevVal < 0 && val >= 0 : prevVal > 0 && val <= 0;
-    if (crossed) return refineLimbCrossing(body, observer, (prevJd + jd) / 2, direction) ?? jd;
+    if (crossed) return refineLimbCrossing(body, observer, (prevJd + jd) / 2, direction, convention) ?? jd;
     prevJd = jd;
     prevVal = val;
   }
@@ -856,9 +886,10 @@ function searchEvent(
   startJd: number,
   lat: number,
   lng: number,
-  limitDays = 1.5
+  limitDays = 1.5,
+  convention: RiseConvention = RISE_CONVENTION
 ): number | null {
-  const exact = upperLimbEvent(body, direction, startJd, lat, lng, limitDays);
+  const exact = upperLimbEvent(body, direction, startJd, lat, lng, limitDays, convention);
   if (exact !== null) return exact;
   // ధ్రువ రాత్రులు/పగళ్లలో వక్రీభవన సహిత గణన విఫలమైతే — సాధారణ పద్ధతి
   const observer = new Astronomy.Observer(lat, lng, 0);
@@ -879,12 +910,13 @@ export function riseSetForLocalDate(
   dateISO: string,
   lat: number,
   lng: number,
-  tzOffsetHours: number
+  tzOffsetHours: number,
+  convention: RiseConvention = RISE_CONVENTION
 ): RiseSetTimes {
-  const key = `${dateISO}|${lat.toFixed(4)}|${lng.toFixed(4)}|${tzOffsetHours}`;
+  const key = `${dateISO}|${lat.toFixed(4)}|${lng.toFixed(4)}|${tzOffsetHours}|${convention}`;
   const hit = riseSetCache.get(key);
   if (hit) return hit;
-  const value = computeRiseSet(dateISO, lat, lng, tzOffsetHours);
+  const value = computeRiseSet(dateISO, lat, lng, tzOffsetHours, convention);
   if (riseSetCache.size > 5000) riseSetCache.clear();
   riseSetCache.set(key, value);
   return value;
@@ -894,18 +926,19 @@ function computeRiseSet(
   dateISO: string,
   lat: number,
   lng: number,
-  tzOffsetHours: number
+  tzOffsetHours: number,
+  convention: RiseConvention = RISE_CONVENTION
 ): RiseSetTimes {
   const midnightJd = localMidnightJd(dateISO, tzOffsetHours);
-  const sunriseJd = searchEvent(Astronomy.Body.Sun, +1, midnightJd, lat, lng);
-  const sunsetJd = searchEvent(Astronomy.Body.Sun, -1, midnightJd, lat, lng);
+  const sunriseJd = searchEvent(Astronomy.Body.Sun, +1, midnightJd, lat, lng, 1.5, convention);
+  const sunsetJd = searchEvent(Astronomy.Body.Sun, -1, midnightJd, lat, lng, 1.5, convention);
   // చంద్రోదయ/చంద్రాస్తమయం — పంచాంగ దినం (సూర్యోదయం → మరుసటి సూర్యోదయం)
   // లోని మొదటి ఘటన. డ్రిక్ పంచాంగం కూడా ఇదే గీతను వాడుతుంది (drik-panchanga
   // `_moon_event_in_window`). సూర్యోదయానికి కొన్ని నిమిషాల ముందు/తర్వాత
   // జరిగే ఘటన ఏ రోజుకు చెందుతుందనేది ఈ గీతపై ఆధారపడి ఉంటుంది.
   const moonAnchor = sunriseJd ?? midnightJd;
-  const moonriseJd = searchEvent(Astronomy.Body.Moon, +1, moonAnchor, lat, lng);
-  const moonsetJd = searchEvent(Astronomy.Body.Moon, -1, moonAnchor, lat, lng);
+  const moonriseJd = searchEvent(Astronomy.Body.Moon, +1, moonAnchor, lat, lng, 1.5, convention);
+  const moonsetJd = searchEvent(Astronomy.Body.Moon, -1, moonAnchor, lat, lng, 1.5, convention);
   return { sunriseJd, sunsetJd, moonriseJd, moonsetJd };
 }
 
@@ -914,9 +947,10 @@ export function sunriseJdForLocalDate(
   dateISO: string,
   lat: number,
   lng: number,
-  tzOffsetHours: number
+  tzOffsetHours: number,
+  convention: RiseConvention = RISE_CONVENTION
 ): number | null {
-  return searchEvent(Astronomy.Body.Sun, +1, localMidnightJd(dateISO, tzOffsetHours), lat, lng);
+  return searchEvent(Astronomy.Body.Sun, +1, localMidnightJd(dateISO, tzOffsetHours), lat, lng, 1.5, convention);
 }
 
 /** సూర్యాస్తమయం మాత్రమే */
@@ -924,9 +958,10 @@ export function sunsetJdForLocalDate(
   dateISO: string,
   lat: number,
   lng: number,
-  tzOffsetHours: number
+  tzOffsetHours: number,
+  convention: RiseConvention = RISE_CONVENTION
 ): number | null {
-  return searchEvent(Astronomy.Body.Sun, -1, localMidnightJd(dateISO, tzOffsetHours), lat, lng);
+  return searchEvent(Astronomy.Body.Sun, -1, localMidnightJd(dateISO, tzOffsetHours), lat, lng, 1.5, convention);
 }
 
 /** Apparent solar azimuth (deg from true north, clockwise) and altitude. */

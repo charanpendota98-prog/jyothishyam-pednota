@@ -19,8 +19,9 @@
     "verify:shadbala": "tsx scripts/verify-shadbala.ts",
     "verify:sampradaya": "tsx scripts/verify-sampradaya.ts",
     "verify:astro": "tsx scripts/verify-astro.ts",
-    "verify": "npm run verify:astro && npm run verify:panchanga && npm run verify:calendar-lunar && npm run verify:rise && npm run verify:drik && npm run verify:festivals && npm run verify:jathaka && npm run verify:shadbala && npm run verify:sampradaya",
-    "verify:drik": "tsx scripts/verify-drik-timing.ts"
+    "verify": "npm run verify:astro && npm run verify:panchanga && npm run verify:calendar-lunar && npm run verify:rise && npm run verify:drik && npm run verify:conventions && npm run verify:festivals && npm run verify:jathaka && npm run verify:shadbala && npm run verify:sampradaya",
+    "verify:drik": "tsx scripts/verify-drik-timing.ts",
+    "verify:conventions": "tsx scripts/verify-conventions.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

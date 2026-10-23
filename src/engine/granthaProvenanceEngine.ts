@@ -378,6 +378,7 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
     lunar: 411,
     rise: 4634,
     drik: 14,
+    conventions: 9,
     festivals: 31,
     jathaka: JATHAKA_GATES,
     shadbala: SHADBALA_GATES,
@@ -388,7 +389,7 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
   const gateCohortTe =
     `స్విస్ ఎఫెమెరిస్ స్ఫుటాలు (${GATE_COUNTS.astro}) · పంచాంగాంగాలు (${GATE_COUNTS.panchanga}) · ` +
     `తిథి-నక్షత్ర-యోగ-కరణ వార్షిక పట్టిక (${GATE_COUNTS.lunar}) · ఉదయాస్తమయాలు (${GATE_COUNTS.rise}) · ` +
-    `డ్రిక్ పంచాంగ కాల నిర్ణయం (${GATE_COUNTS.drik}) · ` +
+    `డ్రిక్ పంచాంగ కాల నిర్ణయం (${GATE_COUNTS.drik}) · చట్ర/ఉదయ నిర్వచనాలు (${GATE_COUNTS.conventions}) · ` +
     `పండుగలు (${GATE_COUNTS.festivals}) · జాతక వర్గ-దశా గణితం (${GATE_COUNTS.jathaka}) · ` +
     `షడ్బలం (${GATE_COUNTS.shadbala}) · సంప్రదాయ తీర్పులు (${GATE_COUNTS.sampradaya}) — ` +
     `మొత్తం ${gateTotal.toLocaleString('te-IN')} యాంత్రిక తనిఖీలు, 0 విఫలం.`;

@@ -1680,13 +1680,13 @@ check(
       prov.summaryTe.slice(0, 90)
     );
     check(
-      'ప్రమాణ పట్టిక — యాంత్రిక గేట్ల మొత్తం 9 గేట్ల మొత్తానికి సరిపోతుంది (షడ్బల + డ్రిక్ సహితం)',
+      'ప్రామాణ పట్టిక — యాంత్రిక గేట్ల మొత్తం 10 గేట్ల మొత్తానికి సరిపోతుంది (షడ్బల + డ్రిక్ + చట్రం సహితం)',
       (() => {
         const pairs = [...prov.gateCohortTe.matchAll(/\((\d[\d,]*)\)/g)].map((m) =>
           Number(m[1].replace(/,/g, ''))
         );
         const total = Number((prov.gateCohortTe.match(/మొత్తం ([\d,]+) యాంత్రిక/) ?? [])[1]?.replace(/,/g, '') ?? -1);
-        return pairs.length === 9 && pairs.reduce((a, b) => a + b, 0) === total && prov.gateCohortTe.includes('0 విఫలం');
+        return pairs.length === 10 && pairs.reduce((a, b) => a + b, 0) === total && prov.gateCohortTe.includes('0 విఫలం');
       })(),
       prov.gateCohortTe.slice(-130)
     );
