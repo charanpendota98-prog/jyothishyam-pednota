@@ -46,6 +46,11 @@ export default function MuhurtaPlannerPanel({ chart, lang = 'te', initialYear }:
   const [busy, setBusy] = useState(false);
 
   const tz = chart.input.tzOffsetHours;
+  // స్టూడియోలో సంవత్సరం మారితే ప్లానర్ కూడా అదే సంవత్సరానికి మారాలి
+  useEffect(() => {
+    if (initialYear !== undefined && initialYear !== year) setYear(initialYear);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialYear]);
   const keyRef = useRef(`${activity}|${year}`);
 
   const run = () => {
