@@ -221,6 +221,18 @@ export default function VastuPlanDrawing({
       {/* భవనం */}
       {rectEl(plan.building, { fill: '#f7fafc', stroke: '#1a202c', strokeWidth: 1.8 })}
 
+      {/* గదులు */}
+      {(isRental ? plan.units.flatMap((u) => u.rooms) : rooms).map((r) => (
+        <g key={r.id}>
+          {rectEl(r, {
+            fill: FIT_FILL[r.fit] ?? '#f7fafc',
+            stroke: FIT_STROKE[r.fit] ?? '#4a5568',
+            strokeWidth: 1.1,
+          })}
+          {roomLabel(r)}
+        </g>
+      ))}
+
       {/* 9×9 పరమశాయిక మండలం (బ్రహ్మస్థానం) */}
       {showMandala && (
         <g>
@@ -250,18 +262,6 @@ export default function VastuPlanDrawing({
           />
         </g>
       )}
-
-      {/* గదులు */}
-      {(isRental ? plan.units.flatMap((u) => u.rooms) : rooms).map((r) => (
-        <g key={r.id}>
-          {rectEl(r, {
-            fill: FIT_FILL[r.fit] ?? '#f7fafc',
-            stroke: FIT_STROKE[r.fit] ?? '#4a5568',
-            strokeWidth: 1.1,
-          })}
-          {roomLabel(r)}
-        </g>
-      ))}
 
       {/* తలుపులు / కిటికీలు */}
       {showOpenings &&
