@@ -1,5 +1,6 @@
 import { ZODIAC_SIGNS, type CompleteChartResult } from './ephemeris.ts';
 import { computePillarScore, PILLAR_SPECS } from './pillarBalaEngine.ts';
+import { mahadashaPhala } from './mahadashaPhalaEngine.ts';
 import { TELUGU_RASIS } from './rasiNames.ts';
 import { computeLagnaFunctional, PLANET_TE } from './lagnaFunctionalEngine.ts';
 
@@ -1912,21 +1913,28 @@ export function generateTeluguSampoornaJathakam(
     const startAge = Math.max(0, startYr - birthYear);
     const endAge = Math.max(startAge + 1, endYr - birthYear);
 
-    const isKendraTrikona = [1, 4, 5, 7, 9, 10, 11].includes(dPlanet.house);
-    const isStrongDig = ['Exalted', 'Moolatrikona', 'Own Sign'].includes(dPlanet.dignity);
-
-    const ratingTe: MahadashaRoadmapItemTe['ratingTe'] =
-      isKendraTrikona && isStrongDig
-        ? 'రాజయోగ కాలం'
-        : isKendraTrikona || isStrongDig
-          ? 'శుభ వృద్ధి కాలం'
-          : 'మిశ్రమ / జాగ్రత్త కాలం';
-
-    const predictionTe = `${dNamePure} ${dPlanet.house}వ ఇంట (${dRasiTe} రాశి, ${dNakTe.nameTe} నక్షత్రం) ఉన్నాడు. ${startAge}–${endAge} సం.ల వయస్సు మధ్య ${
-      isKendraTrikona
-        ? `విద్య, ఉద్యోగ, ధన, గృహ-వాహన మరియు కుటుంబ శుభకార్యాలలో విశేష పురోగతి లభిస్తుంది.`
-        : `పట్టుదల మరియు ${stripParens(dMeta.devataTe)} ఆరాధన ద్వారా ఆటంకాలు తొలగి స్థిరమైన విజయం చేకూరుతుంది.`
-    }`;
+    // ఫలం = వయస్సు + దశానాథుని స్థానం/అధిపత్యం/బలం నుంచి (మహాదశా ఫల ఇంజిన్).
+    // పసిపాపకు ఉద్యోగం, వివాహం చెప్పే టెంప్లేట్ ఇక లేదు.
+    const isNode = d.lord === 'Rahu' || d.lord === 'Ketu';
+    const dispositor = isNode ? ZODIAC_SIGNS[dPlanet.d1Sign].vedicRuler : d.lord;
+    const sbRow = chart.shadbala.find((r) => r.planet === dispositor);
+    const phala = mahadashaPhala({
+      lordId: d.lord,
+      lordNameTe: dNamePure,
+      house: dPlanet.house,
+      dignityTe: stripParens(DIGNITY_TE_MAP[dPlanet.dignity] ?? dPlanet.dignity),
+      shadbalaRupas: sbRow?.totalRupas ?? 0,
+      requiredRupas: sbRow?.requiredRupas ?? 0,
+      nakshatraTe: dNakTe.nameTe,
+      startAge,
+      endAge,
+      lagnaSign: chart.ascendant.signIndex,
+      isRetrograde: dPlanet.isRetrograde,
+      isNode,
+      dispositorTe: isNode ? (TELUGU_RASIS[dPlanet.d1Sign]?.nameTe.split(' ')[0] ?? '') : undefined,
+    });
+    const ratingTe: MahadashaRoadmapItemTe['ratingTe'] = phala.ratingTe as MahadashaRoadmapItemTe['ratingTe'];
+    const predictionTe = phala.predictionTe;
 
     const antardashasTe = d.antardashas.map((a) => ({
       bhuktiLordTe: TELUGU_PLANETS[a.lord]?.nameTe.split(' ')[0] ?? a.lord,

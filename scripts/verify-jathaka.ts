@@ -1528,6 +1528,30 @@ check(
     const literalDasha = jk.jeevitaPradhanaRangalu.filter(
       (p) => /దశలు|అంతర్దశలు/.test(p.favorablePeriodsTe) && !/\d{4}-\d{2}-\d{2}/.test(p.favorablePeriodsTe)
     );
+    // మహాదశా ఫలం — వయస్సుకు తగినదే చెప్పాలి; పసిపాపకు ఉద్యోగం/వివాహం చెప్పకూడదు
+    const RATINGS = ['బలవత్ · అనుకూల కాలం', 'బలవత్ · శ్రమసాధ్య కాలం', 'సమర్థ · సానుకూల కాలం', 'మధ్యమ · మిశ్రమ కాలం', 'దుర్బల · శ్రద్ధార్హ కాలం'];
+    const absurd = jk.sampoornaDashaKalachakram.filter((d) => {
+      const startAge = Number(d.ageRangeTe.split('–')[0].trim());
+      const young = /^\s*0\s*$|^\s*[1-5]\s*$/.test(String(startAge).trim());
+      return young && /ఉద్యోగం|వివాహం|సంతానం|ఆస్తి కొనుగోలు/.test(d.predictionTe);
+    });
+    check(
+      `${label}: 5 సం.ల లోపు మహాదశల్లో ఉద్యోగ/వివాహ వాక్యాలు లేవు (వయస్సుకు తగిన ఫలం మాత్రమే)`,
+      absurd.length === 0,
+      `తనిఖీ ${jk.sampoornaDashaKalachakram.length} మహాదశలు · అసంబద్ధం ${absurd.length}`
+    );
+    check(
+      `${label}: ప్రతి మహాదశ రేటింగ్ నిర్వచిత శ్రేణిలో ఉంది`,
+      jk.sampoornaDashaKalachakram.every((d) => RATINGS.includes(d.ratingTe)),
+      jk.sampoornaDashaKalachakram.map((d) => d.ratingTe).join(' | ')
+    );
+    const nodeRows = jk.sampoornaDashaKalachakram.filter((d) => d.lordId === 'Rahu' || d.lordId === 'Ketu');
+    check(
+      `${label}: రాహు/కేతు మహాదశల్లో “షడ్బలం వర్తించదు” అని స్పష్టం (నకిలీ 0.00 రూపాలు లేవు)`,
+      nodeRows.every((d) => d.predictionTe.includes('షడ్బలం వర్తించదు') && !/0\.00 రూపాలు/.test(d.predictionTe)),
+      `${nodeRows.length} ఛాయా గ్రహ దశలు`
+    );
+
     check(
       `${label}: స్తంభాల అనుకూల దశలు గ్రహ జాబితా కావు — తేదీలతో కూడిన నిజ గణన`,
       literalDasha.length === 0,

@@ -221,6 +221,10 @@ export function computePillarScore(chart: CompleteChartResult, spec: PillarSpec)
 
   const vim = computeVimshottariDeep(chart);
   const nowMs = Date.now();
+  // జనన క్షణం — మొదటి మహాదశ జననానికి ముందే మొదలవుతుంది; అలాంటప్పుడు
+  // “గత మహాదశ 1983…” అని చెప్పడం తప్పు — “జన్మ నుంచి” అని చెప్పాలి.
+  const birthMs = Date.parse(`${chart.input.date}T${chart.input.time}:00Z`) -
+    (chart.input.tzOffsetHours ?? 0) * 3600 * 1000;
 
   /**
    * ఒక గ్రహానికి “ఇప్పుడు/రాబోయే” కాలం:
@@ -231,6 +235,13 @@ export function computePillarScore(chart: CompleteChartResult, spec: PillarSpec)
   const windowOf = (id: string): { labelTe: string; isPast: boolean } => {
     const md = vim.mahadashas.find((m) => m.lord === id);
     if (!md) return { labelTe: 'కాలం లభించలేదు', isPast: true };
+    if (md.startMs < birthMs && md.endMs > birthMs) {
+      const over = nowMs >= md.endMs;
+      return {
+        labelTe: `${over ? 'గత మహాదశ — ' : ''}జన్మ నుంచి ${md.endLocal.slice(0, 10)} వరకు (మూల మహాదశ ${md.startLocal.slice(0, 10)} నుంచి)`,
+        isPast: over,
+      };
+    }
     const fmt = (m: { startLocal: string; endLocal: string }) =>
       `${m.startLocal.slice(0, 10)} → ${m.endLocal.slice(0, 10)}`;
     const runningMd = vim.mahadashas.find((m) => nowMs >= m.startMs && nowMs < m.endMs);
@@ -239,7 +250,7 @@ export function computePillarScore(chart: CompleteChartResult, spec: PillarSpec)
         (b) => b.lord === id && nowMs >= b.startMs && nowMs < b.endMs
       );
       if (ad) return { labelTe: `వర్తమాన మహాదశలో భుక్తి ${fmt(ad)}`, isPast: false };
-      if (runningMd.lord === id) return { labelTe: `మహాదశ ${fmt(md)}`, isPast: false };
+      if (runningMd.lord === id) return { labelTe: `వర్తమాన మహాదశ ${fmt(md)}`, isPast: false };
     }
     return {
       labelTe: `${nowMs >= md.endMs ? 'గత' : 'రాబోయే'} మహాదశ ${fmt(md)}`,
