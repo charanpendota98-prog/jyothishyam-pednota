@@ -2,6 +2,32 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { GRANTHA_PAGES } from '../engine/granthaPageMap.ts';
 
+/** ముద్రణ నాణ్యత — పుస్తకాన్ని అచ్చు వేయించేవారికి 300 DPI కావాలి. */
+export interface PdfExportOptions {
+  /**
+   * రెండరింగ్ స్కేల్. 960 CSS px వెడల్పు పుటను ఇంత రెట్లు పెంచి canvas లోకి తీస్తాము.
+   * 2.45 × 960 = 2352 px / 198 mm ≈ 302 DPI — ముద్రణ ప్రమాణం.
+   * 1.85 (పాత విలువ) = 228 DPI — తెరపై బాగానే ఉంటుంది, అచ్చులో సన్నంగా కనిపిస్తుంది.
+   */
+  renderScale?: number;
+  /** JPEG నాణ్యత (0–1). పాఠ్యం ఉన్న పుటలకు 0.96 సిఫారసు. */
+  jpegQuality?: number;
+}
+
+/** 960 CSS px వెడల్పు కల పుట → A4 లో 198 mm వెడల్పు. DPI లెక్కకు మూలం. */
+const PAGE_RENDER_WIDTH_PX = 960;
+const A4_PRINTABLE_WIDTH_MM = 198;
+const MM_PER_INCH = 25.4;
+
+/** రెండరింగ్ స్కేల్ ఇచ్చినప్పుడు A4 ముద్రణ రిజల్యూషన్ (DPI). */
+export function renderDpi(renderScale: number): number {
+  return Math.round((PAGE_RENDER_WIDTH_PX * renderScale) / (A4_PRINTABLE_WIDTH_MM / MM_PER_INCH));
+}
+
+/** ముద్రణ ప్రమాణం — 300 DPI కి సరిపోయే కనీస స్కేల్ (2.45 ≈ 302 DPI). */
+export const PRINT_RENDER_SCALE = 2.45;
+export const SCREEN_RENDER_SCALE = 1.85;
+
 export interface PdfExportProgress {
   isExporting: boolean;
   currentPage: number;
@@ -191,8 +217,11 @@ export async function exportClassicalJathakaToPdf(
   personName: string,
   birthDate: string,
   onProgress?: (progress: PdfExportProgress) => void,
-  selectedPages?: number[]
+  selectedPages?: number[],
+  options?: PdfExportOptions
 ): Promise<void> {
+  const renderScale = options?.renderScale ?? PRINT_RENDER_SCALE;
+  const jpegQuality = options?.jpegQuality ?? 0.96;
   const allPages = Array.from(
     containerEl.querySelectorAll<HTMLElement>('.classical-grantha-page')
   );
@@ -219,6 +248,14 @@ export async function exportClassicalJathakaToPdf(
     compress: true,
   });
 
+  pdf.setProperties({
+    title: `సంపూర్ణ జాతక మహాగ్రంథం — ${personName}`,
+    subject: `Vedic jathakam, ${personName}, born ${birthDate}`,
+    author: 'Sri Sampoorna Jathaka Maha Grantha',
+    creator: 'Jyothishyam Pednota',
+    keywords: `jathakam, horoscope, vedic astrology, ${personName}, ${birthDate}`,
+  });
+
   const a4WidthMm = 210;
   const a4HeightMm = 297;
   const marginMm = 6;
@@ -231,7 +268,7 @@ export async function exportClassicalJathakaToPdf(
       isExporting: true,
       currentPage: i + 1,
       totalPages,
-      statusMessageTe: `సంపూర్ణ జాతక మహాగ్రంథం PDF తయారవుతోంది... పుట ${i + 1} / ${totalPages} (Generating Page ${i + 1} of ${totalPages})`,
+      statusMessageTe: `సంపూర్ణ జాతక మహాగ్రంథం PDF తయారవుతోంది... పుట ${i + 1} / ${totalPages} · ${renderDpi(renderScale)} DPI (Generating Page ${i + 1} of ${totalPages})`,
     });
 
     // Give UI thread a frame to paint progress bar
@@ -245,7 +282,7 @@ export async function exportClassicalJathakaToPdf(
 
     try {
       const canvas = await html2canvas(pageEl, {
-        scale: 1.85,
+        scale: renderScale,
         useCORS: true,
         backgroundColor: '#FFFEFA',
         logging: false,
@@ -255,7 +292,7 @@ export async function exportClassicalJathakaToPdf(
         },
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
       const imgWidthPx = canvas.width;
       const imgHeightPx = canvas.height;
 
@@ -283,7 +320,7 @@ export async function exportClassicalJathakaToPdf(
         renderWidthMm,
         renderHeightMm,
         undefined,
-        'FAST'
+        'SLOW'
       );
 
       // పుట సంఖ్య — ప్రతి PDF పుట కింద (విషయ సూచికలో చూపిన నంబర్లతో సరిపోతుంది)
@@ -307,7 +344,9 @@ export async function exportClassicalJathakaToPdf(
   // jsPDF బుక్‌మార్క్ శీర్షికలను UTF-16 గా ఎన్‌కోడ్ చేయదు; అందుకే ASCII ఆంగ్ల
   // శీర్షికలు వాడుతున్నాము (తెలుగు శీర్షిక అక్షరాలు పాడైపోతాయి).
   try {
-    const outlinePages = pages.map((_, i) => GRANTHA_PAGES[i]);
+    // ఎంపిక చేసిన పుటలు ఎగుమతి అయినప్పుడు సూచిక సంఖ్య కాదు — మొత్తం గ్రంథంలో
+    // ఆ పుట స్థానమే బుక్‌మార్క్ శీర్షికకు మూలం (లేకపోతే శీర్షికలు పక్కకు జరుగుతాయి).
+    const outlinePages = pages.map((el) => GRANTHA_PAGES[allPages.indexOf(el)]);
     const parentByPart = new Map<string, ReturnType<typeof pdf.outline.add>>();
     let partIdx = 0;
     for (let i = 0; i < totalPages; i++) {

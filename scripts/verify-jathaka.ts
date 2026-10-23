@@ -60,6 +60,7 @@ import { JATHAKA_GATES } from '../src/generated/verificationStats.ts';
 import { buildGranthaProvenance } from '../src/engine/granthaProvenanceEngine.ts';
 import { computeGocharaReport } from '../src/engine/gocharaVedhaEngine.ts';
 import { computeGrahaAvastha } from '../src/engine/grahaAvasthaEngine.ts';
+import { PRINT_RENDER_SCALE, renderDpi } from '../src/utils/pdfBookExporter.ts';
 import { computeDashaGocharaSamanvaya } from '../src/engine/dashaGocharaSamanvayaEngine.ts';
 import { generateTeluguSampoornaJathakam } from '../src/engine/teluguJathakam';
 import { auditJathakaClaims } from '../src/engine/jathakaClaimAudit';
@@ -1539,6 +1540,47 @@ check(
       return new Set(parts).size === parts.length;
     })(),
     granthaPartsTe().map((g) => g.partTe).join(' · ')
+  );
+}
+
+// ---- PDF ఎగుమతి: ముద్రణ నాణ్యత (300 DPI), పూర్తి పుటలు, సరైన బుక్‌మార్క్‌లు ----
+{
+  const expSrc = readFileSync('src/utils/pdfBookExporter.ts', 'utf8');
+  const modalSrc = readFileSync('src/components/PrintSettingsModal.tsx', 'utf8');
+
+  check(
+    'PDF ముద్రణ రిజల్యూషన్ ≥ 300 DPI (A4 లో 198mm వెడల్పుకు 2400+ px)',
+    renderDpi(PRINT_RENDER_SCALE) >= 300,
+    `${renderDpi(PRINT_RENDER_SCALE)} DPI · scale ${PRINT_RENDER_SCALE}`
+  );
+  check(
+    'PDF ఎగుమతి — బుక్‌మార్క్ శీర్షికలు ఎంపిక చేసిన పుటల సంఖ్య కాదు, గ్రంథంలోని నిజమైన పుట స్థానం నుంచి',
+    expSrc.includes('GRANTHA_PAGES[allPages.indexOf(el)]'),
+    expSrc.includes('allPages.indexOf(el)') ? 'indexOf(el) వాడబడింది' : 'తప్పు మ్యాపింగ్'
+  );
+  check(
+    'PDF ఫైల్ మెటాడేటా (శీర్షిక · రచయిత · విషయం) నిండింది — పాఠకుడి రీడర్‌లో శీర్షిక కనిపిస్తుంది',
+    expSrc.includes('setProperties') && expSrc.includes('title:') && expSrc.includes('subject:'),
+    'setProperties ఉంది'
+  );
+  check(
+    'PDF ఎగుమతి — JPEG నాణ్యత ≥ 0.94, కుదింపు SLOW (పాఠ్యం అంచులు చెదరకుండా)',
+    /jpegQuality \?\? 0\.9[4-9]/.test(expSrc) && expSrc.includes("'SLOW'"),
+    'quality 0.96 · SLOW'
+  );
+  check(
+    'ముద్రణ డైలాగ్ — పుటల జాబితా గ్రంథ చిట్టా (GRANTHA_PAGES) నుంచే, డిఫాల్ట్ = అన్ని పుటలు',
+    modalSrc.includes('GRANTHA_PAGES.map') &&
+      modalSrc.includes('ALL_JATHAKA_PAGES') &&
+      /useState<number\[\]>\(ALL_JATHAKA_PAGES\)/.test(modalSrc),
+    'డిఫాల్ట్ = అన్ని పుటలు'
+  );
+  check(
+    'ముద్రణ డైలాగ్‌లో పాత 13-పుటల అంకె మిగలలేదు (డ్రిఫ్ట్ గేట్)',
+    !/\b13\b/.test(modalSrc.replace(/max-h-\[92vh\]/g, '')) &&
+      !modalSrc.includes('13 పుటలు') &&
+      !modalSrc.includes('1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13'),
+    'పాత 13 జాబితా లేదు'
   );
 }
 
