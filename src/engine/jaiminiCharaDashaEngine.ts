@@ -449,14 +449,14 @@ export function calculateJaiminiCharaDasha(
       const startAge = Number(cumulativeAgeYears.toFixed(1));
       const endAge = Number((cumulativeAgeYears + durationYears).toFixed(1));
       const startDate = cursorDateIso;
-      const endDate = addDaysToIso(startDate, Math.round(durationYears * 365.2425));
+      const endDate = addDaysToIso(startDate, Math.round(durationYears * 365.25));
 
       const isCurrentMaha = nowIso >= startDate && nowIso <= endDate;
 
       // Build 12 Antardashas inside this Mahadasha
       const antardashas: JaiminiCharaAntardasha[] = [];
       let antarCursorIso = startDate;
-      const antarDurationDays = (durationYears * 365.2425) / 12;
+      const antarDurationDays = (durationYears * 365.25) / 12;
 
       for (let aStep = 1; aStep <= 12; aStep++) {
         // Antardasha starts from next/prev sign and ends with the Mahadasha sign itself on step 12
@@ -624,7 +624,7 @@ export function calculateJaiminiCharaDasha(
       }
 
       // Overlapping Vimshottari Mahadasha at midpoint of this Chara Dasha
-      const midIso = addDaysToIso(startDate, Math.round((durationYears * 365.2425) / 2));
+      const midIso = addDaysToIso(startDate, Math.round((durationYears * 365.25) / 2));
       const matchingVimMaha =
         chart.dashas.find((d) => midIso >= d.startDate && midIso <= d.endDate) ??
         chart.dashas[0];

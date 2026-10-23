@@ -47,6 +47,7 @@ import {
 } from '../utils/pdfBookExporter.ts';
 import { SouthIndianKundaliSvg, type VargaDivision } from './ChartsSvg.tsx';
 import { ClassicalJathakaPdfDocument, JATHAKAM_PDF_PAGES } from './ClassicalJathakaPdfDocument.tsx';
+import { buildGranthaProvenance } from '../engine/granthaProvenanceEngine.ts';
 import { PrintSettingsModal } from './PrintSettingsModal.tsx';
 import { TajikaVarshaphalaView } from './TajikaVarshaphalaView.tsx';
 import { RoyalWhatsAppSummaryModal } from './RoyalWhatsAppSummaryModal.tsx';
@@ -80,7 +81,8 @@ type JathakamChapter =
   | 'phala_vivechana'
   | 'dosha_parihara'
   | 'upaya_pariharas'
-  | 'tajika_varshaphala';
+  | 'tajika_varshaphala'
+  | 'pramana_pattika';
 
 const VARGA_TABS: { code: VargaDivision; labelTe: string; subtitleTe: string }[] = [
   { code: 'D1', labelTe: 'D1 రాశి చక్రం', subtitleTe: 'దేహ & సర్వ ఫలితములు' },
@@ -103,7 +105,8 @@ const VARGA_TABS: { code: VargaDivision; labelTe: string; subtitleTe: string }[]
 export const JATHAKAM_CHAPTERS: { id: JathakamChapter; labelTe: string; icon: React.ReactNode }[] = [
     { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (అన్ని అధ్యాయాలు)', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'pandita_vicharam', labelTe: 'పండిత విచారణ — జాతకం అసలు ఏమిటి? (స్తంభాలు · బలం · భావాలు · నేరుగా సమాధానాలు)', icon: <Award className="w-3.5 h-3.5" /> },
-    { id: 'sampradaya_samanyaya', labelTe: 'పండిత విచారణ–2. సప్త-సంప్రదాయ సమన్వయం (పారాశరీ · జైమిని · అష్టకవర్గ · వింశోత్తరి · కేపీ)', icon: <Scale className="w-3.5 h-3.5" /> },
+    { id: 'sampradaya_samanyaya', labelTe: 'పండిత విచారణ–2. సప్త-సంప్రదాయ సమన్వయం (పారాశరీ · అష్టకవర్గ · జైమిని · వింశోత్తరి · కేపీ · చరదశ · తాజిక)', icon: <Scale className="w-3.5 h-3.5" /> },
+    { id: 'pramana_pattika', labelTe: 'పండిత విచారణ–3. ప్రమాణ పట్టిక — ప్రతి వాక్యానికి ఆధారం (సూత్రం · గ్రంథం · కోడ్ · గేట్)', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
     { id: 'sampoorna_jeevita_charitra', labelTe: '0. సంపూర్ణ జీవిత చరిత్ర (0–100 సం. 7 పర్వాలు & నవగ్రహ ఫలితాలు)', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'sookshma_nadi_kp', labelTe: '0A. 100% కుండలి సూక్ష్మ నాడి, భావాధిపతి, KP సబ్-లార్డ్ & 18 మూల గ్రంథాలు', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'tajika_varshaphala', labelTe: '0B. తాజిక వర్షఫలం & 12-నెలల దినచర్య ఫలితాలు (Varshaphala & 12-Month)', icon: <Calendar className="w-3.5 h-3.5" /> },
@@ -134,6 +137,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
   externalPdfTrigger = 0,
 }) => {
   const jathakam = useMemo(() => generateTeluguSampoornaJathakam(chart), [chart]);
+  const provenance = useMemo(() => buildGranthaProvenance(chart), [chart]);
   const upayaReport = useMemo(() => generateUpayaPariharaReport(chart), [chart]);
   const verificationReport = useMemo(
     () => generateVerificationAndAnalysisReport(chart),
@@ -4592,6 +4596,65 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
       {/* ===================================================================== */}
       {/* CHAPTER 0B: TAJIKA VARSHAPHALA & 12-MONTH FORECAST                    */}
       {/* ===================================================================== */}
+
+      {showSection('pramana_pattika') && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-widest text-[#5BBFB5] font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> పండిత విచారణ–3 · ప్రమాణ పట్టిక
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[#EDE8E0] mt-1">
+                ఏ వాక్యం ఎక్కడినుంచి వచ్చింది? (Provenance Audit)
+              </h2>
+              <p className="text-[11.5px] text-[#EDE8E0]/60 mt-1 max-w-3xl leading-relaxed">
+                {provenance.summaryTe} ఏ అంకెనూ ఇక్కడ చేతితో నమోదు చేయలేదు — ఇంజిన్ నుంచే తీసుకోబడింది.
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] text-[#EDE8E0]/45">ధృవీకరణ</div>
+              <div className="text-[11px] font-bold text-[#E4C68C] max-w-[320px]">{provenance.gateCohortTe}</div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-white/10">
+            <table className="w-full text-[10.5px]">
+              <thead>
+                <tr className="bg-white/[0.04] text-[9.5px] uppercase tracking-wider text-[#EDE8E0]/45">
+                  <th className="text-left font-normal px-2 py-2">అంశం</th>
+                  <th className="text-left font-normal px-2 py-2">ఈ జాతకంలో విలువ</th>
+                  <th className="text-left font-normal px-2 py-2">సూత్రం (సంఖ్యలతో)</th>
+                  <th className="text-left font-normal px-2 py-2">గ్రంథం</th>
+                  <th className="text-left font-normal px-2 py-2">కోడ్ · గేట్</th>
+                </tr>
+              </thead>
+              <tbody>
+                {provenance.rows.map((row) => (
+                  <tr key={row.id} className="border-t border-white/5 align-top">
+                    <td className="px-2 py-1.5 font-semibold text-[#E4C68C]">{row.subjectTe}</td>
+                    <td className="px-2 py-1.5 text-[#EDE8E0]/90">{row.valueTe}</td>
+                    <td className="px-2 py-1.5 text-[#EDE8E0]/70 leading-relaxed">{row.derivationTe}</td>
+                    <td className="px-2 py-1.5 text-[#66CBBF]/80">{row.sourceTe}</td>
+                    <td className="px-2 py-1.5 text-[#EDE8E0]/45">
+                      <div className="font-mono text-[9px]">{row.fnTe}</div>
+                      <div className="text-[9px] text-[#C9A96E]/80">{row.gateTe}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="rounded-xl border border-[#E39A6B]/30 bg-[#0C1120] px-4 py-3">
+            <div className="text-[11px] font-bold text-[#E39A6B] mb-1">జాతకం చెప్పలేనివి — కల్పించబడవు</div>
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#EDE8E0]/70 leading-relaxed">
+              {provenance.unverifiableTe.map((u, i) => (
+                <li key={i}>{u}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
       {showSection('tajika_varshaphala') && (
         <div className="pt-2">
           <TajikaVarshaphalaView chart={chart} embeddedMode />
