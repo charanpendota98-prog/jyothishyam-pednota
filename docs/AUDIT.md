@@ -717,4 +717,116 @@ the mahādaśā's own yoginī; sub-periods that ended before birth are omitted
 rather than shown as zero-length rows, and the gate enforces both the 8-part
 cover and the contiguity.
 
-`npm run verify:jathaka` → **612 gates, 0 failures** · full suite **8,908**.
+`npm run verify:jathaka` → **612 gates, 0 failures** · full suite then **8,908** (now 8,918 after §15).
+
+---
+
+## 15. Drik Panchang is the timing authority — sunrise convention, durmuhūrta, and the ayanāṁśa of the reference (23 Oct 2026)
+
+The user's instruction for this round was explicit: **the timings Drik Panchang
+("High Calendar") publishes are the standard; our sunrise, sunset, tithi /
+nakṣatra ends, rāhu, guḷika, abhijit and durmuhūrtam must match them.** So this
+section is not a self-check — it is a comparison against an external authority.
+
+### 15.1 What was wrong: the rise/set definition
+
+Astronomical software defaults to the *upper limb with refraction*
+(altitude ≈ −0.833°), the definition used by almanacs and by `rise_trans`'s
+default. Drik Panchang, like every Hindu pañcāṅga, uses the **centre of the
+disc on the geometric horizon, without refraction** (altitude 0°). At Hyderabad
+on 2026-10-23 the two definitions differ by about four minutes:
+
+| definition | sunrise | sunset |
+|---|---|---|
+| upper limb + refraction (old) | ~06:10 | ~17:50 |
+| **disc centre, no refraction (new)** | **06:14** | **17:46** |
+| Drik Panchang (published) | 06:14 | 17:46 |
+
+The fix lives inside `limbFunction()` in `src/engine/astroCore.ts` — not only in
+the coarse `SearchAltitude` guess, because the bisection refinement re-solves
+the same equation and would otherwise quietly restore the old convention.
+`RISE_CONVENTION = 'hindu'` selects it; the same function serves the Sun, the
+Moon and the planets, so moonrise/moonset (Hyderabad 2026-10-23: **15:49** and
+**04:08**) follow Drik as well.
+
+### 15.2 What was wrong: durmuhūrtam
+
+Durmuhūrtam is the 8th muhūrta of the day counted from sunrise (1 muhūrta =
+48 minutes, 15 per day), and on some weekdays a second, night slot applies. The
+engine's table had three errors: Wednesday used the 7th instead of the 8th,
+Saturday used muhūrtas 1–2 instead of the 3rd, and Tuesday's night slot was
+missing altogether. Delhi 2026-05-16 was off by **109 minutes**.
+
+Corrected table, verified against Drik for 120 consecutive days in five cities:
+
+| weekday | day muhūrtas (1-based from sunrise) | night muhūrta (1-based from sunset) |
+|---|---|---|
+| Sunday | 14 | — |
+| Monday | 9, 12 | — |
+| Tuesday | 4 | 7 |
+| Wednesday | 8 | — |
+| Thursday | 6, 12 | — |
+| Friday | 4, 9 | — |
+| Saturday | 3 | — |
+
+Each night slot is emitted as its own window (`durmuhurta-night-*`) measured in
+night muhūrtas (sunset → next sunrise ÷ 15) by `nightMuhurtaJd()`.
+
+### 15.3 The gate
+
+`scripts/golden/drik-timing-golden.json` — **515 days**, seven cities
+(Hyderabad daily through 2026, the others every 15 days) — is generated from the
+`drik-panchanga` package, which itself wraps Swiss Ephemeris with the Hindu
+rising definition. `scripts/verify-drik-timing.ts` compares nine quantities:
+
+| quantity | worst difference |
+|---|---|
+| sunrise, sunset | 1 min |
+| rāhu kālam, guḷika kālam | 1 min |
+| abhijit muhūrtam | 1 min |
+| durmuhūrtam (day and night) | 1 min |
+| tithi number, nakṣatra number | **1030 / 1030 exact** |
+| tithi end instant | 1 min |
+| nakṣatra end instant | 1 min |
+
+### 15.4 The one caveat, stated honestly
+
+The reference package's *longitude-derived* helper functions are not a Swiss
+reference: once the library is imported it leaves Swiss Ephemeris in the
+**Fagan–Bradley** ayanāṁśa (25.1146° at JD 2461331.5) while reporting
+`chosen_ayanamsa = 'citra'`, and its own Sun/Moon longitudes differ from
+`calc_ut(..., FLG_SIDEREAL)` by ≈0.9°. Before this was found, the nakṣatra-end
+comparison showed up to +3 minutes on 2026-10-18 — an artefact of the reference,
+not of the engine (the engine's Moon at the reference's "end" instant sits at
+265.76° against a boundary of 266.67°, i.e. the true crossing is 110 minutes
+later).
+
+Because Drik's own convention is the **true-citra** ayanāṁśa, the gate now runs
+our engine in `true_citra` for that comparison; every nakṣatra-end case then
+agrees within one minute. The app itself keeps Lahiri as its default (the
+Indian national standard), and the difference between the two ayanāṁśas is
+0.022°, i.e. under two minutes of Moon motion.
+
+### 15.5 Fixtures that had to be regenerated
+
+The rise/pañcāṅga fixtures were built with the *old* convention, so they were
+regenerated from Swiss Ephemeris with `CALC_RISE|CALC_SET` combined with
+`BIT_DISC_CENTER|BIT_NO_REFRACTION` (identical to `BIT_HINDU_RISING` for the
+Sun, and correct for the Moon where `BIT_HINDU_RISING` silently keeps
+refraction):
+
+- `scripts/golden/rise-panchanga-golden.json` — 528 days, 24 cities, 2025–2027:
+  rise/set times plus tithi, nakṣatra, yoga, karana at sunrise (1-based).
+  **4746 / 4746 checks pass**; for the 20 non-polar cities the worst case is
+  **51 s** on sunrise, **50 s** on sunset, **55 s** on moonrise and **53 s** on
+  moonset. Because the panchanga day is sunrise-to-sunrise,
+  the four polar cases (Reykjavík, Ushuaia) are graded with a documented looser
+  tolerance: at |latitude| ≥ 50° the discs graze the horizon and a 1′ change in
+  disc model moves the clock by minutes.
+- `scripts/golden/panchanga-hyderabad-2026.json` — 365 days, now 06:50 sunrise
+  on 2026-01-01 (was 06:45): **all 365 days match tithi, nakṣatra and yoga**,
+  sunrise within 1 minute. Two yoga mismatches that existed before disappeared
+  with the corrected definition, which is exactly what a boundary case looks
+  like.
+
+`npm run verify:drik` → **9 gates, 0 failures** · full suite **8,918**.

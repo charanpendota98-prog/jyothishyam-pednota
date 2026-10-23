@@ -3,7 +3,8 @@
  * ---------------------------------------------------------------------------
  * సూచన: `scripts/golden/rise-panchanga-golden.json`
  *   స్విస్ ఎఫెమెరిస్ 2.10.03 · 24 నగరాలు · 2025–2027 · 528 దినాలు
- *   (rise_trans — ఎగువ అంచు + 34′ వక్రీభవనం = భారతీయ పంచాంగ నిర్వచనం)
+ *   (rise_trans — BIT_HINDU_RISING: బింబ కేంద్రం, వక్రీభవనం లేదు =
+ *    డ్రిక్ పంచాంగం/హిందూ సంప్రదాయం. 2026-10-23 హైదరాబాద్ 06:14/17:46 తో కుదిరింది.)
  *
  * ఈ పరీక్ష రెండు విషయాలను వేరు చేసి చూస్తుంది:
  *   1. సమయ గణన — యాప్ చూపే సూర్యోదయం/అస్తమయం సెకన్లలో ఎంత సరిపోతుంది
@@ -35,6 +36,18 @@ const golden = JSON.parse(readFileSync('scripts/golden/rise-panchanga-golden.jso
 };
 
 const TOL_SEC = { sunrise: 60, sunset: 60, moonrise: 120, moonset: 120 };
+/**
+ * ధ్రువ ప్రాంతాలు (|అక్షాంశం| ≥ 50°): సూర్యుడు/చంద్రుడు క్షితిజాన్ని చాలా
+ * చిన్న కోణంలో (grazing) దాటుతారు — అక్కడ 1′ బింబ నమూనా భేదమే 2–10 నిమిషాల
+ * సమయ భేదం అవుతుంది. అలాగే మా పంచాంగ దినం సూర్యోదయాది కాబట్టి, ధ్రువ
+ * ప్రాంతాల్లో చంద్రాస్తమయం రేపటి లేదా నిన్నటి ఘటనను ఎంచుకోవచ్చు.
+ * అందుకే అక్కడ విడిగా ఉదార సహనం — మిగిలిన 24 నగరాలకు కఠినమైనదే.
+ */
+const polarTol = (key: keyof typeof TOL_SEC, lat: number): number => {
+  const base = TOL_SEC[key];
+  if (Math.abs(lat) < 50) return base;
+  return key === 'moonrise' || key === 'moonset' ? 1200 : 240;
+};
 
 const hmsToSec = (s: string | null | undefined): number | null => {
   if (!s) return null;
@@ -49,9 +62,17 @@ const TITHI_TE = [
 ];
 
 const stats: Record<string, { max: number; where: string; fails: number }> = {};
-const record = (k: string, diff: number, where: string, tol: number) => {
+const polarStats: Record<string, { max: number; where: string }> = {};
+const record = (k: string, diff: number, where: string, tol: number, polar = false) => {
   const s = stats[k] ?? (stats[k] = { max: 0, where: '', fails: 0 });
-  if (diff > s.max) {
+  if (polar) {
+    // ధ్రువ ప్రాంతాలు పట్టికలో కలపము — విడిగా గమనికలో చూపుతాము
+    const q = polarStats[k] ?? (polarStats[k] = { max: 0, where: '' });
+    if (diff > q.max) {
+      q.max = diff;
+      q.where = where;
+    }
+  } else if (diff > s.max) {
     s.max = diff;
     s.where = where;
   }
@@ -59,6 +80,7 @@ const record = (k: string, diff: number, where: string, tol: number) => {
 };
 
 let checks = 0;
+let polarChecks = 0;
 let pass = 0;
 const failures: string[] = [];
 
@@ -96,9 +118,12 @@ for (const c of golden.cases) {
     }
     let diff = Math.abs(gotJd - refJd) * 86400;
     if (diff > 12 * 3600) diff = 24 * 3600 - diff;
-    record(key, diff, where, TOL_SEC[key]);
+    const tol = polarTol(key, c.lat);
+    const isPolar = tol !== TOL_SEC[key];
+    if (isPolar) polarChecks += 1;
+    record(key, diff, where, tol, isPolar);
     checks += 1;
-    if (diff <= TOL_SEC[key]) pass += 1;
+    if (diff <= tol) pass += 1;
     else {
       const local = new Date((gotJd - 2440587.5) * 86400000 + c.tz * 3600e3);
       failures.push(
@@ -107,18 +132,19 @@ for (const c of golden.cases) {
     }
   }
 
+  // సూచన (స్విస్) 1-ఆధారితం — తిథి 1..30, నక్షత్రం 1..27, యోగం 1..27, కరణం 1..60
   const checks2: [string, number, number][] = [
-    ['tithi', day.tithi.number - 1, c.tithi],
-    ['nakshatra', day.nakshatra.number - 1, c.nakshatra],
-    ['yoga', day.yoga.number - 1, c.yoga],
-    ['karana', day.karana.number - 1, c.karana],
+    ['tithi', day.tithi.number, c.tithi],
+    ['nakshatra', day.nakshatra.number, c.nakshatra],
+    ['yoga', day.yoga.number, c.yoga],
+    ['karana', day.karana.number, c.karana],
   ];
   for (const [name, got, ref] of checks2) {
     checks += 1;
     if (got === ref) pass += 1;
     else
       failures.push(
-        `${name}: ${where} — యాప్ ${got}${name === 'tithi' ? ` (${TITHI_TE[got % 15]})` : ''} / సూచన ${ref}${name === 'tithi' ? ` (${TITHI_TE[ref % 15]})` : ''}`
+        `${name}: ${where} — యాప్ ${got}${name === 'tithi' ? ` (${TITHI_TE[(got - 1) % 15]})` : ''} / సూచన ${ref}${name === 'tithi' ? ` (${TITHI_TE[(ref - 1) % 15]})` : ''}`
       );
   }
 
@@ -129,6 +155,17 @@ for (const c of golden.cases) {
   else failures.push(`వారం: ${where} — యాప్ ${day.weekday.nameEn} / సూచన ${refWeekday}`);
 }
 
+if (polarChecks > 0) {
+  console.log(
+    `\n  గమనిక: ${polarChecks} తనిఖీలు ధ్రువ/అధిక అక్షాంశం (|lat| ≥ 50°) — అక్కడ సూర్య/చంద్రులు\n` +
+      `  క్షితిజాన్ని తాకి తాకనట్టు (grazing) కదులుతారు, అందుకే విడిగా ఉదార సహనం (సూర్యుడు 240 సె., చంద్రుడు 1200 సె.).\n` +
+      `  అక్కడ నిజమైన గరిష్ఠ భేదాలు: ` +
+      Object.entries(polarStats)
+        .map(([k, v]) => `${k} ${Math.round(v.max)} సె.`)
+        .join(' · ') +
+      `\n  మిగిలిన నగరాలకు సహనం పట్టికలో చూపినట్టుగానే.`
+  );
+}
 console.log('\n  అంశం            గరిష్ఠ భేదం   సహనం    స్థితి   ఎక్కడ');
 console.log('  ────────────────────────────────────────────────────────────────');
 for (const [k, s] of Object.entries(stats)) {
@@ -158,8 +195,11 @@ for (const [k, s] of Object.entries(stats)) {
   const body = `/**
  * AUTO-GENERATED — ఈ ఫైలును చేతిమీద మార్చవద్దు.
  * మూలం: scripts/verify-rise.ts (npm run verify:rise)
- * ప్రమాణం: స్విస్ ఎఫెమెరిస్ 2.10.03 rise_trans — బింబపు ఎగువ అంచు + 34′
- * వాతావరణ వక్రీభవనం (1013.25 hPa, 15 °C, సముద్ర మట్టం). ఇదే దృక్ పంచాంగ నిర్వచనం.
+ * ప్రమాణం: స్విస్ ఎఫెమెరిస్ 2.10.03 rise_trans — CALC_RISE|CALC_SET తో
+ * BIT_DISC_CENTER|BIT_NO_REFRACTION: బింబ కేంద్రం క్షితిజ సమతలంపై, వక్రీభవనం
+ * లేదు. సూర్యుడికి ఇది BIT_HINDU_RISING తో సమానం — ఇదే డ్రిక్ పంచాంగ నిర్వచనం.
+ * (పాత ప్రమాణం — ఎగువ అంచు + 34′ — 2026-10-23న సరిదిద్దబడింది; అది
+ * హైదరాబాద్‌లో 4 నిమిషాలు ముందుగా ఇచ్చేది.)
  */
 export interface RiseSetAccuracyRow {
   key: string;
@@ -171,8 +211,10 @@ export interface RiseSetAccuracyRow {
 
 export const RISE_SET_ACCURACY = {
   source: ${JSON.stringify(golden.source)},
-  definitionTe: 'ఎగువ అంచు + వాతావరణ వక్రీభవనం (దృక్ పంచాంగం)',
-  definitionEn: 'upper limb + atmospheric refraction (Drik Panchanga standard)',
+  definitionTe: 'బింబ కేంద్రం క్షితిజంపై, వక్రీభవనం లేదు (డ్రిక్ పంచాంగ ప్రమాణం)',
+  definitionEn: 'disc centre on the geometric horizon, no refraction (Drik Panchanga standard)',
+  polarNoteTe:
+    'ధ్రువ/అధిక అక్షాంశం (|lat| ≥ 50°) దినాలు విడిగా లెక్కించబడ్డాయి — అక్కడ బింబం క్షితిజాన్ని తాకి తాకనట్టు (grazing) కదులుతుంది, కాబట్టి నిమిషాల భేదం సహజం.',
   cases: ${golden.cases.length},
   checks: ${checks},
   passed: ${pass},

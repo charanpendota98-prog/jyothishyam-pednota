@@ -181,15 +181,30 @@ export const TARA_NAMES = [
 
 const DISHA_SHOOL_BY_WEEKDAY = ['తూర్పు (East)', 'పడమర (West)', 'ఉత్తరం (North)', 'ఉత్తరం (North)', 'దక్షిణం (South)', 'పడమర (West)', 'తూర్పు (East)'];
 
-/** Muhurta numbers (1..15 of the daytime) of Durmuhurtam per weekday (Muhurta Chintamani). */
+/**
+ * దుర్ముహూర్తం — పగటి 15 ముహూర్తాలలో సంఖ్యలు (1…15), వారం ప్రకారం
+ * (ఆది=0). మూలం: ముహూర్త చింతామణి + డ్రిక్ పంచాంగ్ సమ్మతి — 2026 సంవత్సరం
+ * 515 దినాల డ్రిక్ లెక్కతో పోల్చి నిర్ధారించబడింది (verify:drik).
+ */
 const DURMUHURTA_NUMBERS: number[][] = [
-  [14],
-  [9, 12],
-  [4],
+  [14],      // ఆదివారం
+  [9, 12],   // సోమవారం
+  [4],       // మంగళవారం (+ రాత్రి 7వ ముహూర్తం క్రింద)
+  [8],       // బుధవారం
+  [6, 12],   // గురువారం
+  [4, 9],    // శుక్రవారం
+  [3],       // శనివారం
+];
+
+/** రాత్రి ముహూర్తాలలో దుర్ముహూర్తం (1…15) — సోమవారం రాత్రి 7వది (డ్రిక్ సమ్మతి) */
+const DURMUHURTA_NIGHT_NUMBERS: number[][] = [
+  [],
+  [],
   [7],
-  [6, 12],
-  [4, 9],
-  [1, 2],
+  [],
+  [],
+  [],
+  [],
 ];
 
 const RAHU_OCTANTS = [8, 2, 7, 5, 6, 4, 3];
@@ -1874,6 +1889,21 @@ export function computeDayPanchanga(
         tz,
         'inauspicious',
         'శుభ కార్యాలు పూర్తిగా వర్జించాలి'
+      )
+    );
+  });
+  // రాత్రి దుర్ముహూర్తం (మంగళవారం మాత్రమే) — సూర్యాస్తమయం నుంచి రాత్రి 15 భాగాలు
+  DURMUHURTA_NIGHT_NUMBERS[weekdayIndex].forEach((num, i) => {
+    kalas.push(
+      windowFromJd(
+        `durmuhurta-night-${i}`,
+        'దుర్ముహూర్తం (రాత్రి)',
+        'Durmuhurtam (night)',
+        sunsetJd + (num - 1) * nightMuhurtaJd,
+        sunsetJd + num * nightMuhurtaJd,
+        tz,
+        'inauspicious',
+        'రాత్రి శుభ కార్యాలు వర్జించాలి'
       )
     );
   });

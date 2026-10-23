@@ -634,13 +634,14 @@ export interface RiseSetTimes {
 /* ------------------------------------------------------------------ *
  *  ఉదయాస్తమయ నిర్వచనం — దృక్ పంచాంగ ప్రమాణం
  * ------------------------------------------------------------------ *
- *  దృక్ పంచాంగం (మరియు స్విస్ ఎఫెమెరిస్ `rise_trans`) ఉదయాన్ని
- *  "సూర్యబింబపు *పై అంచు* క్షితిజాన్ని తాకిన క్షణం" అని నిర్ణయిస్తుంది —
- *  34′ వాతావరణ వక్రీభవనం (+ సగం వ్యాసం) సహితంగా. ఇదే భారతీయ
- *  పంచాంగ సంప్రదాయం; కేంద్రం ఆధారిత సాధారణ సూత్రం కంటే ≈70 సెకన్లు తేడా.
+ *  దృక్ పంచాంగం ("High Calendar") ఉదయాన్ని **బింబ కేంద్రం, వక్రీభవనం
+ *  లేకుండా, క్షితిజ సమతలంపై** ఉన్న క్షణం అని నిర్ణయిస్తుంది — స్విస్
+ *  ఎఫెమెరిస్ `rise_trans` లో `BIT_DISC_CENTER|BIT_NO_REFRACTION`
+ *  (= సూర్యుడికి `BIT_HINDU_RISING`) తో సమానం.
  *
- *  మునుపు `SearchRiseSet` (బింబ కేంద్రం, సాధారణ వక్రీభవనం) వాడబడేది —
- *  అది ప్రచురిత పంచాంగాలతో 1–2 నిమిషాలు తేడా ఇచ్చేది.
+ *  ఖగోళ శాస్త్ర ప్రమాణం (పై అంచు + 34′ వక్రీభవనం = ఎత్తు −0.833°) కంటే ఇది
+ *  హైదరాబాద్‌లో ≈4 నిమిషాలు ఆలస్యం — 2026-10-23: 06:14 / 17:46, డ్రిక్ తో
+ *  నిమిషం లోపు కుదిరింది. `RISE_CONVENTION` తో రెండూ లభ్యం.
  */
 
 /** క్షితిజ వక్రీభవనం (డిగ్రీలు) — 34′ */
@@ -674,17 +675,29 @@ function apparentAltitude(
   return hor.altitude;
 }
 
-/** g(jd) = వక్రీభవన సహిత కేంద్రోన్నతి + బింబ వ్యాసార్ధం (ఉదయాస్తమయ సమీకరణం) */
+/**
+ * g(jd) = ఉదయాస్తమయ సమీకరణం — నిర్వచనం ప్రకారం:
+ *   • `hindu`      : వక్రీభవనం లేని కేంద్రోన్నతి = 0 (బింబ కేంద్రం క్షితిజంపై)
+ *   • `upper-limb` : వక్రీభవన సహిత కేంద్రోన్నతి + బింబ వ్యాసార్ధం = 0
+ */
 function limbFunction(body: Astronomy.Body, observer: Astronomy.Observer, jd: number): number {
+  if (RISE_CONVENTION === 'hindu') {
+    const time = Astronomy.MakeTime(dateFromJd(jd));
+    const eq = Astronomy.Equator(body, time, observer, true, true);
+    // 'normal' = వక్రీభవనం సహితం; హిందూ సంప్రదాయానికి వక్రీభవనం తీసేస్తాము
+    const hor = Astronomy.Horizon(time, observer, eq.ra, eq.dec, 'normal');
+    const refr = Astronomy.Refraction('normal', hor.altitude);
+    return hor.altitude - refr;
+  }
   const sd = semiDiameterDeg(body, jd, observer);
   return apparentAltitude(body, jd, observer) + sd;
 }
 
 /**
- * ద్విభాజన (bisection) ద్వారా పై అంచు క్షితిజాన్ని తాకే క్షణం — 0.05 సెకన్ల
- * ఖచ్చితత్వం. ఇది స్విస్ ఎఫెమెరిస్ `rise_trans` నిర్వచనానికి సమానం:
- *   వక్రీభవన సహిత కేంద్రోన్నతి = −బింబ వ్యాసార్ధం
- *   (అంటే వక్రీభవన సహిత పై అంచి సరిగ్గా క్షితిజంపై).
+ * ద్విభాజన (bisection) ద్వారా `limbFunction` సున్నా అయ్యే క్షణం — సుమారు
+ * 0.05 సెకన్ల ఖచ్చితత్వం. ఏ నిర్వచనం వాడాలో `limbFunction` నిర్ణయిస్తుంది:
+ *   • `hindu`      : కేంద్రం, వక్రీభవనం లేదు → ఎత్తు 0° (డ్రిక్ ప్రమాణం)
+ *   • `upper-limb` : వక్రీభవన సహిత కేంద్రోన్నతి = −బింబ వ్యాసార్ధం
  */
 function refineLimbCrossing(
   body: Astronomy.Body,
@@ -718,8 +731,22 @@ function refineLimbCrossing(
 }
 
 /**
- * పై అంచు క్షితిజాన్ని దాటే క్షణం (JD, UT). కనబడని సందర్భంలో (ధ్రువ ప్రాంతాలు)
- * `null`. వక్రీభవనం + బింబ వ్యాసార్ధం రెండూ కలిపి లెక్కిస్తాము.
+ * ఉదయాస్తమయ నిర్వచనం
+ * ------------------
+ *  • `'hindu'`     — **డ్రిక్ పంచాంగ్ / హిందూ పంచాంగ సంప్రదాయం**: సూర్య బింబ
+ *                    *కేంద్రం* రేఖాంశ క్షితిజాన్ని (ఎత్తు 0°) దాటే క్షణం,
+ *                    వక్రీభవనం లెక్కించము (స్విస్ `BIT_HINDU_RISING` సమానం).
+ *  • `'upper-limb'` — ఖగోళ ప్రమాణం: పై అంచు + 34′ వక్రీభవనం (ఎత్తు −0.878°).
+ *
+ * తేడా సుమారు 3–4 నిమిషాలు; దానితో రాహుకాలం, యమగండం, గుళిక, అభిజిత్,
+ * హోర, దినమానం అన్నీ కదులుతాయి. యాప్ డిఫాల్ట్ = హిందూ (డ్రిక్) సంప్రదాయం,
+ * ఎందుకంటే వినియోగదారు పోల్చే ప్రమాణం అదే.
+ */
+export const RISE_CONVENTION: 'hindu' | 'upper-limb' = 'hindu';
+
+/**
+ * గ్రహ బింబం క్షితిజాన్ని దాటే క్షణం (JD, UT). కనబడని సందర్భంలో (ధ్రువ ప్రాంతాలు)
+ * `null`.
  */
 function upperLimbEvent(
   body: Astronomy.Body,
@@ -730,14 +757,16 @@ function upperLimbEvent(
   limitDays = 1.5
 ): number | null {
   const observer = new Astronomy.Observer(lat, lng, 0);
-  // మొదటి అంచనా: క్షితిజ వక్రీభవనం + సగటు వ్యాసార్ధం (సుమారు 0.87°) తో
+  // హిందూ (డ్రిక్) సంప్రదాయం: బింబ కేంద్రం, వక్రీభవనం లేదు → ఎత్తు 0°.
+  // ఖగోళ ప్రమాణం: పై అంచు + వక్రీభవనం → ఎత్తు −0.878°.
+  const horizonAltitude = RISE_CONVENTION === 'hindu' ? 0 : -(0.612 + 0.266);
   const coarse = Astronomy.SearchAltitude(
     body,
     observer,
     direction,
     dateFromJd(startJd),
     limitDays,
-    -(0.612 + 0.266)
+    horizonAltitude
   );
   if (!coarse) return null;
   return refineLimbCrossing(body, observer, jdFromDate(coarse.date), direction) ?? jdFromDate(coarse.date);
