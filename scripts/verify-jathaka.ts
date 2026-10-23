@@ -1313,6 +1313,14 @@ check(
     `${nums.length} పుటలు లభించాయి · JATHAKAM_PDF_PAGES = ${JATHAKAM_PDF_PAGES}`
   );
   check(
+    'PDF పుటల క్రమం DOM లోనూ, విషయ సూచిక/బుక్‌మార్క్ చిట్టాలోనూ ఒకటే (బుక్‌మార్క్‌లు పక్కకు జరగవు)',
+    (() => {
+      const domIds = [...BOOK_HTML.matchAll(/id="(grantha-p\d+)"/g)].map((m) => m[1]);
+      return domIds.length === GRANTHA_PAGES.length && domIds.every((id, i) => id === GRANTHA_PAGES[i].id);
+    })(),
+    `${(BOOK_HTML.match(/id="grantha-p\d+"/g) ?? []).length} పుటలు · చిట్టాలో ${GRANTHA_PAGES.length}`
+  );
+  check(
     'PDF సమన్వయ పుటలో కొత్త రెండు పద్ధతుల నిలువు వరుసలు (చరదశ · తాజిక) ఉన్నాయి',
     pdfSrc.includes('చరదశ') && pdfSrc.includes('తాజిక') && pdfSrc.includes('vs[6]'),
     `${pdfSrc.includes('vs[6]') ? '7 నిలువు వరుసలు కలిపారు' : 'vs[6] లేదు'}`
