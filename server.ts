@@ -27,7 +27,9 @@ import {
   upcomingFestivals,
   resolveHinduEra,
   type GeoContext,
+  type RiseConvention,
 } from './src/engine/hinduCalendarEngine.ts';
+import type { SiderealMode } from './src/engine/astroCore.ts';
 import { computeGocharaReport } from './src/engine/gocharaVedhaEngine.ts';
 import { GRANTHAS, GRANTHA_DOMAINS } from './src/engine/classicalSources.ts';
 
@@ -190,7 +192,7 @@ const savedProfiles: BirthInput[] = loadStoredProfiles() ?? [...SEED_PROFILES];
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function parseGeo(body: any): { geo: GeoContext; mode: 'lahiri' | 'raman' | 'kp' | 'true_citra' } {
+function parseGeo(body: any): { geo: GeoContext; mode: SiderealMode } {
   const lat = Number(body?.lat ?? 17.385);
   const lng = Number(body?.lng ?? 78.4867);
   const tzOffsetHours = Number(body?.tzOffsetHours ?? 5.5);
@@ -198,7 +200,7 @@ function parseGeo(body: any): { geo: GeoContext; mode: 'lahiri' | 'raman' | 'kp'
   if (!Number.isFinite(lng) || lng < -180 || lng > 180) throw new Error('lng must be between -180 and 180');
   if (!Number.isFinite(tzOffsetHours) || tzOffsetHours < -12 || tzOffsetHours > 14)
     throw new Error('tzOffsetHours must be between -12 and 14');
-  const allowed = ['lahiri', 'raman', 'kp', 'true_citra'] as const;
+  const allowed = ['lahiri', 'raman', 'kp', 'true_citra', 'sayana'] as const;
   const mode = (allowed as readonly string[]).includes(body?.ayanamsa) ? body.ayanamsa : 'lahiri';
   return {
     geo: { lat, lng, tzOffsetHours, placeName: String(body?.placeName ?? body?.city ?? '') || '—' },
@@ -212,8 +214,11 @@ app.get('/api/panchanga', (req, res) => {
     const date = String(req.query.date ?? '').trim();
     if (!ISO_DATE_RE.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
     const { geo, mode } = parseGeo(req.query);
+    const riseConvention =
+      req.query.rise === 'centre-refraction' ? 'centre-refraction' : req.query.rise === 'upper-limb' ? 'upper-limb' : 'hindu';
     const day = computeDayPanchanga(date, { ...geo, placeName: String(req.query.placeName ?? geo.placeName) }, {
       siderealMode: mode,
+      riseConvention,
     });
     res.setHeader('Cache-Control', 'public, max-age=300');
     res.json(day);

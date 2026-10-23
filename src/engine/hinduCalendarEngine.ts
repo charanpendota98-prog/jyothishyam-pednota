@@ -66,6 +66,10 @@ import {
   type RiseConvention,
   type SiderealMode,
 } from './astroCore.ts';
+
+/** ఉదయాస్తమయ నిర్వచనం, చట్రం — పంచాంగ తెర ఎంపికల కోసం తిరిగి ఎగుమతి. */
+export { RISE_CONVENTION };
+export type { RiseConvention };
 import { TELUGU_NAKSHATRAS, TELUGU_RASIS } from './teluguJathakam.ts';
 
 /* ================================================================== *
@@ -395,12 +399,17 @@ export interface HinduEraInfo {
   purnimantaMasaTe: string;
   rituTe: string;
   rituEn: string;
+  /** చంద్ర మాసం నుంచి ఋతువు (శాస్త్రీయ గణన: కార్తీకం → శరద్) */
   lunarRituTe: string;
+  lunarRituEn: string;
   ayanaTe: string;
   ayanaEn: string;
   pakshaTe: string;
   pakshaEn: string;
   solarMonthTe: string;
+  /** ఉత్తర భారత సౌర మాస నామం (సూర్యుడు తులలో → కార్తీకం, వృశ్చికంలో → మార్గశిరం) */
+  solarMasaTe: string;
+  solarMasaEn: string;
   solarMonthDay: number;
   ugadiISO: string;
 }
@@ -774,7 +783,10 @@ export function resolveHinduEra(dateISO: string, geo: GeoContext, mode: Sidereal
   const endOfDayJd = localMidnightJd(dateISO, tz) + 1 - 1e-5;
   const sunSid = siderealLongitude('Sun', endOfDayJd, mode);
   const sunSign = Math.floor(sunSid / 30) % 12;
-  const rituIdx = Math.floor(((sunSign + 12 - 0) % 12) / 2); // Mesha/Vrishabha → Vasanta
+  // సౌర ఋతువు: సౌర మాసం (సూర్యుడు మేషంలో → వైశాఖం) నుంచి లెక్క.
+  // చైత్ర-వైశాఖ = వసంత, జ్యేష్ఠ-ఆషాఢ = గ్రీష్మ … మార్గశిర-పుష్య = హేమంత.
+  // (సూర్యుడు మీనంలో = చైత్రం, అందుకే +1 తో మొదలుపెడుతున్నాం.)
+  const rituIdx = Math.floor((((sunSign + 1) % 12) + 12) % 12 / 2);
   const lunarRituIdx = Math.floor((((masa.masaIndex + 12 - 0) % 12) / 2)) % 6;
   const isUttarayana = sunSign >= 9 || sunSign <= 2; // Makara..Mithuna
 
@@ -818,11 +830,15 @@ export function resolveHinduEra(dateISO: string, geo: GeoContext, mode: Sidereal
     rituTe: RITU_NAMES[Math.min(5, Math.max(0, rituIdx))].te,
     rituEn: RITU_NAMES[Math.min(5, Math.max(0, rituIdx))].en,
     lunarRituTe: RITU_NAMES[Math.min(5, Math.max(0, lunarRituIdx))].te,
+    lunarRituEn: RITU_NAMES[Math.min(5, Math.max(0, lunarRituIdx))].en,
     ayanaTe: isUttarayana ? 'ఉత్తరాయణం (దేవమార్గం)' : 'దక్షిణాయనం (పితృమార్గం)',
     ayanaEn: isUttarayana ? 'Uttarayana' : 'Dakshinayana',
     pakshaTe: isShukla ? 'శుక్ల పక్షం' : 'కృష్ణ పక్షం',
     pakshaEn: isShukla ? 'Shukla Paksha' : 'Krishna Paksha',
     solarMonthTe: TELUGU_RASIS[sunSign]?.nameTe ?? MASA_NAMES[sunSign].te,
+    // సౌర మాస నామం: సూర్యుడు మేషంలో → వైశాఖం … తులలో → కార్తీకం, వృశ్చికంలో → మార్గశిరం
+    solarMasaTe: MASA_NAMES[(sunSign + 1) % 12].te,
+    solarMasaEn: MASA_NAMES[(sunSign + 1) % 12].en,
     solarMonthDay,
     ugadiISO: ugadiThisYear,
   };

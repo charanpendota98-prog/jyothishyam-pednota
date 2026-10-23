@@ -376,7 +376,7 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
     astro: EPHEMERIS_ACCURACY.measurements,
     panchanga: 365,
     lunar: 411,
-    rise: 4634,
+    rise: 4752,
     drik: 14,
     conventions: 9,
     festivals: 31,

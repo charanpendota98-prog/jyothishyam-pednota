@@ -35,7 +35,10 @@ import {
   type KalaWindow,
   type MonthDayCell,
   type FestivalEntry,
+  RISE_CONVENTION,
+  type RiseConvention,
 } from '../engine/hinduCalendarEngine.ts';
+import type { SiderealMode } from '../engine/astroCore.ts';
 import { SourceStrip } from './SourceStrip.tsx';
 import { STATE_DISTRICT_ATLAS, TELUGU_NAKSHATRAS } from '../engine/teluguJathakam.ts';
 import type { CompleteChartResult } from '../engine/ephemeris.ts';
@@ -184,8 +187,20 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
   const mo = useMemo(() => chart.planets.find((p) => p.id === 'Moon'), [chart]);
   const janmaNakshatraIndex = mo ? Math.floor(mo.siderealLon / (360 / 27)) : 0;
 
-  const [ayanamsaMode, setAyanamsaMode] = useState<'lahiri' | 'sayana'>('lahiri');
-  const [riseMode, setRiseMode] = useState<'hindu' | 'centre-refraction'>('hindu');
+  const [ayanamsaMode, setAyanamsaMode] = useState<SiderealMode>(() => {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('jyotishyam.ayanamsa') : null;
+    return saved === 'sayana' ? 'sayana' : 'lahiri';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('jyotishyam.ayanamsa', ayanamsaMode); } catch { /* ignore */ }
+  }, [ayanamsaMode]);
+  const [riseMode, setRiseMode] = useState<RiseConvention>(() => {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('jyotishyam.riseConvention') : null;
+    return saved === 'centre-refraction' || saved === 'upper-limb' ? saved : RISE_CONVENTION;
+  });
+  useEffect(() => {
+    try { localStorage.setItem('jyotishyam.riseConvention', riseMode); } catch { /* ignore */ }
+  }, [riseMode]);
   const day: DayPanchanga = useMemo(
     () => computeDayPanchanga(dateISO, geo, { siderealMode: ayanamsaMode, riseConvention: riseMode }),
     [dateISO, geo, ayanamsaMode, riseMode]
@@ -261,10 +276,10 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
           {[
             ['మాసం', `${day.era.masaLabelTe} (అమాంత)`],
             ['పక్షం', day.era.pakshaTe],
-            ['ఋతువు', day.era.rituTe],
+            ['ఋతువు', `${day.era.lunarRituTe}${day.era.rituTe !== day.era.lunarRituTe ? ` (సౌర: ${day.era.rituTe})` : ''}`],
             ['సంవత్సరం', `శ్రీ ${day.era.samvatsaraTe}`],
             ['అయనం', day.era.ayanaTe],
-            ['సూర్య రాశి (సౌర మాసం)', `${day.era.solarMonthTe} · ${day.era.solarMonthDay}వ దినం`],
+            ['సౌర మాసం (సంక్రమణి)', `${day.era.solarMasaTe} · ${day.era.solarMonthTe} · ${day.era.solarMonthDay}వ దినం`],
           ].map(([k, v], idx) => (
             <div key={k} className={`px-3 py-2 ${idx < 3 ? 'border-b border-white/10' : ''} ${idx % 3 !== 2 ? 'border-r border-white/10' : ''}`}>
               <div className="text-[9.5px] uppercase tracking-wider text-[#EDE8E0]/35">{k}</div>
@@ -316,8 +331,9 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
         <div className="flex items-center gap-1.5">
           <span className="text-[#EDE8E0]/45">సూర్యోదయ నిర్వచనం:</span>
           {([
-            ['hindu', 'డ్రిక్ (కేంద్రం, వక్రీభవనం లేదు)'],
+            ['hindu', 'డ్రిక్ (బింబ కేంద్రం, వక్రీభవనం లేదు)'],
             ['centre-refraction', 'ఖగోళ (కేంద్రం + వక్రీభవనం)'],
+            ['upper-limb', 'బింబ అంచు + వక్రీభవనం'],
           ] as const).map(([k, label]) => (
             <button
               key={k}
