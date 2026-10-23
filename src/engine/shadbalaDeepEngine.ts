@@ -64,7 +64,7 @@ const NAISARGIKA: Record<GrahaId7, number> = {
 };
 
 /** Deepest debilitation (Paramaneecha) longitudes, BPHS Ch. 3. */
-const DEBILITATION_POINT: Record<GrahaId7, number> = {
+export const DEBILITATION_POINT: Record<GrahaId7, number> = {
   Sun: 190,
   Moon: 213,
   Mars: 118,

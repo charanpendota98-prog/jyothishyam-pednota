@@ -59,6 +59,7 @@ import { GRANTHA_PAGES, granthaPartsTe } from '../src/engine/granthaPageMap.ts';
 import { JATHAKA_GATES } from '../src/generated/verificationStats.ts';
 import { buildGranthaProvenance } from '../src/engine/granthaProvenanceEngine.ts';
 import { generateTeluguSampoornaJathakam } from '../src/engine/teluguJathakam';
+import { auditJathakaClaims } from '../src/engine/jathakaClaimAudit';
 import { generateUpayaPariharaReport } from '../src/engine/upayaPariharaEngine';
 import { generateVerificationAndAnalysisReport } from '../src/engine/jathakaVerifications';
 import { generateAstroVisionMasterReport } from '../src/engine/astroVisionAndTransitEngine';
@@ -148,6 +149,21 @@ function nakOf(lon: number): { sign: number; deg: number; nak: string; pada: num
 
 const chartOf = (input: Parameters<typeof calculateChart>[0]): CompleteChartResult =>
   calculateChart(input);
+
+/** చరణ్ (1998-05-14 08:45, హైదరాబాద్) — స్తంభ/వాదన ఆడిట్‌కి స్థిరమైన జాతకం */
+const CHARAN_REF = chartOf({
+  name: 'Charan',
+  gender: 'male',
+  date: '1998-05-14',
+  time: '08:45',
+  lat: 17.385,
+  lng: 78.4867,
+  tzOffsetHours: 5.5,
+  city: 'Hyderabad',
+  country: 'India',
+  ayanamsa: 'lahiri',
+  houseSystem: 'whole_sign',
+} as Parameters<typeof chartOf>[0]);
 
 const KUNDALI = chartOf({
   name: 'mkjxc',
@@ -1404,6 +1420,121 @@ check(
   !/NaN/.test(BOOK_HTML) && !/>undefined</.test(BOOK_HTML),
   `${(BOOK_HTML.match(/NaN/g) ?? []).length} NaN · ${(BOOK_HTML.match(/>undefined</g) ?? []).length} undefined`
 );
+
+// ─────────────────────────────────────────────────────────────────────────
+//  జీవిత స్తంభాలు (6) — స్కోరు/బ్యాడ్జ్/అనుకూల దశలు కుండలి నుంచే (కల్పితం కాదు)
+// ─────────────────────────────────────────────────────────────────────────
+{
+
+  const PL_NAMES = ['సూర్యుడు', 'చంద్రుడు', 'కుజుడు', 'బుధుడు', 'గురువు', 'శుక్రుడు', 'శని', 'రాహువు', 'కేతువు'];
+  const scoreVectors: number[][] = [];
+
+  for (const [label, ch] of [
+    ['సూచన', KUNDALI],
+    ['చరణ్', CHARAN_REF],
+    ['1947', NADI],
+  ] as const) {
+    const jk = generateTeluguSampoornaJathakam(ch as never);
+    const pillars = jk.jeevitaPradhanaRangalu;
+    check(`${label}: జీవిత స్తంభాలు 6 ఉన్నాయి`, pillars.length === 6, `${pillars.length}`);
+    scoreVectors.push(pillars.map((p) => p.scorePercent));
+
+    for (const p of pillars) {
+      check(
+        `${label} · ${p.number}: స్కోరు 5…98 లోపు, బ్యాడ్జ్ = బ్యాండ్ · స్కోరు`,
+        p.scorePercent >= 5 &&
+          p.scorePercent <= 98 &&
+          /^(బలవత్|మధ్యమ|మిశ్రమ|శ్రద్ధార్హ|దుర్బల) · \d+\/100$/.test(p.verdictBadgeTe) &&
+          p.verdictBadgeTe.endsWith(`${p.scorePercent}/100`),
+        `${p.verdictBadgeTe} (${p.scorePercent})`
+      );
+
+      // గణన వాక్యం: భాగాల మొత్తం = స్కోరు (క్లాంప్ 5…98 వరకు)
+      const calcLine = p.analysisParagraphsTe[p.analysisParagraphsTe.length - 1] ?? '';
+      const nums = [...calcLine.matchAll(/([+\-−])(\d+)\b/g)].map((m) => (m[1] === '+' ? 1 : -1) * Number(m[2]));
+      const sum = 50 + nums.reduce((a, b) => a + b, 0);
+      const expected = Math.max(5, Math.min(98, sum));
+      check(
+        `${label} · ${p.number}: “గణన” వాక్యంలోని భాగాల మొత్తం = చూపిన స్కోరు`,
+        calcLine.startsWith('గణన:') && Math.abs(expected - p.scorePercent) <= 1,
+        `భాగాల మొత్తం ${expected} vs స్కోరు ${p.scorePercent}`
+      );
+
+      // అనుకూల దశలు — డూప్లికేట్ లేదు, ప్రతి దానికీ కారణం + తేదీలు
+      const fav = p.favorablePeriodsTe;
+      const listed = PL_NAMES.filter((n) => fav.includes(n));
+      const tokens = [...fav.matchAll(/(సూర్యుడు|చంద్రుడు|కుజుడు|బుధుడు|గురువు|శుక్రుడు|శని|రాహువు|కేతువు) \(/g)].map((m) => m[1]);
+      check(
+        `${label} · ${p.number}: అనుకూల దశల్లో గ్రహం డూప్లికేట్ లేదు, ప్రతిదానికీ కారణం+తేదీలు`,
+        new Set(tokens).size === tokens.length &&
+          tokens.length >= 1 &&
+          tokens.length <= 3 &&
+          /\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}/.test(fav) &&
+          /(భావాధిపతి|లగ్నాధిపతి|కారకుడు|నివాసి)/.test(fav),
+        `${tokens.join(' · ')} | ${listed.length} పేర్లు`
+      );
+
+      check(
+        `${label} · ${p.number}: బలహీన స్తంభంలో హామీ వాక్యాలు లేవు (మిశ్రమ/శ్రద్ధార్హ/దుర్బల)`,
+        p.scorePercent >= 60 ||
+          p.analysisParagraphsTe.some((t) => t.includes('అవసరం') || t.includes('తగదు') || t.includes('క్రమంగా')),
+        p.analysisParagraphsTe.find((t) => t.includes('అవసరం') || t.includes('తగదు'))?.slice(0, 60) ?? '—'
+      );
+    }
+  }
+
+  // స్కోర్లు నిజంగా కుండలిని బట్టి మారుతున్నాయా? (స్థిరాంకం అయితే ఇది విఫలం)
+  const flat = scoreVectors[0].every((v, i) => scoreVectors.every((vec) => vec[i] === v));
+  const sameWithinChart = scoreVectors.some((vec) => new Set(vec).size < 3);
+  check(
+    'స్తంభ స్కోర్లు కుండలిని బట్టి మారుతాయి (స్థిరాంకాలు/కల్పితం కాదు)',
+    !flat && !sameWithinChart,
+    scoreVectors.map((v) => v.join('/')).join('  ||  ')
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  జాతక వాదనల స్వతంత్ర ఆడిట్ — పాఠ్యంలోని ప్రతి స్థాన-వాదన కుండలితో పోలిక
+//  (“బుధుడు 11వ ఇంట”, “7వ భావం (ధనుస్సు)”, “రాహువు 3వ ఇంట (సింహ రాశి, మఘ నక్షత్రం)”)
+// ─────────────────────────────────────────────────────────────────────────
+{
+  for (const [label, ch] of [
+    ['సూచన', KUNDALI],
+    ['చరణ్', CHARAN_REF],
+    ['1947', NADI],
+  ] as const) {
+    const jk = generateTeluguSampoornaJathakam(ch as never);
+    const audit = auditJathakaClaims(jk, ch as never);
+    const byKind = new Map<string, { checked: number; failed: number }>();
+    for (const c of audit.checks) {
+      const k = byKind.get(c.kindTe) ?? { checked: 0, failed: 0 };
+      k.checked++;
+      if (!c.ok) k.failed++;
+      byKind.set(c.kindTe, k);
+    }
+    check(
+      `${label}: గ్రంథంలోని స్థాన-వాదనలు అన్నీ కుండలికి సరిపోతాయి`,
+      audit.failed === 0 && audit.checked >= 40,
+      `${audit.checked} వాదనలు · ${audit.failed} తేడాలు · ${audit.skipped} అస్పష్టం`
+    );
+    for (const [kind, v] of byKind) {
+      check(
+        `${label}: “${kind}” వాదనలు ${v.checked} — తేడాలు ${v.failed}`,
+        v.failed === 0,
+        v.failed === 0 ? 'సరైనది' : `${v.failed} తప్పు`
+      );
+    }
+    // పిల్లర్ల అనుకూల దశలు — చేతితో రాసిన జాబితా (గ్రహం పేర్లు మాత్రమే, తేదీ లేకుండా) ఉండకూడదు
+    const literalDasha = jk.jeevitaPradhanaRangalu.filter(
+      (p) => /దశలు|అంతర్దశలు/.test(p.favorablePeriodsTe) && !/\d{4}-\d{2}-\d{2}/.test(p.favorablePeriodsTe)
+    );
+    check(
+      `${label}: స్తంభాల అనుకూల దశలు గ్రహ జాబితా కావు — తేదీలతో కూడిన నిజ గణన`,
+      literalDasha.length === 0,
+      `${jk.jeevitaPradhanaRangalu.length} స్తంభాలు · జాబితా మాత్రమే ${literalDasha.length}`
+    );
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 //  అవకహడ / ఘాత చక్రం — అధ్యాయం 1A ఇంజిన్ స్థిరత్వం

@@ -1,4 +1,5 @@
 import { ZODIAC_SIGNS, type CompleteChartResult } from './ephemeris.ts';
+import { computePillarScore, PILLAR_SPECS } from './pillarBalaEngine.ts';
 import { TELUGU_RASIS } from './rasiNames.ts';
 import { computeLagnaFunctional, PLANET_TE } from './lagnaFunctionalEngine.ts';
 
@@ -318,7 +319,7 @@ export const TELUGU_NAKSHATRAS: {
   { index: 6, nameTe: 'పునర్వసు', nameEn: 'Punarvasu', lordTe: 'గురువు', deityTe: 'అదితి దేవత', ganaTe: 'దేవ గణం', yoniTe: 'మార్జాల (పిల్లి)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'నాభి రజ్జు', padasTe: ['కే', 'కో', 'హా', 'హీ'] },
   { index: 7, nameTe: 'పుష్యమి', nameEn: 'Pushya', lordTe: 'శని', deityTe: 'బృహస్పతి', ganaTe: 'దేవ గణం', yoniTe: 'మేష (గొర్రె)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'కటి రజ్జు', padasTe: ['హూ', 'హే', 'హో', 'డా'] },
   { index: 8, nameTe: 'ఆశ్లేష', nameEn: 'Ashlesha', lordTe: 'బుధుడు', deityTe: 'నాగ దేవతలు', ganaTe: 'రాక్షస గణం', yoniTe: 'మార్జాల (పిల్లి)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'పాద రజ్జు', padasTe: ['డీ', 'డూ', 'డే', 'డో'] },
-  { index: 9, nameTe: 'మఖ', nameEn: 'Magha', lordTe: 'కేతువు', deityTe: 'పితృ దేవతలు', ganaTe: 'రాక్షస గణం', yoniTe: 'మూషిక (ఎలుక)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'పాద రజ్జు', padasTe: ['మా', 'మీ', 'మూ', 'మే'] },
+  { index: 9, nameTe: 'మఘ', nameEn: 'Magha', lordTe: 'కేతువు', deityTe: 'పితృ దేవతలు', ganaTe: 'రాక్షస గణం', yoniTe: 'మూషిక (ఎలుక)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'పాద రజ్జు', padasTe: ['మా', 'మీ', 'మూ', 'మే'] },
   { index: 10, nameTe: 'పుబ్బ (పూర్వ ఫల్గుణి)', nameEn: 'Purva Phalguni', lordTe: 'శుక్రుడు', deityTe: 'భగ దేవుడు', ganaTe: 'మనుష్య గణం', yoniTe: 'మూషిక (ఎలుక)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'కటి రజ్జు', padasTe: ['మో', 'టా', 'టీ', 'టూ'] },
   { index: 11, nameTe: 'ఉత్తర (ఉత్తర ఫల్గుణి)', nameEn: 'Uttara Phalguni', lordTe: 'సూర్యుడు (రవి)', deityTe: 'అర్యముడు', ganaTe: 'మనుష్య గణం', yoniTe: 'గో (ఆవు)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'నాభి రజ్జు', padasTe: ['టే', 'టో', 'పా', 'పీ'] },
   { index: 12, nameTe: 'హస్త', nameEn: 'Hasta', lordTe: 'చంద్రుడు', deityTe: 'సవితృ (సూర్యుడు)', ganaTe: 'దేవ గణం', yoniTe: 'మహిష (దున్న)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['పూ', 'ష', 'ణ', 'ఠ'] },
@@ -2190,7 +2191,31 @@ export function generateTeluguSampoornaJathakam(
     ashtakavargaTableTe,
     tarabalaChakraTe,
     granthaPramanaResearch,
-    jeevitaPradhanaRangalu,
+    jeevitaPradhanaRangalu: jeevitaPradhanaRangalu.map((pillar) => {
+      // స్కోరు/బ్యాడ్జ్/అనుకూల దశలు — చేతితో రాసిన స్థిరాంకాలు కాదు; కుండలి నుంచే.
+      const spec = PILLAR_SPECS[pillar.id];
+      if (!spec) return pillar;
+      const computed = computePillarScore(chart, spec);
+      const cautionTe =
+        computed.band === 'misra'
+          ? 'ఈ రంగంలో ప్రయత్నం + సమయం రెండూ అవసరం; ఫలితం క్రమంగా, కొంత ఆలస్యంతో వస్తుంది.'
+          : computed.band === 'shraddha'
+            ? 'ఈ రంగం బలహీనంగా ఉంది — శ్రద్ధ, క్రమశిక్షణ మరియు పరిహారం అవసరం. ఇక్కడ హామీ ఇవ్వడం తగదు.'
+            : computed.band === 'durbala'
+              ? 'ఈ రంగం దుర్బలం — ఊహించి చెప్పడం తగదు; పరిహారాలు మరియు నిపుణుల సలహా ముఖ్యం.'
+              : '';
+      return {
+        ...pillar,
+        scorePercent: computed.score,
+        verdictBadgeTe: `${computed.bandTe} · ${computed.score}/100`,
+        analysisParagraphsTe: [
+          computed.leadTe,
+          ...(computed.score >= 60 ? pillar.analysisParagraphsTe.slice(1) : cautionTe ? [cautionTe] : []),
+          `గణన: ${computed.derivationTe}.`,
+        ],
+        favorablePeriodsTe: computed.favorableTe,
+      };
+    }),
     dwadashaBhavaPhalitalu,
     sampoornaDashaKalachakram,
     doshaParikshana,
