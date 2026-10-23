@@ -41,21 +41,23 @@ const golden = JSON.parse(readFileSync('scripts/golden/ephemeris-golden.json', '
 
 const TOL: Record<string, number> = {
   ayanamsa: 0.0005,
+  // సహనం ఇప్పుడు 0.01° (36″) — స్విస్ ఎఫెమెరిస్ తో నిజమైన గరిష్ఠ భేదం 23″ కంటే
+  // కఠినమైన గీత.  ఇంతకుముందు 0.03° ఉండేది; ఇప్పుడు గ్రహ స్ఫుటాలన్నీ 36″ లోపే.
   Sun: 0.01,
-  Moon: 0.02,
-  Mars: 0.03,
-  Mercury: 0.03,
-  Jupiter: 0.03,
-  Venus: 0.03,
-  Saturn: 0.03,
-  Uranus: 0.03,
-  Neptune: 0.03,
-  Pluto: 0.03,
-  Rahu: 0.03,
-  Ketu: 0.03,
-  RahuTrue: 0.03,
-  asc: 0.03,
-  mc: 0.05,
+  Moon: 0.01,
+  Mars: 0.01,
+  Mercury: 0.01,
+  Jupiter: 0.01,
+  Venus: 0.01,
+  Saturn: 0.01,
+  Uranus: 0.01,
+  Neptune: 0.01,
+  Pluto: 0.01,
+  Rahu: 0.01,
+  Ketu: 0.01,
+  RahuTrue: 0.01,
+  asc: 0.01,
+  mc: 0.01,
 };
 
 /** అయనాంశ విధానాల సహనం — నక్షత్ర ఆధారిత నిజ చిత్రా/పుష్య కొంచెం విశాలం */

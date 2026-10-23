@@ -83,7 +83,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "లగ్నం",
       "maxDeg": 0.000073,
       "maxArcsec": 0.26,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "Charan 1998-05-14 08:45 IST Hyderabad"
     },
     {
@@ -91,7 +91,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "మధ్యాకాశం",
       "maxDeg": 0.000071,
       "maxArcsec": 0.26,
-      "tolDeg": 0.05,
+      "tolDeg": 0.01,
       "where": "random 14"
     },
     {
@@ -107,7 +107,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "చంద్రుడు",
       "maxDeg": 0.001274,
       "maxArcsec": 4.59,
-      "tolDeg": 0.02,
+      "tolDeg": 0.01,
       "where": "mkjxc 2026-10-22 22:55 IST Hyderabad"
     },
     {
@@ -115,7 +115,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "కుజుడు",
       "maxDeg": 0.003109,
       "maxArcsec": 11.19,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "Year forecast 1988-09-21 10:18 IST Hansi"
     },
     {
@@ -123,7 +123,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "బుధుడు",
       "maxDeg": 0.002278,
       "maxArcsec": 8.2,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "2024 total solar eclipse Dallas"
     },
     {
@@ -131,7 +131,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "గురువు",
       "maxDeg": 0.001579,
       "maxArcsec": 5.68,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "random 7"
     },
     {
@@ -139,7 +139,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "శుక్రుడు",
       "maxDeg": 0.005657,
       "maxArcsec": 20.37,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "mkjxc 2026-10-22 22:55 IST Hyderabad"
     },
     {
@@ -147,7 +147,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "శని",
       "maxDeg": 0.002888,
       "maxArcsec": 10.4,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "mkjxc 2026-10-22 22:55 IST Hyderabad"
     },
     {
@@ -155,7 +155,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "యురేనస్",
       "maxDeg": 0.003101,
       "maxArcsec": 11.16,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "J2000 Greenwich"
     },
     {
@@ -163,7 +163,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "నెప్ట్యూన్",
       "maxDeg": 0.004839,
       "maxArcsec": 17.42,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "Mumbai 2015"
     },
     {
@@ -171,7 +171,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "ప్లూటో",
       "maxDeg": 0.000955,
       "maxArcsec": 3.44,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "1900 Chennai"
     },
     {
@@ -179,7 +179,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "రాహు (మధ్యమ)",
       "maxDeg": 0.004688,
       "maxArcsec": 16.88,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "random 14"
     },
     {
@@ -187,7 +187,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "కేతు (మధ్యమ)",
       "maxDeg": 0.004688,
       "maxArcsec": 16.88,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "random 14"
     },
     {
@@ -195,7 +195,7 @@ export const EPHEMERIS_ACCURACY = {
       "labelTe": "రాహు (సత్య)",
       "maxDeg": 0.006374,
       "maxArcsec": 22.95,
-      "tolDeg": 0.03,
+      "tolDeg": 0.01,
       "where": "New York 1975"
     }
   ],
