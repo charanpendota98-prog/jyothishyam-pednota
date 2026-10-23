@@ -2003,16 +2003,17 @@ export const ClassicalJathakaPdfDocument: React.FC<
       </section>
 
       {/* ===================================================================== */}
-      {/* PAGE 14: SAPT? — షట్-సంప్రదాయ సమన్వయం (multi-school convergence)        */}
+      {/* PAGE 14: SAPTA — సప్త-సంప్రదాయ సమన్వయం (multi-school convergence)        */}
       {/* ===================================================================== */}
       <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={14} pageTitleTe="పండిత విచారణ — షట్-సంప్రదాయ సమన్వయం (Multi-School Convergence)" />
+        <PageHeaderStrip pageNum={14} pageTitleTe="పండిత విచారణ — సప్త-సంప్రదాయ సమన్వయం (Multi-School Convergence)" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-2 text-[10.5px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">పద్ధతి: </strong>
-          ఒకే భావాన్ని ఐదు స్వతంత్ర సంప్రదాయాలు విడివిడిగా లెక్కించాయి — పారాశరీ (భావేశ స్థానం · క్షేత్రం · నివాసులు),
+          ఒకే భావాన్ని ఏడు స్వతంత్ర సంప్రదాయాలు విడివిడిగా లెక్కించాయి — పారాశరీ (భావేశ స్థానం · క్షేత్రం · నివాసులు),
           అష్టకవర్గ (సర్వాష్టకవర్గ బిందువులు, సగటు 28.08), జైమిని (చర కారకులు AK…DK · రాశి దృష్టి), వింశోత్తరి
-          (మహాదశా/భుక్తి అధిపతుల భావ సంబంధం), కేపీ (కస్ప్ సబ్-లార్డ్, 249 ఉప-విభాగం). ప్రతి స్కోరు −2 … +2.
+          (మహాదశా/భుక్తి అధిపతుల భావ సంబంధం), కేపీ (కస్ప్ సబ్-లార్డ్, 249 ఉప-విభాగం), చరదశ (నడుస్తున్న జైమిని రాశి దశ · రాశి దృష్టి),
+          తాజిక (ఈ సంవత్సరపు వర్ష లగ్నం · ముంథ · వర్షేశుడు). ప్రతి స్కోరు −2 … +2.
           ఒక్క పద్ధతి తీర్పు కాదు — సగటు <em>మరియు</em> వ్యాప్తి రెండూ చూడాలి. లగ్నం {samanyaya.lagnaRasiTe} · జన్మ నక్షత్రం {samanyaya.lagnaMasaTe}.
         </div>
 
@@ -2028,15 +2029,17 @@ export const ClassicalJathakaPdfDocument: React.FC<
         <table className="w-full border-collapse border border-[#8B6914] text-[9.5px]">
           <thead>
             <tr className="bg-[#7A1818] text-white">
-              <th className="py-1 px-1.5 text-left font-bold w-[21%]">భావం (జీవనాంగం)</th>
+              <th className="py-1 px-1.5 text-left font-bold w-[17%]">భావం (జీవనాంగం)</th>
               <th className="py-1 px-1 text-center font-bold">పారా</th>
               <th className="py-1 px-1 text-center font-bold">అష్ట</th>
               <th className="py-1 px-1 text-center font-bold">జైమి</th>
               <th className="py-1 px-1 text-center font-bold">వింశో</th>
               <th className="py-1 px-1 text-center font-bold">కేపీ</th>
+              <th className="py-1 px-1 text-center font-bold">చరదశ</th>
+              <th className="py-1 px-1 text-center font-bold">తాజిక</th>
               <th className="py-1 px-1 text-center font-bold">సగటు</th>
               <th className="py-1 px-1 text-center font-bold">వ్యా.</th>
-              <th className="py-1 px-1.5 text-left font-bold">ప్రధాన తీర్పు / కాలం</th>
+              <th className="py-1 px-1 text-left font-bold">ప్రధాన తీర్పు / కాలం</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#8B6914]/40">
@@ -2061,6 +2064,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
                   {cell(vs[2].score)}
                   {cell(vs[3].score)}
                   {cell(vs[4].score)}
+                  {cell(vs[5]?.score ?? 0)}
+                  {cell(vs[6]?.score ?? 0)}
                   <td className="py-0.5 px-1 text-center font-bold font-mono" style={{ color: tone }}>
                     {d.consensusScore > 0 ? '+' : ''}{d.consensusScore.toFixed(2)}
                   </td>

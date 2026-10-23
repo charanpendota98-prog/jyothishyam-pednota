@@ -103,7 +103,7 @@ const VARGA_TABS: { code: VargaDivision; labelTe: string; subtitleTe: string }[]
 export const JATHAKAM_CHAPTERS: { id: JathakamChapter; labelTe: string; icon: React.ReactNode }[] = [
     { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (అన్ని అధ్యాయాలు)', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'pandita_vicharam', labelTe: 'పండిత విచారణ — జాతకం అసలు ఏమిటి? (స్తంభాలు · బలం · భావాలు · నేరుగా సమాధానాలు)', icon: <Award className="w-3.5 h-3.5" /> },
-    { id: 'sampradaya_samanyaya', labelTe: 'పండిత విచారణ–2. షట్-సంప్రదాయ సమన్వయం (పారాశరీ · జైమిని · అష్టకవర్గ · వింశోత్తరి · కేపీ)', icon: <Scale className="w-3.5 h-3.5" /> },
+    { id: 'sampradaya_samanyaya', labelTe: 'పండిత విచారణ–2. సప్త-సంప్రదాయ సమన్వయం (పారాశరీ · జైమిని · అష్టకవర్గ · వింశోత్తరి · కేపీ)', icon: <Scale className="w-3.5 h-3.5" /> },
     { id: 'sampoorna_jeevita_charitra', labelTe: '0. సంపూర్ణ జీవిత చరిత్ర (0–100 సం. 7 పర్వాలు & నవగ్రహ ఫలితాలు)', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'sookshma_nadi_kp', labelTe: '0A. 100% కుండలి సూక్ష్మ నాడి, భావాధిపతి, KP సబ్-లార్డ్ & 18 మూల గ్రంథాలు', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'tajika_varshaphala', labelTe: '0B. తాజిక వర్షఫలం & 12-నెలల దినచర్య ఫలితాలు (Varshaphala & 12-Month)', icon: <Calendar className="w-3.5 h-3.5" /> },
@@ -755,20 +755,20 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
       )}
 
       {/* ==================================================================================== */}
-      {/* పండిత విచారణ–2: షట్-సంప్రదాయ సమన్వయం */}
+      {/* పండిత విచారణ–2: సప్త-సంప్రదాయ సమన్వయం */}
       {/* ==================================================================================== */}
       {showSection('sampradaya_samanyaya') && (
         <div className="space-y-5 print-page-break">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
             <div>
               <div className="text-[11px] uppercase tracking-widest text-[#5BBFB5] font-bold flex items-center gap-2">
-                <Scale className="w-4 h-4" /> పండిత విచారణ–2 · షట్-సంప్రదాయ సమన్వయం
+                <Scale className="w-4 h-4" /> పండిత విచారణ–2 · సప్త-సంప్రదాయ సమన్వయం
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-[#EDE8E0] mt-1">
-                ఒకే జాతకం — ఐదు స్వతంత్ర పద్ధతులు · ఏకాభిప్రాయం ఎక్కడ, భేదం ఎక్కడ?
+                ఒకే జాతకం — ఏడు స్వతంత్ర పద్ధతులు · ఏకాభిప్రాయం ఎక్కడ, భేదం ఎక్కడ?
               </h2>
               <p className="text-[11.5px] text-[#EDE8E0]/60 mt-1 max-w-3xl leading-relaxed">
-                ప్రతి భావానికి పారాశరీ, అష్టకవర్గ, జైమిని, వింశోత్తరి, కేపీ — ఐదు గణనలు విడివిడిగా జరిగి, స్కోరుతో సహా చూపబడతాయి.
+                ప్రతి భావానికి పారాశరీ, అష్టకవర్గ, జైమిని, వింశోత్తరి, కేపీ, చరదశ (జైమిని), తాజిక (వర్షఫలం) — ఏడు గణనలు విడివిడిగా జరిగి, స్కోరుతో సహా చూపబడతాయి.
                 ఒక్క పద్ధతి చెప్పినది తీర్పు కాదు; ఏకీభవిస్తే బలంగా, భిన్నిస్తే కారణంతో చెబుతాము. ప్రతి సంఖ్య మీ కుండలి నుంచే.
               </p>
             </div>

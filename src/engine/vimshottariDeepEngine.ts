@@ -54,7 +54,7 @@ export const DASHA_LEVEL_NAMES_TE: Record<DashaLevelId, string> = {
   PrD: 'ప్రాణదశ',
 };
 
-const DA_SHA_YEAR_DAYS = 365.25;
+export const DA_SHA_YEAR_DAYS = 365.25;
 const MS_PER_YEAR = DA_SHA_YEAR_DAYS * 86400 * 1000;
 const DAY_MS = 86400 * 1000;
 

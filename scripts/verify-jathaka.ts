@@ -1267,11 +1267,16 @@ check(
     `${nums.length} పుటలు లభించాయి · JATHAKAM_PDF_PAGES = ${JATHAKAM_PDF_PAGES}`
   );
   check(
-    'PDF పుస్తకంలో షట్-సంప్రదాయ సమన్వయ పుట ఉంది (12 భావాలు × 5 పద్ధతులు)',
-    pdfSrc.includes('షట్-సంప్రదాయ సమన్వయం') &&
+    'PDF సమన్వయ పుటలో కొత్త రెండు పద్ధతుల నిలువు వరుసలు (చరదశ · తాజిక) ఉన్నాయి',
+    pdfSrc.includes('చరదశ') && pdfSrc.includes('తాజిక') && pdfSrc.includes('vs[6]'),
+    `${pdfSrc.includes('vs[6]') ? '7 నిలువు వరుసలు కలిపారు' : 'vs[6] లేదు'}`
+  );
+  check(
+    'PDF పుస్తకంలో సప్త-సంప్రదాయ సమన్వయ పుట ఉంది (12 భావాలు × 7 పద్ధతులు)',
+    pdfSrc.includes('సప్త-సంప్రదాయ సమన్వయం') &&
       pdfSrc.includes('samanyaya.domains.map') &&
       /12|samanyaya\.domains/.test(pdfSrc),
-    `పేజీ టెక్స్ట్ ${pdfSrc.includes('షట్-సంప్రదాయ సమన్వయం') ? 'ఉంది' : 'లేదు'}`
+    `పేజీ టెక్స్ట్ ${pdfSrc.includes('సప్త-సంప్రదాయ సమన్వయం') ? 'ఉంది' : 'లేదు'}`
   );
 }
 check(

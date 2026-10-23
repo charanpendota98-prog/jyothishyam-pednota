@@ -1,11 +1,11 @@
 /**
- * sampradayaSamanyayaEngine.ts — షట్-సంప్రదాయ సమన్వయ విచారణ
+ * sampradayaSamanyayaEngine.ts — సప్త-సంప్రదాయ సమన్వయ విచారణ
  * ---------------------------------------------------------------------------
  * ఒక్క పద్ధతి చెప్పినది “తీర్పు” కాదు. ఒక పెద్ద పండితుడు ఒకే విషయాన్ని
  * ఆరు స్వతంత్ర సంప్రదాయాలతో పరిశీలించి, అవి ఏకీభవిస్తే బలంగా చెబుతాడు;
  * భిన్నిస్తే ఎందుకు భిన్నించాయో విడమర్చి చెబుతాడు.
  *
- * ఈ ఇంజిన్ ప్రతి భావానికి (1–12) ఐదు స్వతంత్ర గణనలను నిర్వహిస్తుంది:
+ * ఈ ఇంజిన్ ప్రతి భావానికి (1–12) ఏడు స్వతంత్ర గణనలను నిర్వహిస్తుంది:
  *   1. పారాశరీ   — భావేశుడు ఎక్కడ (శుభ/పాప స్థానం), క్షేత్ర బలం, భావ నివాసులు
  *   2. అష్టకవర్గ — ఆ భావ రాశి సాముదాయిక బిందువులు (సగటు 337/12 = 28.08)
  *   3. జైమిని    — కారకుడు (AK/AmK/BK/MK/PiK/PK/GK/DK) స్థానం, లేక చర దశా రాశి
@@ -14,6 +14,10 @@
  *                  భుక్తుల్లో ఏ తేదీల్లో ఆ భావం సక్రియమవుతుంది
  *   5. కేపీ       — భావ కస్ప్ సబ్-లార్డ్ (249 ఉప-విభాగం) ఆ భావానికి
  *                  సిగ్నిఫికేటరా, లేక 6/8/12 కి చెందినదా
+ *   6. చరదశ      — నడుస్తున్న జైమిని చర దశా రాశి, ఆ భావ రాశితో సంబంధం
+ *                  (స్వదశ / రాశి దృష్టి / దుష్ట స్థానం)
+ *   7. తాజిక      — ఈ సంవత్సరపు వర్షఫలం: ముంథ స్థానం, వర్షేశుడు
+ *                  (తాజిక నీలకంఠి — వర్ష లగ్న, ముంథ సిద్ధాంతం)
  *
  * ఏ వాక్యమూ “ఊహ” కాదు: ప్రతి తీర్పు వెనుక ఒక సంఖ్య ఉంటుంది (భావం, రాశి,
  * క్షేత్రం, బిందువు, దశా తేదీ, సబ్-లార్డ్). ఏది జాతకం చెప్పలేదో కూడా
@@ -22,9 +26,17 @@
 
 import type { CompleteChartResult, PlanetPosition } from './ephemeris.ts';
 import { SIGN_LORD, RASI_TE, PLANET_TE, type PlanetId9 } from './lagnaFunctionalEngine.ts';
-import { computeVimshottariDeep, expandNine } from './vimshottariDeepEngine.ts';
+import {
+  computeVimshottariDeep,
+  expandNine,
+  DA_SHA_YEAR_DAYS,
+} from './vimshottariDeepEngine.ts';
 import { computeKpStarAndSubLord } from './kundaliSookshmaNadiEngine.ts';
-import { getJaiminiRasiDrishtiSigns } from './jaiminiCharaDashaEngine.ts';
+import {
+  getJaiminiRasiDrishtiSigns,
+  calculateJaiminiCharaDasha,
+} from './jaiminiCharaDashaEngine.ts';
+import { generateTajikaVarshaphalaReport } from './tajikaVarshaphalaEngine.ts';
 
 const SEVEN: PlanetId9[] = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
 const ALL9: PlanetId9[] = [...SEVEN, 'Rahu', 'Ketu'];
@@ -141,7 +153,7 @@ export interface DomainWindow {
 export interface DomainReading {
   house: number;
   domainTe: string;
-  /** 5 సంప్రదాయాల తీర్పులు */
+  /** 7 సంప్రదాయాల తీర్పులు */
   verdicts: SchoolVerdict[];
   /** సగటు — −2 … +2 */
   consensusScore: number;
@@ -169,7 +181,12 @@ export interface SampradayaReport {
   prabhutvaTe: string;
 }
 
-const YEAR_MS = 365.2425 * 24 * 3600 * 1000;
+/**
+ * సంవత్సర కొలత — వింశోత్తరి ఇంజిన్ (DA_SHA_YEAR_DAYS = 365.25) తో ఏకరూపంగా
+ * 365.25 రోజులు. ముందు 365.2425 వాడటం వల్ల దశా కిటికీలు కొన్ని గంటలు
+ * జరిగేవి; ఇప్పుడు ఒకే కొలత.
+ */
+const YEAR_MS = DA_SHA_YEAR_DAYS * 24 * 3600 * 1000;
 const isoOf = (ms: number, tz: number) => {
   const d = new Date(ms + tz * 3600 * 1000);
   const p = (n: number) => String(n).padStart(2, '0');
@@ -206,6 +223,8 @@ export function computeSampradayaSamanyaya(chart: CompleteChartResult): Samprada
   const signOf = (p: PlanetPosition) => signOfLon(p.siderealLon);
   const houseOf = (p: PlanetPosition) => ((signOf(p) - lagnaSign + 12) % 12) + 1;
   const signOfHouse = (h: number) => (lagnaSign + h - 1) % 12;
+  const planetsOfSign = (sign: number) =>
+    chart.planets.filter((p) => signOfLon(p.siderealLon) === sign);
   const lordOfHouse = (h: number) => SIGN_LORD[signOfHouse(h)];
   const sav = chart.ashtakavarga?.sarvashtakavarga ?? new Array(12).fill(0);
   const karakas = computeKarakas(planets);
@@ -220,6 +239,18 @@ export function computeSampradayaSamanyaya(chart: CompleteChartResult): Samprada
   const currentBhukti = currentMaha.children?.find(
     (b) => nowMs >= b.startMs && nowMs < b.endMs
   );
+
+  // ---------- జైమిని చర దశ & తాజిక వర్షఫలం (ఒకసారి) ----------
+  const chara = calculateJaiminiCharaDasha(chart, 'kn_rao');
+  const charaCurrent =
+    chara.mahadashas.find((m) => m.isCurrent) ??
+    chara.mahadashas.find((m) => {
+      const start = Date.parse(`${m.startDate}T00:00:00Z`);
+      const end = Date.parse(`${m.endDate}T00:00:00Z`);
+      return Number.isFinite(start) && Number.isFinite(end) && nowMs >= start && nowMs < end;
+    }) ??
+    null;
+  const tajika = generateTajikaVarshaphalaReport(chart, new Date().getFullYear());
 
   /** ఇచ్చిన గ్రహం H భావానికి కారకమా? (అధిపతి / నివాసి / కారకుడు) */
   const relatesToHouse = (id: PlanetId9, h: number): 0 | 1 | 2 => {
@@ -367,6 +398,114 @@ export function computeSampradayaSamanyaya(chart: CompleteChartResult): Samprada
         schoolTe: 'కేపీ',
         ruleTe: 'కృష్ణమూర్తి పద్ధతి: కస్ప్ సబ్-లార్డ్ ఆ భావానికి సిగ్నిఫికేటర్ అయితే ఫలం; 6/8/12 ప్రధానమైతే నిషేధం',
         evidenceTe: evidence || 'కస్ప్ లభించలేదు — ఈ విభాగం లెక్కించబడలేదు.',
+        score: roundScore(score),
+      });
+    }
+
+    // ---------- 6. చరదశ (జైమిని) ----------
+    {
+      const cur = charaCurrent;
+      let score = 0;
+      let evidence = 'నడుస్తున్న చర దశా రాశి లభించలేదు — ఈ పద్ధతి లెక్కించబడలేదు.';
+      if (cur) {
+        const rela = ((houseSign - cur.rasiIndex + 12) % 12) + 1; // దశా రాశి నుంచి భావ రాశి
+        const drishti = getJaiminiRasiDrishtiSigns(cur.rasiIndex);
+        const sees = drishti.includes(houseSign);
+        const same = cur.rasiIndex === houseSign;
+        const dust = [6, 8, 12].includes(rela);
+        const trikona = [5, 9].includes(rela);
+
+        // జైమిని నియమం: దశా రాశ్యధిపతి ఎక్కడ ఉన్నాడు, భావేశుడు దశా రాశిలో ఉన్నాడా
+        const dashaRasiLord = SIGN_LORD[cur.rasiIndex as 0] as PlanetId9;
+        const dashaLordHere = planetsOfSign(houseSign).some(
+          (p) => p.id === dashaRasiLord
+        );
+        const houseLord = SIGN_LORD[houseSign] as PlanetId9;
+        const houseLordInDasha = planetsOfSign(cur.rasiIndex).some(
+          (p) => p.id === houseLord
+        );
+
+        let base = same ? 1.5 : sees ? 0.8 : dust ? -1.1 : trikona ? 0.5 : 0;
+        if (dashaLordHere) base += 0.8;
+        if (houseLordInDasha) base += 0.5;
+        score = clamp(base);
+
+        const reasons: string[] = [];
+        if (same) reasons.push('దశా రాశియే భావ రాశి — ఈ కాలంలో ఈ అంశం నేరుగా ముందుకు వస్తుంది');
+        if (sees) reasons.push('దశా రాశి ఈ భావ రాశిని రాశి దృష్టితో చూస్తోంది — పరోక్ష క్రియ');
+        if (dust && !same) reasons.push('భావ రాశి దశా రాశి నుంచి దుష్ట స్థానంలో — శ్రమ/ఆటంకం');
+        if (trikona) reasons.push('త్రికోణ (5/9) సంబంధం — సహజ సహకారం');
+        if (dashaLordHere)
+          reasons.push(`దశా రాశ్యధిపతి ${PLANET_TE[dashaRasiLord]} ఈ భావ రాశిలోనే — దశా ఫలం ఇక్కడ కేంద్రీకృతం`);
+        if (houseLordInDasha)
+          reasons.push(`భావేశుడు ${PLANET_TE[houseLord]} దశా రాశిలో — భావ విషయం ఈ దశలో లాగబడుతోంది`);
+        if (reasons.length === 0)
+          reasons.push('తటస్థ సంబంధం — ఈ దశలో ఈ అంశం ప్రధానం కాదు');
+
+        evidence =
+          `నడుస్తున్న చరదశ ${cur.rasiNameTe} (${cur.startDate} – ${cur.endDate}, ` +
+          `${cur.durationYears} సం.). దశా రాశి నుంచి ${h}వ భావ రాశి ${RASI_TE[houseSign]} ${rela}వ స్థానం; ` +
+          `రాశి దృష్టి ${sees ? 'ఉంది' : 'లేదు'}. ` +
+          reasons.join('; ') + '.';
+      }
+      verdicts.push({
+        schoolTe: 'చరదశ',
+        ruleTe: 'జైమిని చర దశ: నడుస్తున్న రాశి దశలో ఆ రాశి/దృష్టి/దుష్ట స్థాన సంబంధం ప్రకారం కాల నిర్ణయం (జైమిని సూత్రాలు, KN రావు క్రమం)',
+        evidenceTe: evidence,
+        score: roundScore(score),
+      });
+    }
+
+    // ---------- 7. తాజిక (వర్షఫలం) ----------
+    {
+      const vl = tajika.varshaChart.ascendant.signIndex;
+      const varshaHouseSign = (vl + h - 1) % 12;
+      const munthaHouse = ((tajika.munthaRasiIndex - vl + 12) % 12) + 1;
+      const varsheshaP = tajika.varshaChart.planets.find(
+        (p) => p.id === tajika.varsheshwaraPlanetId
+      );
+      const varsheshaHouse = varsheshaP
+        ? ((signOf(varsheshaP) - vl + 12) % 12) + 1
+        : 0;
+      const ownsHa = SIGN_LORD[varshaHouseSign] === (tajika.varsheshwaraPlanetId as PlanetId9);
+      const sitsHa = varsheshaHouse === h;
+      const munthaHere = munthaHouse === h;
+      const fromMuntha = ((varshaHouseSign - tajika.munthaRasiIndex + 12) % 12) + 1;
+      const munthaDust = [6, 8, 12].includes(fromMuntha);
+      // వర్ష కుండలిలో ఆ భావ రాశిలో ఉన్న గ్రహాలు (సంవత్సర సక్రియత)
+      const varshaOcc = tajika.varshaChart.planets.filter(
+        (p) => signOfLon(p.siderealLon) === varshaHouseSign
+      );
+      const varBen = varshaOcc.filter((p) => BENEFICS.includes(p.id as PlanetId9));
+      const varMal = varshaOcc.filter((p) => !BENEFICS.includes(p.id as PlanetId9));
+      let score = 0;
+      if (munthaHere) score += 1.25;
+      if (ownsHa) score += 0.75;
+      if (sitsHa) score += 0.5;
+      if (munthaDust && !munthaHere) score -= 0.5;
+      score += Math.min(varBen.length, 2) * 0.35;
+      score -= Math.min(varMal.length, 2) * 0.35;
+      score = clamp(score);
+      verdicts.push({
+        schoolTe: 'తాజిక',
+        ruleTe: 'తాజిక వర్షఫలం: ముంథ స్థానం + వర్షేశుడు (పంచాధికారిలలో ప్రధానుడు) ఏ భావాన్ని చూస్తే ఆ సంవత్సరం ఆ అంశం సక్రియం (నీలకంఠి తాజిక)',
+        evidenceTe:
+          `${tajika.targetYear} వర్షప్రవేశం ${tajika.varshaPraveshaDate}; వర్ష లగ్నం ${RASI_TE[vl]}, ` +
+          `ముంథ ${tajika.munthaRasiTe} (వర్ష లగ్నం నుంచి ${munthaHouse}వ భావం). ` +
+          `వర్షేశుడు ${tajika.varsheshwaraPlanetTe} — ${ownsHa ? `${RASI_TE[varshaHouseSign]}కి అధిపతి, ` : ''}${sitsHa ? 'ఈ భావంలోనే ఉన్నాడు' : `${varsheshaHouse}వ భావంలో`}. ` +
+          (varshaOcc.length
+            ? `వర్ష కుండలిలో ఈ భావ రాశిలో ${varshaOcc.map((p) => PLANET_TE[p.id as PlanetId9]).join(', ')} — ` +
+              `${varBen.length} శుభ · ${varMal.length} పాప. `
+            : 'వర్ష కుండలిలో ఈ భావ రాశి ఖాళీ. ') +
+          (munthaHere
+            ? 'ముంథ ఈ భావంలోనే — ఈ సంవత్సరపు ప్రధాన ఇరుసు.'
+            : munthaDust
+              ? `ముంథ నుంచి భావ రాశి ${fromMuntha}వ స్థానం — ఈ సంవత్సరం శ్రమ.`
+              : varBen.length && !varMal.length
+                ? 'ఈ సంవత్సరం ఈ భావ రాశిలో శుభగ్రహమే — సానుకూల సంవత్సరం.'
+                : varMal.length && !varBen.length
+                  ? 'ఈ సంవత్సరం ఈ భావ రాశిలో పాపగ్రహమే — జాగ్రత్త అవసరం.'
+                  : 'ఈ సంవత్సరం ఈ అంశం ప్రధాన ఇరుసు కాదు.'),
         score: roundScore(score),
       });
     }
@@ -528,6 +667,8 @@ export function computeSampradayaSamanyaya(chart: CompleteChartResult): Samprada
       'జైమిని — చర కారకులు (AK…DK), రాశి దృష్టి, చర దశ (జైమిని సూత్రాలు).',
       'వింశోత్తరి — మహాదశా/భుక్తి అధిపతుల భావ సంబంధం (ఉడుదాశా ప్రామాణ్యం).',
       'కేపీ — భావ కస్ప్ సబ్-లార్డ్ (కృష్ణమూర్తి పద్ధతి, 249 ఉప-విభాగం).',
+      'చరదశ — నడుస్తున్న జైమిని రాశి దశ, రాశి దృష్టి, దుష్ట స్థాన సంబంధం (జైమిని సూత్రాలు, KN రావు క్రమం).',
+      'తాజిక — ఈ సంవత్సరపు వర్ష లగ్నం, ముంథ స్థానం, వర్షేశుడు (నీలకంఠి తాజిక వర్షఫలం).',
       'ప్రతి స్కోరు −2 … +2; ఒక్క పద్ధతి మాత్రమే తీర్పు ఇవ్వదు — సగటు + వ్యాప్తి రెండూ చూపబడతాయి.',
     ],
   };
