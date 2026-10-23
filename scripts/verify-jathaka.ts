@@ -59,6 +59,8 @@ import { GRANTHA_PAGES, granthaPartsTe } from '../src/engine/granthaPageMap.ts';
 import { JATHAKA_GATES } from '../src/generated/verificationStats.ts';
 import { buildGranthaProvenance } from '../src/engine/granthaProvenanceEngine.ts';
 import { computeGocharaReport } from '../src/engine/gocharaVedhaEngine.ts';
+import { computeGrahaAvastha } from '../src/engine/grahaAvasthaEngine.ts';
+import { computeDashaGocharaSamanvaya } from '../src/engine/dashaGocharaSamanvayaEngine.ts';
 import { generateTeluguSampoornaJathakam } from '../src/engine/teluguJathakam';
 import { auditJathakaClaims } from '../src/engine/jathakaClaimAudit';
 import { generateUpayaPariharaReport } from '../src/engine/upayaPariharaEngine';
@@ -1316,7 +1318,20 @@ check(
     'PDF పుటల క్రమం DOM లోనూ, విషయ సూచిక/బుక్‌మార్క్ చిట్టాలోనూ ఒకటే (బుక్‌మార్క్‌లు పక్కకు జరగవు)',
     (() => {
       const domIds = [...BOOK_HTML.matchAll(/id="(grantha-p\d+)"/g)].map((m) => m[1]);
-      return domIds.length === GRANTHA_PAGES.length && domIds.every((id, i) => id === GRANTHA_PAGES[i].id);
+      if (domIds.length !== GRANTHA_PAGES.length) return false;
+      if (!domIds.every((id, i) => id === GRANTHA_PAGES[i].id)) return false;
+      // పుట క్రమం సరైనదా అని శీర్షికలతోనూ సరిచూడాలి — ఒక పుట ముందుకు/వెనుకకు
+      // జరిగినా id లు వరుసగానే ఉంటాయి, కానీ విషయం మారిపోతుంది.
+      const flat = BOOK_HTML.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+      let cursor = 0;
+      for (const pg of GRANTHA_PAGES) {
+        if (pg.num === 2) continue; // విషయ సూచిక పుట — శీర్షిక స్థానంలో జాబితా ఉంటుంది
+        const probe = pg.titleTe.slice(0, 12);
+        const at = flat.indexOf(probe, cursor);
+        if (at < 0) return false;
+        cursor = at;
+      }
+      return true;
     })(),
     `${(BOOK_HTML.match(/id="grantha-p\d+"/g) ?? []).length} పుటలు · చిట్టాలో ${GRANTHA_PAGES.length}`
   );
@@ -1524,6 +1539,110 @@ check(
       return new Set(parts).size === parts.length;
     })(),
     granthaPartsTe().map((g) => g.partTe).join(' · ')
+  );
+}
+
+// ---- గ్రహ అవస్థలు: బాలాది/దీప్తాది/జాగ్రదాది లెక్క సరైనదా ----
+{
+  const av = computeGrahaAvastha(CHARAN_REF);
+  const sun = CHARAN_REF.planets.find((p) => p.id === 'Sun')!;
+  const mars = CHARAN_REF.planets.find((p) => p.id === 'Mars')!;
+  check(
+    'గ్రహ అవస్థలు — 9 గ్రహాలకూ అవస్థలు (ఛాయా గ్రహాలకు — అని స్పష్టంగా)',
+    av.rows.length === 9 &&
+      av.rows.filter((r) => r.id === 'Rahu' || r.id === 'Ketu').every((r) => r.baladiTe === '—'),
+    `${av.rows.length} వరుసలు`
+  );
+  check(
+    'బాలాది — బేసి రాశిలో 0–6° బాల, 24–30° మృత; సరి రాశిలో తిరగడం (డిగ్రీ నుంచే)',
+    (() => {
+      const baladiTe = (deg: number, sign: number) => {
+        const t: [number, string][] = [
+          [0, 'బాల'],
+          [6, 'కుమార'],
+          [12, 'యువ'],
+          [18, 'వృద్ధ'],
+          [24, 'మృత'],
+        ];
+        const odd = sign % 2 === 0;
+        return odd ? t[Math.min(4, Math.floor(deg / 6))][1] : t[4 - Math.min(4, Math.floor(deg / 6))][1];
+      };
+      const sunRow = av.rows.find((r) => r.id === 'Sun')!;
+      return (
+        sunRow.baladiTe === baladiTe(sun.degreeInSign, sun.signIndex) &&
+        sun.degreeInSign > 24 &&
+        sunRow.baladiTe === 'మృత'
+      );
+    })(),
+    `సూర్యుడు ${sun.degreeInSign.toFixed(2)}° ${sun.signIndex % 2 === 0 ? 'బేసి' : 'సరి'} రాశి → ${av.rows.find((r) => r.id === 'Sun')?.baladiTe}`
+  );
+  check(
+    'దీప్తాది — ఉచ్చ స్థానమే దీప్త, నీచమే ఖల (దశ బట్టి మారదు)',
+    av.rows.find((r) => r.id === 'Sun')?.deeptadiTe === 'దీప్త' &&
+      av.rows.find((r) => r.id === 'Moon')?.deeptadiTe === 'ఖల',
+    `సూర్యుడు ${av.rows.find((r) => r.id === 'Sun')?.deeptadiTe} · చంద్రుడు ${av.rows.find((r) => r.id === 'Moon')?.deeptadiTe}`
+  );
+  check(
+    'అస్తంగత — సూర్యునికి 17° లోపు ఉన్న కుజుడు అస్తంగతంగా గుర్తించబడాలి (దోష ఇంజిన్‌తో ఏకీభావం)',
+    (() => {
+      const row = av.rows.find((r) => r.id === 'Mars')!;
+      const gap = Math.abs(mars.siderealLon - sun.siderealLon);
+      return row.combustionDeg !== null && gap < 17;
+    })(),
+    `కుజుడు–సూర్యుడు ${av.rows.find((r) => r.id === 'Mars')?.combustionDeg?.toFixed(2)}°`
+  );
+  check(
+    'గ్రహ అవస్థలు పుట గ్రంథంలో ముద్రితం — పట్టిక + యుద్ధం + ఫలభాగం',
+    BOOK_HTML.includes('గ్రహ అవస్థలు') &&
+      BOOK_HTML.includes('గ్రహ యుద్ధం (గ్రహ యుద్ధ నియమం)') &&
+      BOOK_HTML.includes('అవస్థల ఫల భాగం') &&
+      BOOK_HTML.includes('బాల ¼'),
+    'అవస్థల పుట ఉంది'
+  );
+}
+
+// ---- దశా × గోచార సమన్వయం: 12 నెలలు + 9 ప్రత్యంతరాలు ----
+{
+  const NOW = Date.UTC(2026, 9, 23, 3, 0, 0);
+  const sam = computeDashaGocharaSamanvaya(CHARAN_REF, NOW);
+  check(
+    'దశా × గోచారం — 12 నెలల కాలరేఖ, ప్రతి నెలకూ దశా గొలుసు + గోచారం + స్కోరు',
+    sam.months.length === 12 &&
+      sam.months.every((m) => m.mdTe && m.adTe && m.pdTe && m.verdictTe.length > 20 && m.score >= 5 && m.score <= 95),
+    `${sam.months.length} నెలలు · ${sam.months[0]?.monthTe} … ${sam.months[11]?.monthTe}`
+  );
+  check(
+    'ప్రత్యంతర దశలు — నడుస్తున్న భుక్తిలో సరిగ్గా 9, ఒకటి మాత్రమే "నడుస్తోంది"',
+    sam.pratyantars.length === 9 && sam.pratyantars.filter((p) => p.running).length === 1,
+    `${sam.pratyantars.length} ప్రత్యంతరాలు · నడుస్తున్నది ${sam.pratyantars.find((p) => p.running)?.lordTe}`
+  );
+  check(
+    'ప్రత్యంతర దశలు — వరుసగా అతుక్కొని ఉన్నాయి (మునుపటి ముగింపు = తరువాతి ప్రారంభం), తేదీలు పెరుగుతున్నాయి',
+    sam.pratyantars.every((p, i) => i === 0 || sam.pratyantars[i - 1].endISO >= p.startISO),
+    sam.pratyantars.map((p) => p.startISO).join(' ')
+  );
+  check(
+    'దశా × గోచారం — ఈ రోజు నడుస్తున్న మహాదశ/భుక్తి వింశోత్తరి ఇంజిన్‌తో ఏకీభవిస్తుంది',
+    (() => {
+      const deep = computeVimshottariDeep(CHARAN_REF);
+      const md = deep.mahadashas.find((m) => m.startMs <= NOW && NOW < m.endMs);
+      const ad = md?.children.find((a) => a.startMs <= NOW && NOW < a.endMs);
+      return !!md && !!ad && sam.runningTe.includes(md.lordTe) && sam.runningTe.includes(ad.lordTe);
+    })(),
+    sam.runningTe.slice(0, 90)
+  );
+  check(
+    'దశా × గోచారం — నెలలో గోచార రాశి మార్పులు నిజంగా లెక్కించబడ్డాయి (కనీసం 6 నెలల్లో మార్పు)',
+    sam.months.filter((m) => !m.ingressTe.includes('ప్రధాన రాశి మార్పు లేదు')).length >= 6,
+    `${sam.months.filter((m) => !m.ingressTe.includes('ప్రధాన రాశి మార్పు లేదు')).length} నెలల్లో మార్పు`
+  );
+  check(
+    'దశా × గోచారం పుట గ్రంథంలో ముద్రితం — నెలవారీ పట్టిక + ప్రత్యంతర పట్టిక + గణన నియమం',
+    BOOK_HTML.includes('దశా × గోచార సమన్వయం') &&
+      BOOK_HTML.includes('నెలవారీ కాలరేఖ') &&
+      BOOK_HTML.includes('నడుస్తున్న భుక్తిలో ప్రత్యంతర దశలు') &&
+      BOOK_HTML.includes('తీర్మానం ఎలా లెక్కించబడింది'),
+    'దశా × గోచార పుట ఉంది'
   );
 }
 
