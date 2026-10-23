@@ -33,6 +33,7 @@ import { computeVargaVimshopaka, VIMSHOPAKA_SCHEMES } from '../src/engine/vargaV
 import { computeAvakahada, GHATA_TABLE } from '../src/engine/avakahadaEngine';
 import { computeYogaVichara } from '../src/engine/yogaVicharaEngine';
 import { computeJeevitaVistara } from '../src/engine/jeevitaVistaraEngine';
+import { computePanditaVicharam } from '../src/engine/panditaVicharamEngine';
 import { SampoornaJathakamView } from '../src/components/SampoornaJathakamView';
 import { computeBhavaSandhi } from '../src/engine/bhavaSandhiEngine';
 import { computeUpagrahas } from '../src/engine/upagrahaEngine';
@@ -1125,6 +1126,87 @@ check(
 );
 
 // ─────────────────────────────────────────────────────────────────────────
+//  పండిత విచారణ — ప్రతి వాక్యం గణన నుండి
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── పండిత విచారణ (మూడు స్తంభాలు · బల క్రమం · భావాలు · సమాధానాలు) ──');
+const pand = computePanditaVicharam(KUNDALI);
+check(
+  'మూడు స్తంభాలు — లగ్నం, చంద్రుడు, సూర్యుడు, ప్రతిదానికీ వాస్తవ స్ఫుటం + తీర్పు',
+  pand.pillars.length === 3 &&
+    pand.pillars.every((p) => p.factsTe.length >= 3 && p.verdictTe.length > 40 && p.deepTe.length > 60),
+  pand.pillars.map((p) => p.titleTe.split('—')[1]?.trim()).join(' · ')
+);
+check(
+  'గ్రహ బల క్రమం — షడ్బల శాతం ఆధారంగా అవరోహణ క్రమంలో 7 గ్రహాలు',
+  pand.grahaBala.length === 7 &&
+    pand.grahaBala.every((g, i, a) => i === 0 || a[i - 1].shadbalaPct >= g.shadbalaPct) &&
+    pand.grahaBala[0].id === 'Jupiter' &&
+    pand.grahaBala[6].id === 'Sun',
+  pand.grahaBala.map((g) => `${g.nameTe} ${g.shadbalaPct.toFixed(1)}%`).join(' · ')
+);
+check(
+  'ద్వాదశ భావాలు — 12 భావాలకూ అధిపతి, బిందువులు, భావ బల ర్యాంక్, గ్రేడ్',
+  pand.bhava.length === 12 &&
+    pand.bhava.every((b) => b.lordTe && b.sav > 0 && b.bhavaBalaRank >= 1 && b.gradeTe) &&
+    pand.bhava.reduce((a, b) => a + b.sav, 0) === 337,
+  `బిందువుల మొత్తం ${pand.bhava.reduce((a, b) => a + b.sav, 0)}`
+);
+check(
+  'కాలసర్ప దోషం — గ్రహాల పంపిణీ నిజంగా తనిఖీ చేయబడుతుంది (ఈ చక్రంలో లేదు)',
+  pand.yogaDosha.find((y) => y.nameTe === 'కాలసర్ప దోషం')!.statusTe === 'లేదు',
+  pand.yogaDosha.find((y) => y.nameTe === 'కాలసర్ప దోషం')!.detailTe.slice(0, 100)
+);
+check(
+  'కుజ దోషం — 2వ భావ స్థితి గుర్తించి, ఉచ్ఛ గురువు భంగాన్ని చూపుతుంది',
+  (() => {
+    const m = pand.yogaDosha.find((y) => y.nameTe === 'కుజ (మాంగళిక) దోషం')!;
+    return m.statusTe.includes('భంగం') && m.detailTe.includes('గురువు');
+  })(),
+  pand.yogaDosha.find((y) => y.nameTe === 'కుజ (మాంగళిక) దోషం')!.detailTe.slice(0, 90)
+);
+check(
+  'నేరుగా సమాధానాలు — వివాహం, పెళ్లి కాలం, ఉద్యోగం, చదువు, ఆరోగ్యం, ధనం, సంతానం, విదేశం (8)',
+  pand.prashnottaralu.length === 8 &&
+    pand.prashnottaralu.every((q) => q.uttaramTe.length > 300) &&
+    pand.prashnottaralu.some((q) => q.uttaramTe.includes('భుక్తి')),
+  `సగటు సమాధానం ${Math.round(pand.prashnottaralu.reduce((a, q) => a + q.uttaramTe.length, 0) / 8)} అక్షరాలు`
+);
+check(
+  'వివాహ కాల విండో — 7వ అధిపతి/శుక్రుని భుక్తి నుండి నిజమైన తేదీలు',
+  (() => {
+    const q = pand.prashnottaralu.find((x) => x.prashnaTe.includes('పెళ్లి'))!;
+    return /\d{4}-\d{2}-\d{2}/.test(q.uttaramTe) && q.uttaramTe.includes('వయస్సు');
+  })(),
+  pand.prashnottaralu.find((x) => x.prashnaTe.includes('పెళ్లి'))!.uttaramTe.slice(0, 160)
+);
+check(
+  'నిషేధ పట్టిక — మూఢనమ్మకాలు/ఊహలు స్పష్టంగా తిరస్కరించబడతాయి (6 అంశాలు)',
+  pand.nishedha.length >= 6 && pand.nishedha.some((n) => n.includes('కాలసర్ప')),
+  `${pand.nishedha.length} అంశాలు`
+);
+check(
+  'సారాంశం — బలమైన గ్రహం, జనన దశ, బల/బలహీన భావాలు, యోగాలు అన్నీ ఒకే చోట',
+  pand.sara.length >= 7 &&
+    pand.sara[0].includes(pand.grahaBala[0].nameTe) &&
+    pand.sara.some((x) => x.includes('బలమైన భావాలు')),
+  `${pand.sara.length} వాక్యాలు`
+);
+check(
+  'పండిత విచారణలో ఆంగ్ల వాక్యాలు/ఇంగ్లీష్ పంచాంగం లేదు',
+  (() => {
+    const all = [
+      pand.uddeshyamTe,
+      ...pand.pillars.flatMap((p) => [p.verdictTe, p.deepTe, ...p.factsTe]),
+      ...pand.prashnottaralu.map((q) => q.uttaramTe),
+      ...pand.sara,
+      ...pand.nishedha,
+    ].join(' ');
+    return !/(Thursday|Friday|Dwadashi|Shukla Paksha|undefined|NaN)/.test(all);
+  })(),
+  pand.snapshot.find((s) => s.labelTe === 'పంచాంగం')!.valueTe
+);
+
+// ─────────────────────────────────────────────────────────────────────────
 //  పూర్తి జాతక పుస్తకం SSR — అన్ని అధ్యాయాలు ఒకేసారి రెండర్ అవుతాయా?
 // ─────────────────────────────────────────────────────────────────────────
 console.log('\n── సంపూర్ణ జాతక పుస్తకం (SSR) ──');
@@ -1145,7 +1227,9 @@ check(
     BOOK_HTML.includes('యోగ విచారణ') &&
     BOOK_HTML.includes('పంచ మహాపురుష యోగాలు') &&
     BOOK_HTML.includes('జీవిత రంగాల లోతైన విశ్లేషణ') &&
-    BOOK_HTML.includes('దాంపత్య జీవితం') && BOOK_HTML.includes('జీవిత రంగాల లోతైన విశ్లేషణ'),
+    BOOK_HTML.includes('దాంపత్య జీవితం') &&
+    BOOK_HTML.includes('పండిత విచారణ') &&
+    BOOK_HTML.includes('అసలు ఈ జాతకం ఏమిటి'),
   `${Math.round(BOOK_HTML.length / 1000)} వేల అక్షరాలు`
 );
 check(

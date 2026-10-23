@@ -9,3 +9,6 @@ coverage/
 
 # generated vastu plan export
 vastu-full-plan*.html
+
+# generated pandita jathakam export
+jathaka-pandita*.html
