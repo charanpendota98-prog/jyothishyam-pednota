@@ -1,6 +1,9 @@
 import * as Astronomy from 'astronomy-engine';
 import {
   deltaCancriTrueTropicalLongitude,
+  trueObliquityDeg,
+  nutationLongitudeDeg,
+  riseSetForLocalDate,
   spicaTrueTropicalLongitude,
 } from './astroCore.ts';
 
@@ -533,8 +536,10 @@ export function calculateAyanamsa(dateUTC: Date, system: AyanamsaSystem): number
   // High-precision Chitrapaksha (Lahiri) at J2000.0 = 23° 51' 25.532" = 23.857092°
   // General precession in longitude = 50.2879695" per Julian year = 1.396888° per century
   // నిజ చిత్రా / పుష్య — నక్షత్రపు నిజ స్థానం నుండి (స్థిర గుణకం కాదు)
-  if (system === 'true_citra') return norm360(spicaTrueTropicalLongitude(jd) - 180);
-  if (system === 'pushya') return norm360(deltaCancriTrueTropicalLongitude(jd) - 106);
+  if (system === 'true_citra')
+    return norm360(spicaTrueTropicalLongitude(jd) - nutationLongitudeDeg(jd) - 180);
+  if (system === 'pushya')
+    return norm360(deltaCancriTrueTropicalLongitude(jd) - nutationLongitudeDeg(jd) - 106);
   const lahiriBase = 23.857092 + 1.39688804 * T + 0.0003086 * T * T;
   const meta = AYANAMSA_METADATA[system] ?? AYANAMSA_METADATA.lahiri;
   return lahiriBase + meta.deltaDeg + meta.deltaPerCenturyDeg * T;
@@ -771,14 +776,14 @@ function calculateAnglesAndHouses(
   const astroTime = Astronomy.MakeTime(dateUTC);
   // Greenwich Apparent Sidereal Time in hours (0..24)
   const gastHours = Astronomy.SiderealTime(astroTime);
-  // Local Sidereal Time in degrees (0..360)
+  const jd = dateUTC.getTime() / 86400000 + 2440587.5;
+  // సత్య (true) క్రాంతి వాలు — సాయన లగ్నం/మధ్యాకాశం కోసం
+  const epsDeg = trueObliquityDeg(jd);
+  const epsRad = (epsDeg * Math.PI) / 180;
+  const dpsiDeg = nutationLongitudeDeg(jd);
+  // Local Apparent Sidereal Time (డిగ్రీలు)
   const ramc = norm360(gastHours * 15 + lng);
   const ramcRad = (ramc * Math.PI) / 180;
-  // Mean obliquity of the ecliptic (~23.43929°)
-  const jd = dateUTC.getTime() / 86400000 + 2440587.5;
-  const T = (jd - 2451545.0) / 36525.0;
-  const epsDeg = 23.4392911 - 0.0130042 * T;
-  const epsRad = (epsDeg * Math.PI) / 180;
   const latRad = (Math.max(-66.0, Math.min(66.0, lat)) * Math.PI) / 180;
 
   // Midheaven (MC) formula: tan(MC) = sin(RAMC) / (cos(RAMC) * cos(eps))
@@ -791,8 +796,9 @@ function calculateAnglesAndHouses(
   const ascRad = Math.atan2(ascY, ascX);
   const tropicalAsc = norm360((ascRad * 180) / Math.PI);
 
-  const siderealAsc = norm360(tropicalAsc - ayanamsaDeg);
-  const siderealMC = norm360(tropicalMC - ayanamsaDeg);
+  // నిరయన చట్రం = సాయనం − పోషణ − అయనాంశం (స్విస్ ఎఫెమెరిస్ FLG_SIDEREAL సమానం)
+  const siderealAsc = norm360(tropicalAsc - dpsiDeg - ayanamsaDeg);
+  const siderealMC = norm360(tropicalMC - dpsiDeg - ayanamsaDeg);
 
   // Build 12 House Cusps (Tropical first, then Sidereal)
   const tropicalCusps: number[] = new Array(12).fill(0);
@@ -1289,17 +1295,23 @@ export function calculatePanchanga(
   }
 
   // 6. Sunrise & Sunset + Muhurta Windows
-  const observer = new Astronomy.Observer(lat, lng, 0);
-  // Start search from local midnight in UTC
+  // సూర్యోదయం/అస్తమయం — దృక్ పంచాంగ నిర్వచనం (పై అంచు + 34′ వక్రీభవనం),
+  // పంచాంగ మాడ్యూల్ వాడే అదే ఫంక్షన్ — యాప్ మొత్తం ఒకే సమయాన్ని చూపుతుంది.
   const startOfLocalDayUTC = new Date(
     Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0) -
       tzOffsetHours * 3600 * 1000
   );
-  const riseEvent = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, startOfLocalDayUTC, 1);
-  const setEvent = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, startOfLocalDayUTC, 1);
-
-  const sunriseMs = riseEvent ? riseEvent.date.getTime() : startOfLocalDayUTC.getTime() + 6 * 3600 * 1000;
-  const sunsetMs = setEvent ? setEvent.date.getTime() : startOfLocalDayUTC.getTime() + 18 * 3600 * 1000;
+  const isoDate =
+    `${localDate.getUTCFullYear()}-` +
+    `${String(localDate.getUTCMonth() + 1).padStart(2, '0')}-` +
+    `${String(localDate.getUTCDate()).padStart(2, '0')}`;
+  const exactRs = riseSetForLocalDate(isoDate, lat, lng, tzOffsetHours);
+  const sunriseMs = exactRs.sunriseJd !== null
+    ? (exactRs.sunriseJd - 2440587.5) * 86400000
+    : startOfLocalDayUTC.getTime() + 6 * 3600 * 1000;
+  const sunsetMs = exactRs.sunsetJd !== null
+    ? (exactRs.sunsetJd - 2440587.5) * 86400000
+    : startOfLocalDayUTC.getTime() + 18 * 3600 * 1000;
   const dayDurationMs = Math.max(4 * 3600 * 1000, sunsetMs - sunriseMs);
   const octantMs = dayDurationMs / 8;
 
@@ -2042,7 +2054,8 @@ export function calculateChart(
       dec = 18.2 * Math.sin((tropLon * Math.PI) / 180);
     }
 
-    const sidLon = norm360(tropLon - ayanamsaDeg);
+    // నిరయన స్ఫుటం = సాయనం − పోషణ − అయనాంశం (స్విస్ ఎఫెమెరిస్ FLG_SIDEREAL సమానం)
+    const sidLon = norm360(tropLon - nutationLongitudeDeg(jd) - ayanamsaDeg);
     const activeLon = useSidereal ? sidLon : tropLon;
     const signIndex = Math.floor(activeLon / 30);
     const sign = ZODIAC_SIGNS[signIndex];

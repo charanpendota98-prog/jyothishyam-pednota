@@ -65,133 +65,133 @@ export const EPHEMERIS_ACCURACY = {
     {
       "key": "ay:true_citra",
       "labelTe": "నిజ చిత్రా",
-      "maxDeg": 0.005191,
-      "maxArcsec": 18.69,
+      "maxDeg": 0.000731,
+      "maxArcsec": 2.63,
       "tolDeg": 0.008,
-      "where": "random 14"
+      "where": "1900 Chennai"
     },
     {
       "key": "ay:pushya",
       "labelTe": "పుష్య",
-      "maxDeg": 0.005678,
-      "maxArcsec": 20.44,
+      "maxDeg": 0.001178,
+      "maxArcsec": 4.24,
       "tolDeg": 0.008,
       "where": "1900 Chennai"
     },
     {
       "key": "asc",
       "labelTe": "లగ్నం",
-      "maxDeg": 0.005436,
-      "maxArcsec": 19.57,
+      "maxDeg": 0.000073,
+      "maxArcsec": 0.26,
       "tolDeg": 0.03,
-      "where": "random 2"
+      "where": "Charan 1998-05-14 08:45 IST Hyderabad"
     },
     {
       "key": "mc",
       "labelTe": "మధ్యాకాశం",
-      "maxDeg": 0.004708,
-      "maxArcsec": 16.95,
+      "maxDeg": 0.000071,
+      "maxArcsec": 0.26,
       "tolDeg": 0.05,
-      "where": "random 17"
+      "where": "random 14"
     },
     {
       "key": "Sun",
       "labelTe": "సూర్యుడు",
-      "maxDeg": 0.004621,
-      "maxArcsec": 16.64,
+      "maxDeg": 0.000414,
+      "maxArcsec": 1.49,
       "tolDeg": 0.01,
-      "where": "random 14"
+      "where": "random 17"
     },
     {
       "key": "Moon",
       "labelTe": "చంద్రుడు",
-      "maxDeg": 0.005558,
-      "maxArcsec": 20.01,
+      "maxDeg": 0.001274,
+      "maxArcsec": 4.59,
       "tolDeg": 0.02,
-      "where": "Sydney 2030"
+      "where": "mkjxc 2026-10-22 22:55 IST Hyderabad"
     },
     {
       "key": "Mars",
       "labelTe": "కుజుడు",
-      "maxDeg": 0.00608,
-      "maxArcsec": 21.89,
+      "maxDeg": 0.003109,
+      "maxArcsec": 11.19,
       "tolDeg": 0.03,
-      "where": "random 10"
+      "where": "Year forecast 1988-09-21 10:18 IST Hansi"
     },
     {
       "key": "Mercury",
       "labelTe": "బుధుడు",
-      "maxDeg": 0.004777,
-      "maxArcsec": 17.2,
+      "maxDeg": 0.002278,
+      "maxArcsec": 8.2,
       "tolDeg": 0.03,
-      "where": "Nadi sample 1947-08-15 00:00 IST Delhi"
+      "where": "2024 total solar eclipse Dallas"
     },
     {
       "key": "Jupiter",
       "labelTe": "గురువు",
-      "maxDeg": 0.005979,
-      "maxArcsec": 21.52,
+      "maxDeg": 0.001579,
+      "maxArcsec": 5.68,
       "tolDeg": 0.03,
       "where": "random 7"
     },
     {
       "key": "Venus",
       "labelTe": "శుక్రుడు",
-      "maxDeg": 0.005345,
-      "maxArcsec": 19.24,
+      "maxDeg": 0.005657,
+      "maxArcsec": 20.37,
       "tolDeg": 0.03,
-      "where": "random 7"
+      "where": "mkjxc 2026-10-22 22:55 IST Hyderabad"
     },
     {
       "key": "Saturn",
       "labelTe": "శని",
-      "maxDeg": 0.006657,
-      "maxArcsec": 23.97,
+      "maxDeg": 0.002888,
+      "maxArcsec": 10.4,
       "tolDeg": 0.03,
-      "where": "random 6"
+      "where": "mkjxc 2026-10-22 22:55 IST Hyderabad"
     },
     {
       "key": "Uranus",
       "labelTe": "యురేనస్",
-      "maxDeg": 0.007001,
-      "maxArcsec": 25.2,
+      "maxDeg": 0.003101,
+      "maxArcsec": 11.16,
       "tolDeg": 0.03,
       "where": "J2000 Greenwich"
     },
     {
       "key": "Neptune",
       "labelTe": "నెప్ట్యూన్",
-      "maxDeg": 0.008023,
-      "maxArcsec": 28.88,
+      "maxDeg": 0.004839,
+      "maxArcsec": 17.42,
       "tolDeg": 0.03,
-      "where": "random 1"
+      "where": "Mumbai 2015"
     },
     {
       "key": "Pluto",
       "labelTe": "ప్లూటో",
-      "maxDeg": 0.005455,
-      "maxArcsec": 19.64,
+      "maxDeg": 0.000955,
+      "maxArcsec": 3.44,
       "tolDeg": 0.03,
       "where": "1900 Chennai"
     },
     {
       "key": "Rahu",
       "labelTe": "రాహు",
-      "maxDeg": 0.006681,
-      "maxArcsec": 24.05,
+      "maxDeg": 0.006374,
+      "maxArcsec": 22.95,
       "tolDeg": 0.03,
-      "where": "1900 Chennai"
+      "where": "New York 1975"
     },
     {
       "key": "Ketu",
       "labelTe": "కేతు",
-      "maxDeg": 0.006681,
-      "maxArcsec": 24.05,
+      "maxDeg": 0.006374,
+      "maxArcsec": 22.95,
       "tolDeg": 0.03,
-      "where": "1900 Chennai"
+      "where": "New York 1975"
     }
   ],
-  "classicalMaxDeg": 0.0066809999999577485
+  "classicalMaxDeg": 0.006374000000050728
 } as {
   source: string;
   fixtureEpochs: number;

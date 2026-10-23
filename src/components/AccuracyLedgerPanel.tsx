@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Activity, ShieldCheck, ChevronDown, Sigma, RefreshCw } from 'lucide-react';
 import { EPHEMERIS_ACCURACY, type EphemerisAccuracyRow } from '../generated/ephemerisAccuracy.ts';
+import { RISE_SET_ACCURACY } from '../generated/riseSetAccuracy.ts';
+import { LUNAR_CALENDAR_ACCURACY } from '../generated/calendarAccuracy.ts';
+import { FESTIVAL_ACCURACY } from '../generated/festivalAccuracy.ts';
 
 /**
  * AccuracyLedgerPanel — గణన ప్రమాణ పత్రం
@@ -152,10 +155,69 @@ export function AccuracyLedgerPanel({ lang = 'te', compact = false, defaultOpen 
 
           {!compact && (
             <>
+              {/* ---- పంచాంగ ప్రమాణం: ఉదయాస్తమయం, చాంద్రమాసం, పర్వాలు ---- */}
+              <div className="rounded-xl border border-[#5BBFB5]/20 bg-white/[0.02] p-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-wider text-[#5BBFB5]/80">
+                    {isTe ? 'పంచాంగ ప్రమాణం' : 'Panchanga audit'}
+                  </span>
+                  <span className="rounded-full bg-[#5BBFB5]/12 px-2 py-0.5 text-[9.5px] font-mono-tabular text-[#6FD2C7]">
+                    {RISE_SET_ACCURACY.passed + LUNAR_CALENDAR_ACCURACY.passed + FESTIVAL_ACCURACY.passed}/
+                    {RISE_SET_ACCURACY.checks + LUNAR_CALENDAR_ACCURACY.checks + FESTIVAL_ACCURACY.cases}{' '}
+                    {isTe ? 'ఉత్తీర్ణం' : 'passed'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-2">
+                    <div className="text-[10px] text-[#EDE8E0]/55">
+                      {isTe ? 'సూర్యోదయం / అస్తమయం' : 'Sunrise / sunset'}
+                    </div>
+                    <div className="font-mono-tabular text-[13px] font-bold text-[#E4C68C]">
+                      {RISE_SET_ACCURACY.rows
+                        .map((r) => `${r.maxSeconds}${isTe ? ' సె.' : 's'}`)
+                        .join(' / ')}
+                    </div>
+                    <div className="text-[9.5px] text-[#EDE8E0]/40 leading-snug mt-0.5">
+                      {isTe ? RISE_SET_ACCURACY.definitionTe : RISE_SET_ACCURACY.definitionEn}
+                    </div>
+                    <div className="text-[9px] text-[#EDE8E0]/30 mt-0.5">
+                      {RISE_SET_ACCURACY.cases} {isTe ? 'దినాలు · స్విస్ ఎఫెమెరిస్' : 'days · Swiss Ephemeris'}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-2">
+                    <div className="text-[10px] text-[#EDE8E0]/55">
+                      {isTe ? 'అమావాస్య / సంక్రమణి' : 'New moon / saṅkrānti'}
+                    </div>
+                    <div className="font-mono-tabular text-[13px] font-bold text-[#E4C68C]">
+                      {LUNAR_CALENDAR_ACCURACY.maxNewMoonMinutes}
+                      {isTe ? ' / ' : ' / '}
+                      {LUNAR_CALENDAR_ACCURACY.maxSankrantiMinutes} {isTe ? 'నిమి.' : 'min'}
+                    </div>
+                    <div className="text-[9.5px] text-[#EDE8E0]/40 leading-snug mt-0.5">
+                      {isTe ? LUNAR_CALENDAR_ACCURACY.frameNoteTe : LUNAR_CALENDAR_ACCURACY.frameNoteEn}
+                    </div>
+                    <div className="text-[9px] text-[#EDE8E0]/30 mt-0.5">
+                      {LUNAR_CALENDAR_ACCURACY.newMoons} {isTe ? 'అమావాస్యలు ·' : 'new moons ·'}{' '}
+                      {LUNAR_CALENDAR_ACCURACY.amantaMonths} {isTe ? 'మాసాలు ·' : 'months ·'}{' '}
+                      {LUNAR_CALENDAR_ACCURACY.adhikaMonths} {isTe ? 'అధిక మాసాలు' : 'adhika months'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[9.5px] text-[#EDE8E0]/40 leading-relaxed">
+                  {isTe
+                    ? `పర్వాలు: ${FESTIVAL_ACCURACY.passed}/${FESTIVAL_ACCURACY.cases} తేదీలు (${FESTIVAL_ACCURACY.firstDate} → ${FESTIVAL_ACCURACY.lastDate}) తెలుగు పంచాంగ ప్రమాణంతో — ప్రతి తేదీకి ఆధారం నమోదై ఉంది. పునఃపరీక్ష: `
+                    : `Festivals: ${FESTIVAL_ACCURACY.passed}/${FESTIVAL_ACCURACY.cases} dates (${FESTIVAL_ACCURACY.firstDate} → ${FESTIVAL_ACCURACY.lastDate}) against Telugu pañcāṅgam sources, each with a recorded citation. Re-run: `}
+                  <code className="text-[#5BBFB5]/80">npm run verify</code>
+                </div>
+              </div>
+
               <div className="rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/5 px-3 py-2 text-[11px] text-[#EDE8E0]/75 leading-relaxed">
                 <span className="text-[#C9A96E] font-semibold">{isTe ? 'పద్ధతులు: ' : 'Methods: '}</span>
                 {isTe
-                  ? 'గ్రహాలు VSOP87, చంద్రుడు ELP-2000 (astronomy-engine) — సత్య క్రాంతివృత్తం (అయన చలనం + పోషణ + వార్షిక విపర్యయం). రాహు/కేతు: చంద్రుని క్షణిక స్థాన-వేగ వెక్టర్ల నుండి ఆస్కులేటింగ్ పాతం (h = r × v). నిజ చిత్రా/పుష్య: స్పైకా, డెల్టా కర్కాటక నక్షత్రాల నిజ రేఖాంశం నుండి. లగ్నం/మధ్యాకాశం: స్థానిక సత్య సైడెరియల్ కాలం నుండి గోళ త్రికోణమితి.'
+                  ? 'గ్రహాలు VSOP87, చంద్రుడు ELP-2000 (astronomy-engine) — సత్య క్రాంతివృత్తం (అయన చలనం + పోషణ + వార్షిక విపర్యయం); నిరయన స్ఫుటం = మధ్యమ విషువత్తు చట్రం (పోషణ రహితం) + లహిరి అయనాంశం. రాహు/కేతు: చంద్రుని క్షణిక స్థాన-వేగ వెక్టర్ల నుండి ఆస్కులేటింగ్ పాతం (h = r × v). నిజ చిత్రా/పుష్య: స్పైకా, డెల్టా కర్కాటక నక్షత్రాల నిజ రేఖాంశం నుండి. లగ్నం/మధ్యాకాశం: స్థానిక సత్య సైడెరియల్ కాలం నుండి గోళ త్రికోణమితి.'
                   : 'Planets by VSOP87, Moon by ELP-2000 (astronomy-engine), on the true ecliptic of date (precession + nutation + annual aberration). Rāhu/Ketu as the osculating node from the Moon’s instantaneous state vectors (h = r × v). True Citrā / Puṣya from the apparent longitudes of Spica and δ Cancri. Asc/MC by spherical trigonometry from local apparent sidereal time.'}
               </div>
               <div className="flex flex-wrap items-center gap-3 text-[10.5px] text-[#EDE8E0]/45">

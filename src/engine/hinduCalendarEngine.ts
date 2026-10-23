@@ -52,6 +52,8 @@ import {
   yogaWindow,
   rataDie,
   riseSetForLocalDate,
+  sunriseJdForLocalDate,
+  sunsetJdForLocalDate,
   sankrantiJd,
   siderealLongitude,
   sunHorizontal,
@@ -657,7 +659,9 @@ export function ugadiDateISO(
   let nm = newMoonAfterJd(cursorJd);
   while (nm < limit) {
     const masa = resolveMasa(nm + 0.6, mode);
-    if (masa.masaIndex === 0) {
+    // చైత్రము + అధిక చైత్రము కాదు — అధిక చైత్రము ఉన్న సంవత్సరంలో (ఉదా. 2029)
+    // ఉగాది నిజ చైత్ర శుక్ల ప్రతిపదకే, అధిక చైత్ర ప్రతిపదకు కాదు.
+    if (masa.masaIndex === 0 && !masa.isAdhika) {
       const dateISO = lunarMonthStartISO(nm, geo);
       ugadiCache.set(cacheKey, dateISO);
       return dateISO;
@@ -702,17 +706,30 @@ function addDaysISO(iso: string, days: number): string {
 export function resolveHinduEra(dateISO: string, geo: GeoContext, mode: SiderealMode = 'lahiri'): HinduEraInfo {
   const [gy] = dateISO.split('-').map(Number);
   const tz = geo.tzOffsetHours;
-  const noonJd = localMidnightJd(dateISO, tz) + 0.5 - tz / 24;
-  const sunriseJd = localMidnightJd(dateISO, tz) + 6 / 24;
+  // గమనిక: localMidnightJd ఇప్పటికే స్థానిక అర్ధరాత్రి UT-JD ని ఇస్తుంది —
+  // అందుకే మళ్ళీ tz తీసివేయకూడదు (మునుపు 5:30 గంటల లోపు "మధ్యాహ్నం" వచ్చేది,
+  // దాంతో అమావాస్య రోజు నెల మార్పు ఆలస్యంగా కనిపించేది).
+  const midnightJd = localMidnightJd(dateISO, tz);
+  const noonJd = midnightJd + 0.5;
+  const rs = riseSetForLocalDate(dateISO, geo.lat, geo.lng, tz);
+  const sunriseJd = rs.sunriseJd ?? midnightJd + 6 / 24;
 
   const ugadiThisYear = ugadiDateISO(gy, mode, tz, geo.lat, geo.lng);
   const shakaYear = dateISO >= ugadiThisYear ? gy - 78 : gy - 79;
   const samvatsaraIndex = ((shakaYear + 12) % 60 + 60) % 60;
   const samvatsara = SAMVATSARA_NAMES[samvatsaraIndex === 0 ? 59 : samvatsaraIndex - 1] ?? SAMVATSARA_NAMES[0];
 
-  const masa = resolveMasa(noonJd, mode);
-  const masaName = MASA_NAMES[masa.masaIndex];
   const pakshaIdx = tithiIndex(sunriseJd);
+  // అమావాస్య రోజు నెల పేరు: ఆమన్తంలో అమావాస్య *ముగిసే* నెలకు చెందుతుంది.
+  // కానీ ప్రతిపద క్షయమైతే (ఉదా. ఉగాది 2026-03-19) ఆ రోజే క్రొత్త నెల మొదటి రోజు.
+  let masa = resolveMasa(noonJd, mode);
+  if (pakshaIdx === 29) {
+    const nmToday = newMoonBeforeJd(noonJd);
+    if (lunarMonthStartISO(nmToday, geo) !== dateISO) {
+      masa = resolveMasa(sunriseJd - 0.2, mode);
+    }
+  }
+  const masaName = MASA_NAMES[masa.masaIndex];
   const isShukla = pakshaIdx < 15;
   const purnimantaIdx = isShukla ? masa.masaIndex : (masa.masaIndex + 1) % 12;
 
@@ -984,13 +1001,14 @@ const FESTIVAL_RULES: FestivalRule[] = [
     id: 'atla-taddi',
     nameTe: 'అట్ల తద్ది',
     nameEn: 'Atla Taddi',
-    descriptionTe: 'ఆశ్వయుజ శుక్ల తదియ — తెలుగు మహిళల ఉపవాస వ్రతం (చంద్రుడిని చూసి ఉపవాసం విరమణ).',
+    descriptionTe:
+      'ఆశ్వయుజ బహుళ తదియ — పౌర్ణమి తర్వాత మూడో రోజు. తెలుగు మహిళల ఉపవాస వ్రతం; అట్లు (అట్టు) నైవేద్యం, చంద్ర దర్శనం తర్వాత పారణ.',
     category: 'vratam',
     masa: 6,
-    paksha: 'shukla',
+    paksha: 'krishna',
     tithi: 3,
     kala: 'sunrise',
-    timingNoteTe: 'చంద్ర దర్శనం తర్వాత పారణ',
+    timingNoteTe: 'చంద్రోదయం తర్వాత పారణ (అట్ల తద్ది నోము)',
   },
   {
     id: 'durga-ashtami',
@@ -1036,6 +1054,32 @@ const FESTIVAL_RULES: FestivalRule[] = [
     paksha: 'krishna',
     tithi: 14,
     kala: 'sunrise',
+  },
+  {
+    id: 'naga-panchami',
+    nameTe: 'నాగ పంచమి',
+    nameEn: 'Naga Panchami',
+    descriptionTe:
+      'శ్రావణ శుక్ల పంచమి — నాగేంద్రుల ఆరాధన, పుట్టలకు పాలు, నువ్వుల నూనె. ఆయురారోగ్య, సర్ప భయ నివారణ.',
+    category: 'major',
+    masa: 4,
+    paksha: 'shukla',
+    tithi: 5,
+    kala: 'sunrise',
+    timingNoteTe: 'సూర్యోదయ వ్యాప్తి ప్రధానం',
+  },
+  {
+    id: 'bheemana-amavasya',
+    nameTe: 'భీమన అమావాస్య',
+    nameEn: 'Bheemana Amavasya',
+    descriptionTe:
+      'ఆషాఢ అమావాస్య — స్త్రీలు భీమేశ్వరుడికి (శివుడు) ప్రదీప పూజ చేసి, ముడుపులు కట్టి సౌభాగ్యం కోరుకుంటారు.',
+    category: 'vratam',
+    masa: 3,
+    paksha: 'krishna',
+    tithi: 15,
+    kala: 'sunrise',
+    timingNoteTe: 'ఆషాఢ అమావాస్య — ప్రదోష కాలంలో ముడుపు పూజ',
   },
   {
     id: 'nagula-chavithi',
@@ -1215,35 +1259,37 @@ const FESTIVAL_RULES: FestivalRule[] = [
  *  Main day panchanga computation
  * ================================================================== */
 
-const APPROX_SUN_TABLE_DAYS = 1;
-
-/**
- * Fast approximate sunrise/sunset (NOAA algorithm, ±2 min) — used for the
- * year-long festival scan so the UI stays responsive. The day view always uses
- * the exact ephemeris-based rise/set.
+/* ------------------------------------------------------------------ *
+ *  సూర్యోదయం / సూర్యాస్తమయం — ఇక సుమారు గణన కాదు
+ * ------------------------------------------------------------------ *
+ *  మునుపు ఇక్కడ NOAA యొక్క సుమారు సూత్రం (±2 నిమిషాలు) వాడబడేది. అది
+ *  పంచాంగ దినాన్ని (సూర్యోదయాది) సరిగ్గా నిర్ణయించలేక, తిథి/నక్షత్రం
+ *  సరిహద్దుల్లో పొరపాట్లు చేసేది — ముఖ్యంగా సంక్రమణి, ఏకాదశి, శివరాత్రి
+ *  వంటి సందర్భాల్లో. ఇప్పుడు ప్రతి రోజూ దృక్ పంచాంగ నిర్వచనంతో
+ *  (పై అంచు + 34′ వక్రీభవనం) కచ్చితంగా లెక్కిస్తాము, మరియు ఫలితాన్ని
+ *  కాష్ చేస్తాము — ఏడాది స్కాన్ కూడా వేగంగానే ఉంటుంది.
  */
+const sunTimeCache = new Map<string, { sunriseJd: number; sunsetJd: number }>();
+const sunKey = (dateISO: string, lat: number, lng: number, tz: number) =>
+  `${dateISO}|${lat.toFixed(4)}|${lng.toFixed(4)}|${tz}`;
+
 export function approximateSunTimes(
   dateISO: string,
   lat: number,
   lng: number,
   tzOffsetHours: number
 ): { sunriseJd: number; sunsetJd: number } {
+  const key = sunKey(dateISO, lat, lng, tzOffsetHours);
+  const hit = sunTimeCache.get(key);
+  if (hit) return hit;
   const [y, m, d] = dateISO.split('-').map(Number);
-  const jdNoon = jdFromMs(Date.UTC(y, m - 1, d, 12)) - tzOffsetHours / 24;
-  const n = Math.floor(jdNoon - 2451545.0 + 0.5);
-  const Jstar = n - lng / 360;
-  const M = norm360(357.5291 + 0.98560028 * Jstar);
-  const C = 1.9148 * Math.sin((M * Math.PI) / 180) + 0.02 * Math.sin((2 * M * Math.PI) / 180) + 0.0003 * Math.sin((3 * M * Math.PI) / 180);
-  const lambda = norm360(M + C + 180 + 102.9372);
-  const Jtransit = 2451545.0 + Jstar + 0.0053 * Math.sin((M * Math.PI) / 180) - 0.0069 * Math.sin((2 * lambda * Math.PI) / 180);
-  const decl = (Math.asin(Math.sin((lambda * Math.PI) / 180) * Math.sin((23.44 * Math.PI) / 180)) * 180) / Math.PI;
-  const latRad = (lat * Math.PI) / 180;
-  const decRad = (decl * Math.PI) / 180;
-  const cosH =
-    (Math.sin((-0.833 * Math.PI) / 180) - Math.sin(latRad) * Math.sin(decRad)) /
-    (Math.cos(latRad) * Math.cos(decRad));
-  const hourAngle = (Math.acos(Math.max(-1, Math.min(1, cosH))) * 180) / Math.PI / 360;
-  return { sunriseJd: Jtransit - hourAngle, sunsetJd: Jtransit + hourAngle };
+  const fallbackNoon = jdFromMs(Date.UTC(y, m - 1, d, 12)) - tzOffsetHours / 24;
+  const sunriseJd = sunriseJdForLocalDate(dateISO, lat, lng, tzOffsetHours) ?? fallbackNoon - 6 / 24;
+  const sunsetJd = sunsetJdForLocalDate(dateISO, lat, lng, tzOffsetHours) ?? fallbackNoon + 6 / 24;
+  const value = { sunriseJd, sunsetJd };
+  if (sunTimeCache.size > 4000) sunTimeCache.clear();
+  sunTimeCache.set(key, value);
+  return value;
 }
 
 interface LightPanchanga {
@@ -1321,25 +1367,198 @@ function tithiMatches(light: LightPanchanga, rule: FestivalRule): boolean {
   return true;
 }
 
+/**
+ * మకర సంక్రమణ పర్వ దినం — తెలుగు పంచాంగ సంప్రదాయం.
+ *
+ * ప్రవేశం మధ్యాహ్నానికి పూర్వం (సూర్యోదయం తర్వాత) జరిగితే అదే పౌర దినం;
+ * మధ్యాహ్నం తర్వాత లేదా రాత్రి జరిగితే మరుసటి సూర్యోదయం పడే దినం.
+ *   • 2023-01-14 20:44 → 15 జనవరి   • 2024-01-15 02:43 → 15 జనవరి
+ *   • 2025-01-14 08:55 → 14 జనవరి   • 2026-01-14 15:07 → 15 జనవరి
+ * ఇదే భోగి (ముందు రోజు) / కనుమ (మరుసటి రోజు) తేదీలను నిర్ణయిస్తుంది.
+ * (దృక్ పంచాంగం ప్రవేశ పౌర దినాన్ని 2026లో 14 జనవరి అని చూపిస్తుంది; తెలుగు
+ *  పంచాంగాలు — ప్రొకేరళ తెలుగు క్యాలెండర్, ఆంధ్రప్రదేశ్/తెలంగాణ ప్రభుత్వ పండుగలు —
+ *  14 భోగి / 15 సంక్రమణి / 16 కనుమ అని చూపిస్తాయి. తెలుగు సంప్రదాయమే ఇక్కడ ప్రమాణం.)
+ */
+export function makaraSankrantiDayISO(
+  ingressJd: number,
+  lat: number,
+  lng: number,
+  tz: number
+): string {
+  const ingressISO = civilDateAt(ingressJd, tz);
+  const noon = localMidnightJd(ingressISO, tz) + 0.5;
+  const srToday = riseSetForLocalDate(ingressISO, lat, lng, tz).sunriseJd;
+  if (srToday !== null && ingressJd > srToday && ingressJd <= noon) return ingressISO;
+  if (srToday !== null && ingressJd <= srToday) return ingressISO; // రాత్రి → ఈ ఉదయమే
+  return civilDateAt(ingressJd + 1, tz);
+}
+
+/* ---------- సంక్రమణ దినాలు (సంవత్సరానికి ఒకసారి) ---------- */
+const sankrantiDayCache = new Map<string, Map<string, { sign: number; jd: number }>>();
+
+/**
+ * "సంక్రమణ దినం" = ప్రవేశ క్షణం పడే పౌర దినం (దృక్ పంచాంగ ప్రమాణం).
+ * సూర్యోదయ రాశి మార్పు ఆధారంగా చూస్తే, ప్రవేశం సూర్యోదయానికి ముందు జరిగినప్పుడు
+ * ఒక రోజు ముందుకు జరుగుతుంది (ఉదా. ధనుర్మాసం 2025-12-16 04:20 → 16వ తేదీనే).
+ */
+function sankrantiDaysForYear(
+  year: number,
+  mode: SiderealMode,
+  tz: number,
+  lat = 17.385,
+  lng = 78.4867
+): Map<string, { sign: number; jd: number }> {
+  const key = `${year}|${mode}|${tz}|${lat.toFixed(3)}|${lng.toFixed(3)}`;
+  const hit = sankrantiDayCache.get(key);
+  if (hit) return hit;
+  const map = new Map<string, { sign: number; jd: number }>();
+  for (let sign = 0; sign < 12; sign++) {
+    const jd = sankrantiJd(year, sign, mode);
+    let dateISO = civilDateAt(jd, tz);
+    if (sign === 9) {
+      // మకర సంక్రమణం — తెలుగు పంచాంగ పర్వ దిన నియమం
+      dateISO = makaraSankrantiDayISO(jd, lat, lng, tz);
+    }
+    if (Number(dateISO.slice(0, 4)) !== year) continue;
+    map.set(dateISO, { sign, jd });
+  }
+  sankrantiDayCache.set(key, map);
+  return map;
+}
+
+/**
+ * సూర్య సంబంధ పర్వాలు + ఉగాది — రాశి ప్రవేశం, భోగి, కనుమ, ధనుర్మాసం.
+ * ఇవి తిథి నియమాలతో రావు, కాబట్టి రోజు వీక్షణలు మరియు సంవత్సర/రాబోయే పర్వాల
+ * జాబితా — రెండూ ఇదే ఒకే ఫంక్షన్ నుంచి తీసుకుంటాయి (ఒకే నిజం).
+ */
+function computedObservances(
+  dateISO: string,
+  geo: GeoContext,
+  mode: SiderealMode,
+  sunriseJd: number,
+  nextSunriseJd: number
+): FestivalEntry[] {
+  const tz = geo.tzOffsetHours;
+  const out: FestivalEntry[] = [];
+
+  // ---- ఉగాది (చైత్ర శుక్ల పాడ్యమి; క్షయ పాడ్యమి సహా లెక్కించబడుతుంది)
+  const gy = Number(dateISO.slice(0, 4));
+  if (ugadiDateISO(gy, mode, tz, geo.lat, geo.lng) === dateISO) {
+    out.push({
+      id: 'ugadi',
+      nameTe: 'ఉగాది (తెలుగు నూతన సంవత్సరం)',
+      nameEn: 'Ugadi',
+      dateISO,
+      descriptionTe:
+        'చైత్ర శుక్ల పాడ్యమి — శాలివాహన సంవత్సరారంభం. పంచాంగ శ్రవణం, ఉగాది పచ్చడి, బ్రహ్మదేవ ఆరాధన.',
+      category: 'major',
+      timingNoteTe: 'సూర్యోదయ వ్యాప్తి ప్రధానం',
+    });
+  }
+
+  // ---- సంక్రమణం (సూర్యుడు నిరయన రాశి మార్చే పౌర దినం)
+  const SIGN_TE = ['మేష', 'వృషభ', 'మిథున', 'కర్కాటక', 'సింహ', 'కన్య', 'తులా', 'వృశ్చిక', 'ధనుస్సు', 'మకర', 'కుంభ', 'మీన'];
+  const days = sankrantiDaysForYear(gy, mode, tz, geo.lat, geo.lng);
+  const todayIngress = days.get(dateISO);
+  if (todayIngress) {
+    const entering = todayIngress.sign;
+    const ingress = todayIngress.jd;
+    let nameTe = `${SIGN_TE[entering]} సంక్రమణం`;
+    let descTe = `సూర్యుడు ${SIGN_TE[entering]} రాశిలోకి ప్రవేశించే పుణ్యకాలం. స్నాన, దాన, జప కర్మలకు శుభం.`;
+    let category: FestivalEntry['category'] = 'solar';
+    if (entering === 9) {
+      nameTe = 'మకర సంక్రమణం (పెద్ద పండుగ / పొంగల్)';
+      descTe =
+        'మకర సంక్రమణం — పెద్దలకు పాద పూజ, నువ్వుల నూనె, బెల్లం, పండ్ల దానం. ఉత్తరాయణ పుణ్యకాలం ఆరంభం. స్నాన దాన జపాలకు మహా పుణ్యం.';
+      category = 'major';
+    } else if (entering === 0) {
+      nameTe = 'మేష సంక్రమణం (విషువత్)';
+      descTe = 'మేష సంక్రమణం — వసంత విషువత్ పర్వం; నవాన్న ప్రాశనం, సూర్యారాధన, ఉగాది సన్నాహం.';
+      category = 'major';
+    } else if (entering === 6) {
+      nameTe = 'తులా సంక్రమణం';
+      descTe = 'తులా సంక్రమణం — దక్షిణాయన పుణ్యకాలం; పితృ తర్పణాలు, దాన ధర్మాలు, మహాలయ పక్ష ఆరంభం.';
+      category = 'major';
+    } else if (entering === 8) {
+      nameTe = 'ధనుర్మాసారంభం (ధనుస్సు సంక్రమణం)';
+      descTe = 'ధనుర్మాసం ఆరంభం — మార్గశిర ధనుర్మాస పూజలు, తిరుప్పావై, సూర్య నమస్కారాలు.';
+      category = 'major';
+    }
+    out.push({
+      id: `sankranti-${entering}`,
+      nameTe,
+      nameEn: `${TELUGU_RASIS[entering]?.nameEn ?? ''} Sankranti`,
+      dateISO,
+      descriptionTe: descTe,
+      category,
+      timingNoteTe: `సంక్రమణ సమయం: ${formatLocalHM(ingress, tz)}`,
+    });
+  }
+
+  // ---- భోగి / కనుమ — మకర సంక్రమణం చుట్టూ తెలుగు సంప్రదాయం
+  if (days.get(addDaysISO(dateISO, 1))?.sign === 9) {
+    out.push({
+      id: 'bhogi',
+      nameTe: 'భోగి (మకర సంక్రమణ పూర్వ దినం)',
+      nameEn: 'Bhogi',
+      dateISO,
+      descriptionTe: 'భోగి మంటలు, పాత వస్తు త్యాగం, ఇంద్ర పూజ, గంగా స్నానం.',
+      category: 'major',
+    });
+  }
+  if (days.get(addDaysISO(dateISO, -1))?.sign === 9) {
+    out.push({
+      id: 'kanuma',
+      nameTe: 'కనుమ (మకర సంక్రమణం మరుసటి రోజు)',
+      nameEn: 'Kanuma',
+      dateISO,
+      descriptionTe: 'పశు పూజ, రైతు సన్మానం, గ్రామ దేవతల ఆరాధన.',
+      category: 'major',
+    });
+  }
+
+  return out;
+}
+
 function festivalsForLightPanchanga(
   dateISO: string,
   light: LightPanchanga,
+  geo: GeoContext,
+  mode: SiderealMode,
   rules = FESTIVAL_RULES
 ): FestivalEntry[] {
   const out: FestivalEntry[] = [];
   for (const rule of rules) {
+    // ఉగాది నియమాన్ని ఇక్కడ అమలు చేయము — ugadiDateISO లెక్క (క్షయ పాడ్యమి సహా)
+    // ఒక్కటే ప్రామాణిక మార్గం. computedObservances లో చేరుస్తాము.
+    if (rule.id === 'ugadi') continue;
     let matched = false;
     if (rule.weekday !== undefined) {
-      // weekday + paksha based rules (e.g. Varalakshmi Vratam)
+      // వార + పక్ష ఆధారిత వ్రతాలు (ఉదా. వరలక్ష్మీ వ్రతం):
+      // శ్రావణ శుక్ల పక్షంలోని *చివరి* శుక్రవారం — సంప్రదాయ నిర్వచనం.
       const inPaksha =
         rule.paksha === 'shukla' ? light.tithiAtSunrise < 15 : light.tithiAtSunrise >= 15;
       const tithiNum = (light.tithiAtSunrise % 15) + 1;
+      // "శ్రావణ పౌర్ణమికి ముందు చివరి శుక్రవారం" — దక్షిణ (తెలుగు) సంప్రదాయం.
+      // పౌర్ణమి దినం సూర్యోదయాన పౌర్ణమి తిథి ఉన్న రోజు; ఆ రోజు కంటే ముందున్న
+      // చివరి శుక్రవారమే వ్రతం. (2026: పౌర్ణమి 28 ఆగస్టు → వ్రతం 21 ఆగస్టు.)
+      let daysToPurnima = -1;
+      if (rule.weekday === light.weekday && light.masaIndex === rule.masa && !light.masaIsAdhika) {
+        for (let k = 1; k <= 7; k++) {
+          const ahead = computeLightPanchanga(addDaysISO(dateISO, k), geo, mode);
+          if (ahead.tithiAtSunrise === 14 && !ahead.masaIsAdhika) {
+            daysToPurnima = k;
+            break;
+          }
+        }
+      }
       matched =
         light.weekday === rule.weekday &&
         light.masaIndex === rule.masa &&
+        !light.masaIsAdhika &&
         inPaksha &&
-        tithiNum >= 9 &&
-        tithiNum <= 13;
+        tithiNum <= 14 &&
+        daysToPurnima > 0;
     } else {
       matched = tithiMatches(light, rule);
     }
@@ -1390,7 +1609,16 @@ function collectFestivalsBetween(
     ).padStart(2, '0')}`;
     if (dateISO > padEnd) break;
     const light = computeLightPanchanga(dateISO, geo, mode);
-    raw.push(...festivalsForLightPanchanga(dateISO, light));
+    raw.push(
+      ...festivalsForLightPanchanga(dateISO, light, geo, mode),
+      ...computedObservances(
+        dateISO,
+        geo,
+        mode,
+        light.sunriseJd,
+        approximateSunTimes(addDaysISO(dateISO, 1), geo.lat, geo.lng, tz).sunriseJd
+      )
+    );
 
     const sunriseIdx = light.tithiAtSunrise;
     tithiSunriseDays.set(sunriseIdx, (tithiSunriseDays.get(sunriseIdx) ?? new Set()).add(dateISO));
@@ -1815,66 +2043,10 @@ export function computeDayPanchanga(
 
   // ----- Festivals, flags
   const light = computeLightPanchanga(dateISO, geo, mode);
-  const observances = festivalsForLightPanchanga(dateISO, light);
-
-  // ---- Ugadi (computed from the Chaitra new moon, handles kshaya pratipada) ----
-  if (ugadiDateISO(Number(dateISO.slice(0, 4)), mode, tz, geo.lat, geo.lng) === dateISO) {
-    observances.push({
-      id: 'ugadi',
-      nameTe: 'ఉగాది (తెలుగు నూతన సంవత్సరం)',
-      nameEn: 'Ugadi',
-      dateISO,
-      descriptionTe:
-        'చైత్ర శుక్ల పాడ్యమి — శాలివాహన సంవత్సరారంభం. పంచాంగ శ్రవణం, ఉగాది పచ్చడి, బ్రహ్మదేవ ఆరాధన.',
-      category: 'major',
-      timingNoteTe: 'సూర్యోదయ వ్యాప్తి ప్రధానం',
-    });
-  }
-
-  // ---- Sankranti on this day (Sun changes sidereal sign) ----
-  {
-    const sunSignAtSunrise = Math.floor(siderealLongitude('Sun', sunriseJd, mode) / 30) % 12;
-    const sunSignAtPreviousSunrise = Math.floor(siderealLongitude('Sun', sunriseJd - 1, mode) / 30) % 12;
-    const sunSignNextSunrise = Math.floor(siderealLongitude('Sun', nextSunriseJd + 1e-6, mode) / 30) % 12;
-    if (sunSignAtSunrise !== sunSignNextSunrise) {
-      const ingress = sankrantiJd(Number(dateISO.slice(0, 4)), sunSignNextSunrise, mode);
-      const signTe = TELUGU_RASIS[sunSignNextSunrise]?.nameTe ?? '';
-      observances.push({
-        id: `sankranti-${sunSignNextSunrise}`,
-        nameTe: `${signTe.split(' ')[0]} సంక్రమణం`,
-        nameEn: `${TELUGU_RASIS[sunSignNextSunrise]?.nameEn} Sankranti`,
-        dateISO,
-        descriptionTe:
-          sunSignNextSunrise === 9
-            ? 'మకర సంక్రమణం — పెద్దలకు పాద పూజ, నువ్వుల నూనె, బెల్లం, పండ్ల దానం. ఉత్తరాయణ పుణ్యకాలం ఆరంభం.'
-            : `సూర్యుడు ${signTe} రాశిలోకి ప్రవేశించే పుణ్యకాలం. స్నాన, దాన, జప కర్మలకు శుభం.`,
-        category: 'solar',
-        timingNoteTe: `సంక్రమణ సమయం: ${formatLocalHM(ingress, tz)}`,
-      });
-    }
-
-    // Kanuma = the day after Makara Sankranti; Bhogi = the day before it
-    if (sunSignAtSunrise === 9 && sunSignAtPreviousSunrise === 8) {
-      observances.push({
-        id: 'kanuma',
-        nameTe: 'కనుమ (మకర సంక్రమణం మరుసటి రోజు)',
-        nameEn: 'Kanuma',
-        dateISO,
-        descriptionTe: 'పశు పూజ, రైతు సన్మానం, గ్రామ దేవతల ఆరాధన.',
-        category: 'solar',
-      });
-    }
-    if (sunSignAtSunrise === 8 && sunSignNextSunrise === 9) {
-      observances.push({
-        id: 'bhogi',
-        nameTe: 'భోగి (మకర సంక్రమణ పూర్వ దినం)',
-        nameEn: 'Bhogi',
-        dateISO,
-        descriptionTe: 'భోగి మంటలు, పాత వస్తు త్యాగం, ఇంద్ర పూజ.',
-        category: 'solar',
-      });
-    }
-  }
+  const observances = [
+    ...festivalsForLightPanchanga(dateISO, light, geo, mode),
+    ...computedObservances(dateISO, geo, mode, sunriseJd, nextSunriseJd),
+  ];
 
   const specialFlags: { key: string; te: string }[] = [];
   if (tIdx === 14) specialFlags.push({ key: 'purnima', te: 'పౌర్ణమి' });

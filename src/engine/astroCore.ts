@@ -284,8 +284,12 @@ export function deltaCancriTrueTropicalLongitude(jd: number): number {
 /** Ayanamsa (deg) for a given JD and sidereal mode. */
 export function ayanamsaDegrees(jd: number, mode: SiderealMode = 'lahiri'): number {
   // నిజ చిత్రా / పుష్య — స్థిర గుణకం కాదు; నక్షత్రపు నిజ స్థానం నుండి ప్రతి క్షణం లెక్కిస్తాము.
-  if (mode === 'true_citra') return norm360(spicaTrueTropicalLongitude(jd) - 180);
-  if (mode === 'pushya') return norm360(deltaCancriTrueTropicalLongitude(jd) - 106);
+  // నక్షత్రాల నిజ స్థానాలు సత్య (apparent) చట్రంలో ఉంటాయి; అయనాంశం మాత్రం
+  // మధ్యమ (mean) చట్రంలో నిర్వచించబడుతుంది — అందుకే పోషణ తీసివేయడం.
+  if (mode === 'true_citra')
+    return norm360(spicaTrueTropicalLongitude(jd) - nutationLongitudeDeg(jd) - 180);
+  if (mode === 'pushya')
+    return norm360(deltaCancriTrueTropicalLongitude(jd) - nutationLongitudeDeg(jd) - 106);
   const meta = SIDEREAL_MODE_BY_ID[mode] ?? SIDEREAL_MODE_BY_ID.lahiri;
   return lahiriAyanamsa(jd) + meta.deltaFromLahiri + meta.deltaPerCentury * julianCenturies(jd);
 }
@@ -322,6 +326,86 @@ const BODY_MAP: Record<TropicalBodyId, Astronomy.Body> = {
   Pluto: Astronomy.Body.Pluto,
 };
 
+/* ------------------------------------------------------------------ *
+ *  పోషణ (nutation) — నిరయన (సిడెరియల్) చట్రం కోసం
+ * ------------------------------------------------------------------ *
+ *  జ్యోతిష నిరయన రాశులు *మధ్యమ* విషువత్తు (mean equinox) ఆధారితం —
+ *  అంటే స్థిర నక్షత్ర చట్రం. స్విస్ ఎఫెమెరిస్ `FLG_SIDEREAL` కూడా ఇదే
+ *  చేస్తుంది: సిడెరియల్ రేఖాంశం = సాయన (apparent) రేఖాంశం − పోషణ − అయనాంశం.
+ *  పోషణను విడిచిపెడితే 16″ (0.004°) వరకు తప్పు — సంక్రమణి సమయాలు
+ *  ఆరు నిమిషాల వరకు జరుగుతాయి. క్రింది సిరీస్ Meeus, *Astronomical
+ *  Algorithms* (2వ సం.) అధ్యాయం 22, పట్టిక 22.A నుండి (13 ప్రధాన పదాలు;
+ *  శేషం < 0.05″).
+ */
+export function nutationInLongitudeArcsec(jd: number): number {
+  const T = julianCenturies(jd);
+  const d2r = Math.PI / 180;
+  const D = (297.85036 + 445267.11148 * T - 0.0019142 * T * T + (T * T * T) / 189474) * d2r;
+  const M = (357.52772 + 35999.05034 * T - 0.0001603 * T * T - (T * T * T) / 300000) * d2r;
+  const Mp = (134.96298 + 477198.867398 * T + 0.0086972 * T * T + (T * T * T) / 56250) * d2r;
+  const F = (93.27191 + 483202.017538 * T - 0.0036825 * T * T + (T * T * T) / 327270) * d2r;
+  const Om = (125.04452 - 1934.136261 * T + 0.0020708 * T * T + (T * T * T) / 450000) * d2r;
+
+  // [D, M, M', F, Ω, A(0.0001″), B(0.0001″/శతాబ్దం)]
+  const terms: [number, number, number, number, number, number, number][] = [
+    [0, 0, 0, 0, 1, -171996, -174.2],
+    [-2, 0, 0, 2, 2, -13187, -1.6],
+    [0, 0, 0, 2, 2, -2274, -0.2],
+    [0, 0, 0, 0, 2, 2062, 0.2],
+    [0, 1, 0, 0, 0, 1426, -3.4],
+    [0, 0, 1, 0, 0, 712, 0.1],
+    [-2, 1, 0, 2, 2, -517, 1.2],
+    [0, 0, 0, 2, 1, -386, -0.4],
+    [0, 0, 1, 2, 2, -301, 0],
+    [-2, -1, 0, 2, 2, 217, -0.5],
+    [-2, 0, 1, 0, 0, -158, 0],
+    [-2, 0, 0, 2, 1, 129, 0.1],
+    [0, 0, -1, 2, 2, 123, 0],
+  ];
+  let sum = 0;
+  for (const [cd, cm, cmp, cf, com, a, b] of terms) {
+    const arg = cd * D + cm * M + cmp * Mp + cf * F + com * Om;
+    sum += (a + b * T) * Math.sin(arg);
+  }
+  return sum * 0.0001;
+}
+
+/** పోషణ వాలు (nutation in obliquity, ఆర్క్-సెకన్లు) — ప్రధాన నాలుగు పదాలు. */
+export function nutationInObliquityArcsec(jd: number): number {
+  const T = julianCenturies(jd);
+  const r = Math.PI / 180;
+  const Om = (125.04452 - 1934.136261 * T) * r;
+  const L = (280.4665 + 36000.7698 * T) * r;
+  const Lp = (218.3165 + 481267.8813 * T) * r;
+  return (
+    9.2 * Math.cos(Om) + 0.57 * Math.cos(2 * L) + 0.1 * Math.cos(2 * Lp) - 0.09 * Math.cos(2 * Om)
+  );
+}
+
+/** సత్య (true) క్రాంతి వాలు = మధ్యమ + పోషణ వాలు. */
+export function trueObliquityDeg(jd: number): number {
+  return meanObliquityDeg(jd) + nutationInObliquityArcsec(jd) / 3600;
+}
+
+/** మధ్యమ క్రాంతి వాలు (mean obliquity, డిగ్రీలు) — IAU 1980. */
+export function meanObliquityDeg(jd: number): number {
+  const T = julianCenturies(jd);
+  return 23.439291111 - 0.0130041667 * T - 1.638889e-7 * T * T + 5.036111e-7 * T * T * T;
+}
+
+/** పోషణ రేఖాంశ సర్దుబాటు (డిగ్రీలు) — సాయనం → మధ్యమ క్రాంతివృత్తం. */
+export function nutationLongitudeDeg(jd: number): number {
+  return nutationInLongitudeArcsec(jd) / 3600;
+}
+
+/**
+ * సాయన (apparent) రేఖాంశాన్ని మధ్యమ (mean) క్రాంతివృత్తానికి మార్చడం.
+ * నిరయన రేఖాంశాలు ఈ చట్రం నుండే తీసుకోబడతాయి.
+ */
+export function toMeanEclipticLongitude(apparentLon: number, jd: number): number {
+  return norm360(apparentLon - nutationLongitudeDeg(jd));
+}
+
 export function tropicalLongitude(body: TropicalBodyId, jd: number): number {
   const time = Astronomy.MakeTime(dateFromJd(jd));
   const vec = Astronomy.GeoVector(BODY_MAP[body], time, true);
@@ -341,7 +425,10 @@ export function siderealLongitude(
   jd: number,
   mode: SiderealMode = 'lahiri'
 ): number {
-  return norm360(tropicalLongitude(body, jd) - ayanamsaDegrees(jd, mode));
+  // సిడెరియల్ = సాయనం − పోషణ − అయనాంశం  (స్విస్ ఎఫెమెరిస్ FLG_SIDEREAL సమానం)
+  return norm360(
+    tropicalLongitude(body, jd) - nutationLongitudeDeg(jd) - ayanamsaDegrees(jd, mode)
+  );
 }
 
 /** Moon − Sun elongation in degrees (0 = amavasya, 180 = purnima). */
@@ -542,28 +629,159 @@ export interface RiseSetTimes {
   moonsetJd: number | null;
 }
 
+/* ------------------------------------------------------------------ *
+ *  ఉదయాస్తమయ నిర్వచనం — దృక్ పంచాంగ ప్రమాణం
+ * ------------------------------------------------------------------ *
+ *  దృక్ పంచాంగం (మరియు స్విస్ ఎఫెమెరిస్ `rise_trans`) ఉదయాన్ని
+ *  "సూర్యబింబపు *పై అంచు* క్షితిజాన్ని తాకిన క్షణం" అని నిర్ణయిస్తుంది —
+ *  34′ వాతావరణ వక్రీభవనం (+ సగం వ్యాసం) సహితంగా. ఇదే భారతీయ
+ *  పంచాంగ సంప్రదాయం; కేంద్రం ఆధారిత సాధారణ సూత్రం కంటే ≈70 సెకన్లు తేడా.
+ *
+ *  మునుపు `SearchRiseSet` (బింబ కేంద్రం, సాధారణ వక్రీభవనం) వాడబడేది —
+ *  అది ప్రచురిత పంచాంగాలతో 1–2 నిమిషాలు తేడా ఇచ్చేది.
+ */
+
+/** క్షితిజ వక్రీభవనం (డిగ్రీలు) — 34′ */
+const HORIZON_REFRACTION_DEG = 34 / 60;
+const AU_KM = 149_597_870.7;
+const SUN_RADIUS_KM = 695_700;
+const MOON_RADIUS_KM = 1_737.4;
+
+function semiDiameterDeg(body: Astronomy.Body, jd: number, observer: Astronomy.Observer): number {
+  const radiusKm = body === Astronomy.Body.Sun ? SUN_RADIUS_KM : body === Astronomy.Body.Moon ? MOON_RADIUS_KM : 0;
+  if (radiusKm === 0) return 0;
+  const time = Astronomy.MakeTime(dateFromJd(jd));
+  const eq = Astronomy.Equator(body, time, observer, false, false);
+  const distKm = eq.dist * AU_KM;
+  return (Math.asin(radiusKm / distKm) * 180) / Math.PI;
+}
+
+/**
+ * ఒక క్షణంలో సూర్య/చంద్ర బింబపు వక్రీభవన సహిత (apparent) క్షితిజోన్నతి.
+ * `Astronomy.Horizon(..., 'normal')` ప్రామాణిక వాతావరణ వక్రీభవన నమూనాను
+ * (1013.25 hPa, 10 °C) వాడుతుంది.
+ */
+function apparentAltitude(
+  body: Astronomy.Body,
+  jd: number,
+  observer: Astronomy.Observer
+): number {
+  const time = Astronomy.MakeTime(dateFromJd(jd));
+  const eq = Astronomy.Equator(body, time, observer, true, true);
+  const hor = Astronomy.Horizon(time, observer, eq.ra, eq.dec, 'normal');
+  return hor.altitude;
+}
+
+/** g(jd) = వక్రీభవన సహిత కేంద్రోన్నతి + బింబ వ్యాసార్ధం (ఉదయాస్తమయ సమీకరణం) */
+function limbFunction(body: Astronomy.Body, observer: Astronomy.Observer, jd: number): number {
+  const sd = semiDiameterDeg(body, jd, observer);
+  return apparentAltitude(body, jd, observer) + sd;
+}
+
+/**
+ * ద్విభాజన (bisection) ద్వారా పై అంచు క్షితిజాన్ని తాకే క్షణం — 0.05 సెకన్ల
+ * ఖచ్చితత్వం. ఇది స్విస్ ఎఫెమెరిస్ `rise_trans` నిర్వచనానికి సమానం:
+ *   వక్రీభవన సహిత కేంద్రోన్నతి = −బింబ వ్యాసార్ధం
+ *   (అంటే వక్రీభవన సహిత పై అంచి సరిగ్గా క్షితిజంపై).
+ */
+function refineLimbCrossing(
+  body: Astronomy.Body,
+  observer: Astronomy.Observer,
+  guessJd: number,
+  direction: 1 | -1
+): number | null {
+  const step = 20 / 1440; // 20 నిమిషాలు
+  let lo = guessJd - step;
+  let hi = guessJd + step;
+  let gLo = limbFunction(body, observer, lo);
+  let gHi = limbFunction(body, observer, hi);
+  if (direction > 0 ? !(gLo < 0 && gHi >= 0) : !(gLo > 0 && gHi <= 0)) {
+    // bracketing విఫలమైతే కొంచెం విస్తరించి మళ్లీ ప్రయత్నం
+    lo = guessJd - 4 * step;
+    hi = guessJd + 4 * step;
+    gLo = limbFunction(body, observer, lo);
+    gHi = limbFunction(body, observer, hi);
+    if (direction > 0 ? !(gLo < 0 && gHi >= 0) : !(gLo > 0 && gHi <= 0)) return null;
+  }
+  let a = lo;
+  let b = hi;
+  for (let i = 0; i < 40 && b - a > 5e-8; i++) {
+    const mid = (a + b) / 2;
+    const gm = limbFunction(body, observer, mid);
+    const rising = direction > 0;
+    if (rising ? gm >= 0 : gm <= 0) b = mid;
+    else a = mid;
+  }
+  return (a + b) / 2;
+}
+
+/**
+ * పై అంచు క్షితిజాన్ని దాటే క్షణం (JD, UT). కనబడని సందర్భంలో (ధ్రువ ప్రాంతాలు)
+ * `null`. వక్రీభవనం + బింబ వ్యాసార్ధం రెండూ కలిపి లెక్కిస్తాము.
+ */
+function upperLimbEvent(
+  body: Astronomy.Body,
+  direction: 1 | -1,
+  startJd: number,
+  lat: number,
+  lng: number,
+  limitDays = 1.5
+): number | null {
+  const observer = new Astronomy.Observer(lat, lng, 0);
+  // మొదటి అంచనా: క్షితిజ వక్రీభవనం + సగటు వ్యాసార్ధం (సుమారు 0.87°) తో
+  const coarse = Astronomy.SearchAltitude(
+    body,
+    observer,
+    direction,
+    dateFromJd(startJd),
+    limitDays,
+    -(0.612 + 0.266)
+  );
+  if (!coarse) return null;
+  return refineLimbCrossing(body, observer, jdFromDate(coarse.date), direction) ?? jdFromDate(coarse.date);
+}
+
 function searchEvent(
   body: Astronomy.Body,
   direction: 1 | -1,
   startJd: number,
   lat: number,
   lng: number,
-  limitDays = 1.2
+  limitDays = 1.5
 ): number | null {
+  const exact = upperLimbEvent(body, direction, startJd, lat, lng, limitDays);
+  if (exact !== null) return exact;
+  // ధ్రువ రాత్రులు/పగళ్లలో వక్రీభవన సహిత గణన విఫలమైతే — సాధారణ పద్ధతి
   const observer = new Astronomy.Observer(lat, lng, 0);
   const event = Astronomy.SearchRiseSet(body, observer, direction, dateFromJd(startJd), limitDays);
   return event ? jdFromDate(event.date) : null;
 }
 
 /**
- * Rise/set for a Hindu civil day (sunrise → next sunrise).
+ * ఒక హిందూ దినానికి (సూర్యోదయం → మరుసటి సూర్యోదయం) ఉదయాస్తమయాలు.
  *
- * The sun events are searched from local midnight; the moon events are searched
- * from *sunrise* because a panchangam day runs from sunrise to sunrise, so the
- * moonset printed for today is the first one after today's sunrise (which may
- * fall on the next civil date — the caller flags that).
+ * సూర్యుని ఘటనలు స్థానిక అర్ధరాత్రి నుండి వెతుకుతాము; చంద్రుని ఘటనలు
+ * *సూర్యోదయం* నుండి — ఎందుకంటే పంచాంగ దినం సూర్యోదయాది. అందుకే ఈ రోజు
+ * చూపే చంద్రాస్తమయం మరుసటి తేదీకి పడవచ్చు (కాలర్ ఆ విషయం గుర్తిస్తుంది).
  */
+const riseSetCache = new Map<string, RiseSetTimes>();
+
 export function riseSetForLocalDate(
+  dateISO: string,
+  lat: number,
+  lng: number,
+  tzOffsetHours: number
+): RiseSetTimes {
+  const key = `${dateISO}|${lat.toFixed(4)}|${lng.toFixed(4)}|${tzOffsetHours}`;
+  const hit = riseSetCache.get(key);
+  if (hit) return hit;
+  const value = computeRiseSet(dateISO, lat, lng, tzOffsetHours);
+  if (riseSetCache.size > 5000) riseSetCache.clear();
+  riseSetCache.set(key, value);
+  return value;
+}
+
+function computeRiseSet(
   dateISO: string,
   lat: number,
   lng: number,
@@ -576,6 +794,26 @@ export function riseSetForLocalDate(
   const moonriseJd = searchEvent(Astronomy.Body.Moon, +1, moonAnchor, lat, lng);
   const moonsetJd = searchEvent(Astronomy.Body.Moon, -1, moonAnchor, lat, lng);
   return { sunriseJd, sunsetJd, moonriseJd, moonsetJd };
+}
+
+/** సూర్యోదయం మాత్రమే (వేగవంతమైన మార్గం — సంవత్సర స్కాన్‌లకు) */
+export function sunriseJdForLocalDate(
+  dateISO: string,
+  lat: number,
+  lng: number,
+  tzOffsetHours: number
+): number | null {
+  return searchEvent(Astronomy.Body.Sun, +1, localMidnightJd(dateISO, tzOffsetHours), lat, lng);
+}
+
+/** సూర్యాస్తమయం మాత్రమే */
+export function sunsetJdForLocalDate(
+  dateISO: string,
+  lat: number,
+  lng: number,
+  tzOffsetHours: number
+): number | null {
+  return searchEvent(Astronomy.Body.Sun, -1, localMidnightJd(dateISO, tzOffsetHours), lat, lng);
 }
 
 /** Apparent solar azimuth (deg from true north, clockwise) and altitude. */
@@ -747,7 +985,9 @@ export function trueNodeTropical(jd: number): number {
   const { x, y, z, vx, vy, vz } = state;
   const hx = y * vz - z * vy;
   const hy = z * vx - x * vz;
-  return norm360((Math.atan2(hx, -hy) * 180) / Math.PI);
+  // బిందువు సత్య క్రాంతివృత్తం (ECT) లో లెక్కించబడుతుంది; మధ్యమ చట్రానికి మార్చడం
+  const apparent = norm360((Math.atan2(hx, -hy) * 180) / Math.PI);
+  return norm360(apparent - nutationLongitudeDeg(jd));
 }
 
 /** Mean daily motion (deg/day) used to seed the crossing search. */
