@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ACCURACY } from '../engine/accuracySummary.ts';
 import {
   BookOpen,
   ScrollText,
@@ -190,8 +191,8 @@ export function GranthaSourcesView({ lang = 'te' }: GranthaSourcesViewProps) {
           <div className="rounded-lg border border-[#5BBFB5]/25 bg-[#5BBFB5]/5 px-3 py-2 text-[11.5px] text-[#EDE8E0]/80 leading-relaxed">
             <ShieldCheck className="inline w-3.5 h-3.5 mr-1 text-[#5BBFB5]" />
             {isTe
-              ? 'గణిత ప్రమాణం: గ్రహ స్ఫుటాలు VSOP87 + ELP-2000 (astronomy-engine) — స్విస్ ఎఫెమెరిస్ 2.10.03 గోల్డెన్ ఫిక్చర్ తో 630 కొలతలు, గరిష్ఠ భేదం 0.008° (≈29″). పంచాంగ అంగాలు 365 రోజుల స్విస్-ఎఫిమెరిస్ ఫిక్చర్ తో ధృవీకరించబడ్డాయి.'
-              : 'Numerical standard: planetary positions from VSOP87 + ELP-2000 (astronomy-engine), 630 measurements against a Swiss Ephemeris 2.10.03 golden fixture — max deviation 0.008° (≈29″). Pañcāṅga aṅgas validated against a 365-day Swiss-Ephemeris fixture.'}
+              ? `గణిత ప్రమాణం: గ్రహ స్ఫుటాలు VSOP87 + ELP-2000 (astronomy-engine) — స్విస్ ఎఫెమెరిస్ 2.10.03 గోల్డెన్ ఫిక్చర్ తో ${ACCURACY.measurements} కొలతలు, గరిష్ఠ భేదం ${ACCURACY.maxDegText} (≈${ACCURACY.maxArcsecText}). పంచాంగ అంగాలు ${ACCURACY.panchangaDays} రోజుల స్విస్-ఎఫిమెరిస్ ఫిక్చర్ తో ధృవీకరించబడ్డాయి.`
+              : `Numerical standard: planetary positions from VSOP87 + ELP-2000 (astronomy-engine), ${ACCURACY.measurements} measurements against a Swiss Ephemeris 2.10.03 golden fixture — max deviation ${ACCURACY.maxDegText} (≈${ACCURACY.maxArcsecText}). Pañcāṅga aṅgas validated against a ${ACCURACY.panchangaDays}-day Swiss-Ephemeris fixture.`}
           </div>
           <div className="rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/5 px-3 py-2 text-[11.5px] text-[#EDE8E0]/80 leading-relaxed">
             <ScrollText className="inline w-3.5 h-3.5 mr-1 text-[#C9A96E]" />

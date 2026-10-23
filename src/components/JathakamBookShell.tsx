@@ -36,7 +36,7 @@ const trimLabel = (s: string, n = 78) => (s.length > n ? `${s.slice(0, n - 1)}�
 export const JathakamBookShell: React.FC<JathakamBookShellProps> = ({
   children,
   titleTe = 'సంపూర్ణ జాతక మహాగ్రంథం',
-  subtitleTe = '21 అధ్యాయాలు · 97 ఉపాంశాలు — విషయ సూచిక నుండి నేరుగా ఏ అధ్యాయానికైనా వెళ్లవచ్చు.',
+  subtitleTe,
   idPrefix = 'jch',
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -47,6 +47,13 @@ export const JathakamBookShell: React.FC<JathakamBookShellProps> = ({
   const [query, setQuery] = useState('');
   const [tocOpen, setTocOpen] = useState(true);
   const [openSubs, setOpenSubs] = useState<Record<string, boolean>>({});
+
+  // శీర్షికలోని సంఖ్యలు నిజంగా స్కాన్ చేసిన సూచిక నుండే — స్థిర అంకెలు కాదు
+  const subCount = useMemo(() => toc.reduce((n, e) => n + e.subs.length, 0), [toc]);
+  const autoSubtitle =
+    toc.length > 0
+      ? `${toc.length} అధ్యాయాలు · ${subCount} ఉపాంశాలు — విషయ సూచిక నుండి నేరుగా ఏ అధ్యాయానికైనా వెళ్లవచ్చు.`
+      : 'విషయ సూచిక సిద్ధమవుతోంది…';
 
   // ── విషయ సూచిక నిర్మాణం ─────────────────────────────────────────────
   const scan = useCallback(() => {
@@ -210,7 +217,7 @@ export const JathakamBookShell: React.FC<JathakamBookShellProps> = ({
               </span>
               <div className="min-w-0 flex-1">
                 <h2 className="text-[15px] font-bold text-[#F1DCAE] sm:text-base">{titleTe}</h2>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-[#EDE8E0]/55">{subtitleTe}</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-[#EDE8E0]/55">{subtitleTe ?? autoSubtitle}</p>
               </div>
               <div className="flex items-center gap-1.5">
                 <button

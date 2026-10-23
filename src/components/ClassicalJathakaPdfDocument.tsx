@@ -1,4 +1,5 @@
 import React from 'react';
+import { ACCURACY } from '../engine/accuracySummary.ts';
 import type { CompleteChartResult } from '../engine/ephemeris.ts';
 import type { CompleteTeluguJathakamReport } from '../engine/teluguJathakam.ts';
 import { TELUGU_PLANETS, TELUGU_RASIS } from '../engine/teluguJathakam.ts';
@@ -2027,8 +2028,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
           <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 text-[10px] leading-relaxed">
             <div className="font-bold text-[#7A1818] mb-1">గణిత ప్రమాణం (Numerical Standard)</div>
             గ్రహ స్ఫుటాలు: VSOP87 (గ్రహాలు) + ELP-2000 (చంద్రుడు) — astronomy-engine. స్విస్ ఎఫెమెరిస్
-            2.10.03 (FLG_SWIEPH, SIDM_LAHIRI, TRUE_NODE) గోల్డెన్ ఫిక్చర్‌తో 1899–2035 మధ్య 30 జనన క్షణాల్లో
-            పోల్చగా గరిష్ఠ భేదం 0.008° (≈29 ఆర్క్-సెకన్లు); 7 అయనాంశ విధానాలు సహితం. అయనాంశం: లహిరి (చిత్రపక్ష) —
+            2.10.03 (FLG_SWIEPH, SIDM_LAHIRI, TRUE_NODE) గోల్డెన్ ఫిక్చర్‌తో {ACCURACY.epochs} జనన క్షణాల్లో
+            పోల్చగా గరిష్ఠ భేదం {ACCURACY.maxDegText} (≈{ACCURACY.maxArcsecText} ఆర్క్-సెకన్లు); 7 అయనాంశ విధానాలు సహితం. అయనాంశం: లహిరి (చిత్రపక్ష) —
             {chart.ayanamsaFormatted}. సూర్యోదయం/అస్తమయం వక్రీభవన సహిత దృగ్గణిత పద్ధతి.
             పంచాంగ అంగాలు 365 రోజుల స్విస్-ఎఫిమెరిస్ ఫిక్చర్‌తో ధృవీకరించబడ్డాయి (తిథి/నక్షత్ర/యోగ
             365/365, సూర్యోదయం ±1 నిమిషం).

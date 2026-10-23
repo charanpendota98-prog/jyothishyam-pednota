@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ACCURACY } from './engine/accuracySummary.ts';
 import {
   AYANAMSA_METADATA,
   ZODIAC_SIGNS,
@@ -22,7 +23,7 @@ import {
   NorthIndianKundaliSvg,
   SouthIndianKundaliSvg,
 } from './components/ChartsSvg.tsx';
-import { SampoornaJathakamView } from './components/SampoornaJathakamView.tsx';
+import { SampoornaJathakamView, JATHAKAM_SECTION_COUNT } from './components/SampoornaJathakamView.tsx';
 import { JathakamBookShell } from './components/JathakamBookShell.tsx';
 import { DashaVargaView } from './components/DashaVargaView.tsx';
 import { PanchangaAdvancedView } from './components/PanchangaAdvancedView.tsx';
@@ -309,7 +310,7 @@ export default function App() {
     },
     {
       id: 'jathaka_book',
-      labelTe: 'పూర్తి జాతక మహాగ్రంథం (21 అధ్యాయాలు)',
+      labelTe: `పూర్తి జాతక మహాగ్రంథం (${JATHAKAM_SECTION_COUNT} అధ్యాయాలు)`,
       shortTe: 'పూర్తి జాతకం',
       labelEn: 'Full Jathakam Book',
       icon: <BookOpen className="w-4 h-4" />,
@@ -462,7 +463,7 @@ export default function App() {
         <div className="flex items-center gap-2 shrink-0">
           <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#5BBFB5]/35 bg-[#5BBFB5]/10 text-[#6FD2C7] text-[10px] font-mono-tabular tracking-wider">
             <span className="w-1.5 h-1.5 rounded-full bg-[#6FD2C7] aura-pulse" />
-            SWISS EPHEMERIS · LAHIRI
+            VSOP87 + ELP-2000 · లహిరి
           </span>
 
           <button onClick={() => setIsRoyalCardOpen(true)} className="hidden sm:inline-flex ghost-btn cursor-pointer">
@@ -651,15 +652,16 @@ export default function App() {
                   </h1>
                   <p className="text-[13px] sm:text-[13.5px] leading-relaxed text-[#EDE8E0]/60">
                     గ్రహ స్ఫుటాలు VSOP87 + ELP-2000 సిద్ధాంతాలతో (astronomy-engine) — స్విస్ ఎఫెమెరిస్
-                    2.10.03 గోల్డెన్ ఫిక్చర్‌తో 30 జనన క్షణాల్లో 630 కొలతలు, గరిష్ఠ భేదం 0.008° (≈29″).
+                    2.10.03 గోల్డెన్ ఫిక్చర్‌తో {ACCURACY.epochs} జనన క్షణాల్లో {ACCURACY.measurements} కొలతలు,
+                    గరిష్ఠ భేదం {ACCURACY.maxDegText} (≈{ACCURACY.maxArcsecText}).
                     16 వర్గాలు · షడ్బలం · పంచ స్థాయి దశలు · శ్రీపతి భావ సంధులు · అష్టకవర్గం —
-                    ప్రామాణిక పత్రికలతో 308 పిన్-టు-పిన్ తనిఖీలు.
+                    ప్రామాణిక పత్రికలతో {ACCURACY.gates} పిన్-టు-పిన్ తనిఖీలు.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 shrink-0">
                   {[
-                    ['0.008°', 'స్విస్ ఎఫెమెరిస్ భేదం'],
-                    ['308', 'పత్రికా పిన్-టు-పిన్ తనిఖీలు'],
+                    [ACCURACY.maxDegText, 'స్విస్ ఎఫెమెరిస్ భేదం'],
+                    [String(ACCURACY.gates), 'పత్రికా పిన్-టు-పిన్ తనిఖీలు'],
                     ['22', 'మూల గ్రంథాలు'],
                   ].map(([v, l]) => (
                     <div key={l} className="flex items-baseline gap-2.5">
@@ -1435,9 +1437,9 @@ export default function App() {
                 <div className="w-full shrink-0 sm:w-[220px]">
                   <div className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-3">
                     {[
-                      ['21', 'అధ్యాయాలు'],
+                      [String(JATHAKAM_SECTION_COUNT), 'అధ్యాయాలు'],
                       ['97', 'ఉపాంశాలు'],
-                      ['308', 'తనిఖీలు'],
+                      ['309', 'తనిఖీలు'],
                       ['12', 'గ్రంథాలు'],
                     ].map(([v, l]) => (
                       <div key={l} className="flex items-baseline justify-between py-0.5">
@@ -1516,7 +1518,7 @@ export default function App() {
           <div className="pt-4">
             <JathakamBookShell
               titleTe="విషయ సూచిక & పఠన సహాయం"
-              subtitleTe={`${chart.input.name || 'జాతకుడు'} · ${chart.input.date} ${chart.input.time} · ${chart.input.city} — సంపూర్ణ జాతక మహాగ్రంథం. విషయ సూచిక పుస్తకం లోపలి శీర్షికల నుండి ఆటోమేటిక్‌గా నిర్మించబడుతుంది; ఏ అధ్యాయానికైనా నేరుగా వెళ్లవచ్చు.`}
+              subtitleTe={`${chart.input.name || 'జాతకుడు'} · ${chart.input.date} ${chart.input.time} · ${chart.input.city} — సంపూర్ణ జాతక మహాగ్రంథం · ${JATHAKAM_SECTION_COUNT} అధ్యాయాలు. విషయ సూచిక పుస్తకం లోపలి శీర్షికల నుండి ఆటోమేటిక్‌గా నిర్మించబడుతుంది; ఏ అధ్యాయానికైనా నేరుగా వెళ్లవచ్చు.`}
             >
               <SampoornaJathakamView
                 chart={chart}

@@ -34,7 +34,7 @@ import { computeAvakahada, GHATA_TABLE } from '../src/engine/avakahadaEngine';
 import { computeYogaVichara } from '../src/engine/yogaVicharaEngine';
 import { computeJeevitaVistara } from '../src/engine/jeevitaVistaraEngine';
 import { computePanditaVicharam } from '../src/engine/panditaVicharamEngine';
-import { SampoornaJathakamView } from '../src/components/SampoornaJathakamView';
+import { SampoornaJathakamView, JATHAKAM_CHAPTERS, JATHAKAM_SECTION_COUNT } from '../src/components/SampoornaJathakamView';
 import { computeBhavaSandhi } from '../src/engine/bhavaSandhiEngine';
 import { computeUpagrahas } from '../src/engine/upagrahaEngine';
 import { computeVimshottariDeep } from '../src/engine/vimshottariDeepEngine';
@@ -51,7 +51,7 @@ import { TELUGU_NAKSHATRAS as NAMA_NAKSHATRAS } from '../src/engine/teluguJathak
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { VastuShastraView } from '../src/components/VastuShastraView';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 let pass = 0;
@@ -1233,6 +1233,13 @@ check(
   `${Math.round(BOOK_HTML.length / 1000)} వేల అక్షరాలు`
 );
 check(
+  'గ్రంథ అధ్యాయాల సంఖ్య — ఒకే మూలం (JATHAKAM_CHAPTERS) నుండి, UI లో నిజమైన అంకె',
+  JATHAKAM_CHAPTERS.length === JATHAKAM_SECTION_COUNT + 1 &&
+    JATHAKAM_SECTION_COUNT === 19 &&
+    BOOK_HTML.includes('అన్ని అధ్యాయాలు'),
+  `${JATHAKAM_SECTION_COUNT} అధ్యాయాలు · ${JATHAKAM_CHAPTERS.length} ఎంపికలు`
+);
+check(
   'పుస్తకంలో ఖాళీ గణన లేదు (NaN / undefined ఏ ఫలితంలోనూ లేవు)',
   !/NaN/.test(BOOK_HTML) && !/>undefined</.test(BOOK_HTML),
   `${(BOOK_HTML.match(/NaN/g) ?? []).length} NaN · ${(BOOK_HTML.match(/>undefined</g) ?? []).length} undefined`
@@ -1378,8 +1385,25 @@ check(
 
 
 // ─────────────────────────────────────────────────────────────────────────
+//  UI లో చూపే తనిఖీ సంఖ్యలు ఇక్కడే నిర్ణయమవుతాయి — చేతితో రాసిన అంకెలు కావు.
+//  (గేట్ జోడించినప్పుడల్లా UI తనంతట తానే సరిపోతుంది.)
+// ─────────────────────────────────────────────────────────────────────────
+const TOTAL_GATES = pass + failures.length;
+mkdirSync('src/generated', { recursive: true });
+writeFileSync(
+  'src/generated/verificationStats.ts',
+  `/**
+ * AUTO-GENERATED — ఈ ఫైలును చేతితో మార్చవద్దు.
+ * మూలం: scripts/verify-jathaka.ts (npm run verify:jathaka)
+ */
+export const JATHAKA_GATES = ${TOTAL_GATES};
+export const JATHAKA_GATES_PASSED = ${pass};
+export const JATHAKA_GATES_FAILED = ${failures.length};
+`
+);
+
 console.log('\n══════════════════════════════════════════════════════════');
-console.log(`  మొత్తం తనిఖీలు: ${pass + failures.length} — విజయవంతం: ${pass} — విఫలం: ${failures.length}`);
+console.log(`  మొత్తం తనిఖీలు: ${TOTAL_GATES} — విజయవంతం: ${pass} — విఫలం: ${failures.length}`);
 console.log('  తెలిసిన, నమోదు చేయబడిన భేదాలు:');
 console.log('   • రాహు/కేతు — సత్య నోడ్ (ఈ యాప్) vs మధ్యమ నోడ్ (సూచన PDFలు)');
 console.log('   • కాల వేళ ఉపగ్రహాలు — సూర్యోదయ/సూర్యాస్తమయ నిమిషాల భేదం వల్ల ≤1.5°');

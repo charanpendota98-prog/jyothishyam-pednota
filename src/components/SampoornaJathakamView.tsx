@@ -92,6 +92,37 @@ const VARGA_TABS: { code: VargaDivision; labelTe: string; subtitleTe: string }[]
   { code: 'D60', labelTe: 'D60 షష్ట్యంశ', subtitleTe: 'పూర్వజన్మ కర్మ ఫలం' },
 ];
 
+/**
+ * జాతక మహాగ్రంథ అధ్యాయాల జాబితా — ఒకే మూలం.
+ * యాప్ నావిగేషన్, పుస్తక శీర్షిక, తనిఖీలు అన్నీ ఇక్కడి నుండి సంఖ్య తీసుకుంటాయి,
+ * కాబట్టి "21 అధ్యాయాలు" వంటి తప్పుడు సంఖ్యలు మళ్లీ రావు.
+ */
+export const JATHAKAM_CHAPTERS: { id: JathakamChapter; labelTe: string; icon: React.ReactNode }[] = [
+    { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (అన్ని అధ్యాయాలు)', icon: <Layers className="w-3.5 h-3.5" /> },
+    { id: 'pandita_vicharam', labelTe: 'పండిత విచారణ — జాతకం అసలు ఏమిటి? (స్తంభాలు · బలం · భావాలు · నేరుగా సమాధానాలు)', icon: <Award className="w-3.5 h-3.5" /> },
+    { id: 'sampoorna_jeevita_charitra', labelTe: '0. సంపూర్ణ జీవిత చరిత్ర (0–100 సం. 7 పర్వాలు & నవగ్రహ ఫలితాలు)', icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { id: 'sookshma_nadi_kp', labelTe: '0A. 100% కుండలి సూక్ష్మ నాడి, భావాధిపతి, KP సబ్-లార్డ్ & 18 మూల గ్రంథాలు', icon: <BookOpen className="w-3.5 h-3.5" /> },
+    { id: 'tajika_varshaphala', labelTe: '0B. తాజిక వర్షఫలం & 12-నెలల దినచర్య ఫలితాలు (Varshaphala & 12-Month)', icon: <Calendar className="w-3.5 h-3.5" /> },
+    { id: 'panchanga_kundali', labelTe: '1. పంచాంగం, ఇష్టఘడియలు & నవగ్రహాలు', icon: <Compass className="w-3.5 h-3.5" /> },
+    { id: 'avakahada_ghata', labelTe: '1A. అవకహడ, ఘాత చక్రం & నామాక్షరం', icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { id: 'yoga_vichara', labelTe: '1B. యోగ విచారణ — రాజ, ధన & మహాపురుష యోగాలు', icon: <Award className="w-3.5 h-3.5" /> },
+    { id: 'life_domains_deep', labelTe: '1C. వివాహం · ఉద్యోగం · చదువు · ఆరోగ్యం — లోతైన విశ్లేషణ', icon: <HeartHandshake className="w-3.5 h-3.5" /> },
+    { id: 'siddhanta_verifications', labelTe: '2. గణిత తనిఖీ, భావ చలిత, పంచధా మైత్రి & అవస్థలు', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    { id: 'siddhanta_appendices', labelTe: '3. మాందీ-ఉపగ్రహాలు, ఇష్ట-కష్ట ఫల, భావ బల & శోధన పిండ', icon: <Award className="w-3.5 h-3.5" /> },
+    { id: 'shodashavarga_jaimini', labelTe: '4. షోడశవర్గ & జైమిని కారకులు', icon: <Award className="w-3.5 h-3.5" /> },
+    { id: 'shadbala_ashtakavarga', labelTe: '5. షడ్బల, అష్టకవర్గ & తారాబలం', icon: <BarChart3 className="w-3.5 h-3.5" /> },
+    { id: 'grantha_research', labelTe: '6. 12 ప్రాచీన గ్రంథాల పరిశోధన', icon: <BookOpen className="w-3.5 h-3.5" /> },
+    { id: 'life_pillars', labelTe: '7. జీవిత 6 ప్రధాన రంగాలు', icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { id: 'dwadasha_bhava', labelTe: '8. ద్వాదశ భావ ఫలితాలు (1–12)', icon: <Layers className="w-3.5 h-3.5" /> },
+    { id: 'dasha_kalachakram', labelTe: '9. 120 సం. దశా-భుక్తి కాలచక్రం', icon: <Clock className="w-3.5 h-3.5" /> },
+    { id: 'phala_vivechana', labelTe: '9A. సాముదాయిక అష్టకవర్గ ఫలం, 81 భుక్తి ఫలాలు & గ్రహ సహాయక సూచిక', icon: <BarChart3 className="w-3.5 h-3.5" /> },
+    { id: 'dosha_parihara', labelTe: '10. దోష పరీక్ష (కుజ/కాలసర్ప/శని)', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+    { id: 'upaya_pariharas', labelTe: '11. ఉపాయములు & పరిహారాలు (Upaya & Pariharas)', icon: <Flame className="w-3.5 h-3.5" /> },
+  ];
+
+/** నిజమైన అధ్యాయాల సంఖ్య ('అన్నీ' అనే ఎంపికను లెక్కించము) */
+export const JATHAKAM_SECTION_COUNT = JATHAKAM_CHAPTERS.length - 1;
+
 export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
   chart,
   selectedPlanetId,
@@ -225,28 +256,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
     }
   }, [externalPdfTrigger]);
 
-  const chapters: { id: JathakamChapter; labelTe: string; icon: React.ReactNode }[] = [
-    { id: 'all', labelTe: 'సంపూర్ణ మహాగ్రంథం (All 18 Chapters)', icon: <Layers className="w-3.5 h-3.5" /> },
-    { id: 'pandita_vicharam', labelTe: 'పండిత విచారణ — జాతకం అసలు ఏమిటి? (స్తంభాలు · బలం · భావాలు · నేరుగా సమాధానాలు)', icon: <Award className="w-3.5 h-3.5" /> },
-    { id: 'sampoorna_jeevita_charitra', labelTe: '0. సంపూర్ణ జీవిత చరిత్ర (0–100 సం. 7 పర్వాలు & నవగ్రహ ఫలితాలు)', icon: <Sparkles className="w-3.5 h-3.5" /> },
-    { id: 'sookshma_nadi_kp', labelTe: '0A. 100% కుండలి సూక్ష్మ నాడి, భావాధిపతి, KP సబ్-లార్డ్ & 18 మూల గ్రంథాలు', icon: <BookOpen className="w-3.5 h-3.5" /> },
-    { id: 'tajika_varshaphala', labelTe: '0B. తాజిక వర్షఫలం & 12-నెలల దినచర్య ఫలితాలు (Varshaphala & 12-Month)', icon: <Calendar className="w-3.5 h-3.5" /> },
-    { id: 'panchanga_kundali', labelTe: '1. పంచాంగం, ఇష్టఘడియలు & నవగ్రహాలు', icon: <Compass className="w-3.5 h-3.5" /> },
-    { id: 'avakahada_ghata', labelTe: '1A. అవకహడ, ఘాత చక్రం & నామాక్షరం', icon: <Sparkles className="w-3.5 h-3.5" /> },
-    { id: 'yoga_vichara', labelTe: '1B. యోగ విచారణ — రాజ, ధన & మహాపురుష యోగాలు', icon: <Award className="w-3.5 h-3.5" /> },
-    { id: 'life_domains_deep', labelTe: '1C. వివాహం · ఉద్యోగం · చదువు · ఆరోగ్యం — లోతైన విశ్లేషణ', icon: <HeartHandshake className="w-3.5 h-3.5" /> },
-    { id: 'siddhanta_verifications', labelTe: '2. గణిత తనిఖీ, భావ చలిత, పంచధా మైత్రి & అవస్థలు', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    { id: 'siddhanta_appendices', labelTe: '3. మాందీ-ఉపగ్రహాలు, ఇష్ట-కష్ట ఫల, భావ బల & శోధన పిండ', icon: <Award className="w-3.5 h-3.5" /> },
-    { id: 'shodashavarga_jaimini', labelTe: '4. షోడశవర్గ & జైమిని కారకులు', icon: <Award className="w-3.5 h-3.5" /> },
-    { id: 'shadbala_ashtakavarga', labelTe: '5. షడ్బల, అష్టకవర్గ & తారాబలం', icon: <BarChart3 className="w-3.5 h-3.5" /> },
-    { id: 'grantha_research', labelTe: '6. 12 ప్రాచీన గ్రంథాల పరిశోధన', icon: <BookOpen className="w-3.5 h-3.5" /> },
-    { id: 'life_pillars', labelTe: '7. జీవిత 6 ప్రధాన రంగాలు', icon: <Sparkles className="w-3.5 h-3.5" /> },
-    { id: 'dwadasha_bhava', labelTe: '8. ద్వాదశ భావ ఫలితాలు (1–12)', icon: <Layers className="w-3.5 h-3.5" /> },
-    { id: 'dasha_kalachakram', labelTe: '9. 120 సం. దశా-భుక్తి కాలచక్రం', icon: <Clock className="w-3.5 h-3.5" /> },
-    { id: 'phala_vivechana', labelTe: '9A. సాముదాయిక అష్టకవర్గ ఫలం, 81 భుక్తి ఫలాలు & గ్రహ సహాయక సూచిక', icon: <BarChart3 className="w-3.5 h-3.5" /> },
-    { id: 'dosha_parihara', labelTe: '10. దోష పరీక్ష (కుజ/కాలసర్ప/శని)', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
-    { id: 'upaya_pariharas', labelTe: '11. ఉపాయములు & పరిహారాలు (Upaya & Pariharas)', icon: <Flame className="w-3.5 h-3.5" /> },
-  ];
+  const chapters = JATHAKAM_CHAPTERS;
 
   const showSection = (sec: JathakamChapter) => activeChapter === 'all' || activeChapter === sec;
 

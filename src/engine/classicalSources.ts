@@ -16,6 +16,8 @@
  *    editions; a paraphrase is preferred over an uncertain citation.
  *  • Dates are approximate scholarly ranges, never presented as certainties.
  */
+import { ACCURACY } from './accuracySummary.ts';
+
 
 export type GranthaDomain =
   | 'vedanga'
@@ -208,7 +210,7 @@ export const GRANTHAS: GranthaEntry[] = [
       'గోచార సంచారాలు, సంక్రమణ క్షణాలు',
     ],
     precisionTe:
-      'జనన గ్రహ స్ఫుటాలు స్విస్ ఎఫెమెరిస్ 2.10.03 తో 30 క్షణాల్లో పోల్చగా గరిష్ఠ భేదం 0.008° (≈29 ఆర్క్-సెకన్లు) — లగ్నం, మధ్యాకాశం, సత్య రాహు, ఏడు అయనాంశ విధానాలు సహితం; పంచాంగ అంగాలు 365/365 రోజులు సరిపోలాయి.',
+      `జనన గ్రహ స్ఫుటాలు స్విస్ ఎఫెమెరిస్ 2.10.03 తో ${ACCURACY.epochs} క్షణాల్లో పోల్చగా గరిష్ఠ భేదం ${ACCURACY.maxDegText} (≈${ACCURACY.maxArcsecText} ఆర్క్-సెకన్లు) — లగ్నం, మధ్యాకాశం, సత్య రాహు, ఏడు అయనాంశ విధానాలు సహితం; పంచాంగ అంగాలు ${ACCURACY.panchangaDays}/${ACCURACY.panchangaDays} రోజులు సరిపోలాయి.`,
     publicDomainTe: 'astronomy-engine — MIT లైసెన్స్; స్విస్ ఎఫెమెరిస్ కేవలం ధృవీకరణ ప్రమాణంగా (AGPL / వాణిజ్య లైసెన్స్).',
   },
 

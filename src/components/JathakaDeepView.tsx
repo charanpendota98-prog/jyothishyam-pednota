@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ACCURACY } from '../engine/accuracySummary.ts';
 import {
   Activity,
   BadgeCheck,
@@ -90,7 +91,7 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
               {isTe ? 'గ్రంథ ప్రమాణం' : 'Classical Standard'}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[#5BBFB5]/15 border border-[#5BBFB5]/40 text-[#5BBFB5] text-[10px] font-mono-tabular uppercase tracking-wider font-bold">
-              {isTe ? '308 తనిఖీలు' : '308 checks'}
+              {isTe ? `${ACCURACY.gates} తనిఖీలు` : `${ACCURACY.gates} checks`}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[#9B8FD4]/15 border border-[#9B8FD4]/40 text-[#9B8FD4] text-[10px] font-mono-tabular uppercase tracking-wider font-bold">
               BPHS 6 · 7 · 26 · 27
@@ -666,8 +667,8 @@ export function JathakaDeepView({ chart, lang = 'te' }: JathakaDeepViewProps) {
             <p className="flex items-center gap-1.5 text-[#5BBFB5]">
               <BadgeCheck className="w-3.5 h-3.5" />
               {isTe
-                ? '308 పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) + 630 స్విస్-ఎఫెమెరిస్ స్ఫుట కొలతలు — npm run verify'
-                : '308 pin-to-pin checks against 3 reference jathakam PDFs + 630 ephemeris measurements vs Swiss Ephemeris.'}
+                ? `${ACCURACY.gates} పిన్-టు-పిన్ తనిఖీలు (3 సూచన జాతక పత్రికలు) + ${ACCURACY.measurements} స్విస్-ఎఫెమెరిస్ స్ఫుట కొలతలు — npm run verify`
+                : `${ACCURACY.gates} pin-to-pin checks against 3 reference jathakam PDFs + ${ACCURACY.measurements} ephemeris measurements vs Swiss Ephemeris.`}
             </p>
             <p className="flex items-center gap-1.5 text-[#C9A96E]">
               <Sparkles className="w-3.5 h-3.5" />
