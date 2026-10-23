@@ -50,6 +50,7 @@ import { resolveNamaAkshara } from '../src/engine/namaAksharaEngine';
 import { TELUGU_NAKSHATRAS as NAMA_NAKSHATRAS } from '../src/engine/teluguJathakam';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
+import { JATHAKAM_PDF_PAGES } from '../src/components/ClassicalJathakaPdfDocument.tsx';
 import { VastuShastraView } from '../src/components/VastuShastraView';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -1239,6 +1240,24 @@ check(
     BOOK_HTML.includes('అన్ని అధ్యాయాలు'),
   `${JATHAKAM_SECTION_COUNT} అధ్యాయాలు · ${JATHAKAM_CHAPTERS.length} ఎంపికలు`
 );
+// ---- PDF పుస్తకం: పుటల సంఖ్య ఒకే మూలం నుంచి, పుట నంబర్లు వరుసగా ----
+{
+  const pdfSrc = readFileSync('src/components/ClassicalJathakaPdfDocument.tsx', 'utf8');
+  const nums = [...pdfSrc.matchAll(/pageNum=\{(\d+)\}/g)].map((m) => Number(m[1])).sort((a, b) => a - b);
+  const expected = Array.from({ length: JATHAKAM_PDF_PAGES }, (_, i) => i + 1);
+  check(
+    'PDF మహాగ్రంథం — పుటల సంఖ్య ఒకే మూలం (JATHAKAM_PDF_PAGES) నుంచి, పుట నంబర్లు 1…N వరుసగా',
+    nums.length === JATHAKAM_PDF_PAGES && nums.every((n, i) => n === expected[i]),
+    `${nums.length} పుటలు లభించాయి · JATHAKAM_PDF_PAGES = ${JATHAKAM_PDF_PAGES}`
+  );
+  check(
+    'PDF పుస్తకంలో షట్-సంప్రదాయ సమన్వయ పుట ఉంది (12 భావాలు × 5 పద్ధతులు)',
+    pdfSrc.includes('షట్-సంప్రదాయ సమన్వయం') &&
+      pdfSrc.includes('samanyaya.domains.map') &&
+      /12|samanyaya\.domains/.test(pdfSrc),
+    `పేజీ టెక్స్ట్ ${pdfSrc.includes('షట్-సంప్రదాయ సమన్వయం') ? 'ఉంది' : 'లేదు'}`
+  );
+}
 check(
   'పుస్తకంలో ఖాళీ గణన లేదు (NaN / undefined ఏ ఫలితంలోనూ లేవు)',
   !/NaN/.test(BOOK_HTML) && !/>undefined</.test(BOOK_HTML),

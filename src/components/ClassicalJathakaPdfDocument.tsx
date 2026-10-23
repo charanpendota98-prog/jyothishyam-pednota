@@ -9,6 +9,7 @@ import type { AstroVisionMasterReport } from '../engine/astroVisionAndTransitEng
 import type { SiddhantaAdvancedAppendicesReport } from '../engine/siddhantaAdvancedAppendices.ts';
 import type { UpayaPariharaReport } from '../engine/upayaPariharaEngine.ts';
 import type { SampoornaLifeChronicleReport } from '../engine/sampoornaLifeChronicleEngine.ts';
+import { computeSampradayaSamanyaya } from '../engine/sampradayaSamanyayaEngine.ts';
 import { generateTajikaVarshaphalaReport } from '../engine/tajikaVarshaphalaEngine.ts';
 
 interface ClassicalJathakaPdfDocumentProps {
@@ -258,6 +259,9 @@ const ClassicalBhavaChalitaBox: React.FC<{
   );
 };
 
+/** పుస్తక పుటల సంఖ్య — ఒకే మూలం (PDF హెడర్, UI టెక్స్ట్ రెండూ ఇదే చదువుతాయి) */
+export const JATHAKAM_PDF_PAGES = 15;
+
 export const ClassicalJathakaPdfDocument: React.FC<
   ClassicalJathakaPdfDocumentProps
 > = ({
@@ -269,12 +273,13 @@ export const ClassicalJathakaPdfDocument: React.FC<
   upayaReport,
   lifeChronicle,
 }) => {
-  const TOTAL_PAGES = 14;
+  const TOTAL_PAGES = JATHAKAM_PDF_PAGES;
   const currentYear = new Date().getFullYear();
   const varshaphalaReport = React.useMemo(
     () => generateTajikaVarshaphalaReport(chart, currentYear),
     [chart, currentYear]
   );
+  const samanyaya = React.useMemo(() => computeSampradayaSamanyaya(chart), [chart]);
   const mandiObj = advancedAppendices.upagrahas.find((u) => u.id === 'Mandi');
   const gulikaObj = advancedAppendices.upagrahas.find((u) => u.id === 'Gulika');
 
@@ -317,7 +322,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
             &ldquo;ఆదిత్యాయ చ సోమాయ మంగళాయ బుధాయ చ | గురు శుక్ర శనిభ్యశ్చ రాహవే కేతవే నమః ||&rdquo;
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#7A1818] mt-1 tracking-tight">
-            శ్రీ సంపూర్ణ దృగ్గణిత జాతక మహాగ్రంథం (12-పుటల Astro-Vision & సిద్ధాంత ప్రమాణం)
+            శ్రీ సంపూర్ణ దృగ్గణిత జాతక మహాగ్రంథం ({JATHAKAM_PDF_PAGES}-పుటల Astro-Vision & సిద్ధాంత ప్రమాణం)
           </h1>
           <div className="text-[10.5px] text-[#4A3B2C] font-semibold mt-0.5">
             చిత్రపక్ష (లహిరి) అయనాంశం: {chart.ayanamsaFormatted} · కలియుగ శాలివాహన శక దృగ్గణిత పద్ధతి · జూలియన్ దినం: {chart.julianDay.toFixed(4)}
@@ -1981,10 +1986,103 @@ export const ClassicalJathakaPdfDocument: React.FC<
       </section>
 
       {/* ===================================================================== */}
+      {/* PAGE 14: SAPT? — షట్-సంప్రదాయ సమన్వయం (multi-school convergence)        */}
+      {/* ===================================================================== */}
+      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={14} pageTitleTe="పండిత విచారణ — షట్-సంప్రదాయ సమన్వయం (Multi-School Convergence)" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-2 text-[10.5px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">పద్ధతి: </strong>
+          ఒకే భావాన్ని ఐదు స్వతంత్ర సంప్రదాయాలు విడివిడిగా లెక్కించాయి — పారాశరీ (భావేశ స్థానం · క్షేత్రం · నివాసులు),
+          అష్టకవర్గ (సర్వాష్టకవర్గ బిందువులు, సగటు 28.08), జైమిని (చర కారకులు AK…DK · రాశి దృష్టి), వింశోత్తరి
+          (మహాదశా/భుక్తి అధిపతుల భావ సంబంధం), కేపీ (కస్ప్ సబ్-లార్డ్, 249 ఉప-విభాగం). ప్రతి స్కోరు −2 … +2.
+          ఒక్క పద్ధతి తీర్పు కాదు — సగటు <em>మరియు</em> వ్యాప్తి రెండూ చూడాలి. లగ్నం {samanyaya.lagnaRasiTe} · జన్మ నక్షత్రం {samanyaya.lagnaMasaTe}.
+        </div>
+
+        <div className="grid grid-cols-4 gap-1 mb-2 text-[9px]">
+          {samanyaya.karakas.map((k) => (
+            <div key={k.code} className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">
+              <span className="font-bold text-[#7A1818]">{k.code}</span> · {k.labelTe}
+              <div className="text-[#5C3A21]">{k.planetTe} ({k.degreeInSign.toFixed(2)}°)</div>
+            </div>
+          ))}
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[9.5px]">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-1 px-1.5 text-left font-bold w-[21%]">భావం (జీవనాంగం)</th>
+              <th className="py-1 px-1 text-center font-bold">పారా</th>
+              <th className="py-1 px-1 text-center font-bold">అష్ట</th>
+              <th className="py-1 px-1 text-center font-bold">జైమి</th>
+              <th className="py-1 px-1 text-center font-bold">వింశో</th>
+              <th className="py-1 px-1 text-center font-bold">కేపీ</th>
+              <th className="py-1 px-1 text-center font-bold">సగటు</th>
+              <th className="py-1 px-1 text-center font-bold">వ్యా.</th>
+              <th className="py-1 px-1.5 text-left font-bold">ప్రధాన తీర్పు / కాలం</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {samanyaya.domains.map((d, idx) => {
+              const tone = d.consensusScore >= 0.6 ? '#1F6B5E' : d.consensusScore <= -0.6 ? '#9C3B12' : '#7A5A12';
+              const cell = (v: number) => (
+                <td
+                  className="py-0.5 px-1 text-center font-mono"
+                  style={{ color: v >= 1 ? '#1F6B5E' : v <= -1 ? '#9C3B12' : '#5C3A21' }}
+                >
+                  {v > 0 ? '+' : ''}{v.toFixed(1)}
+                </td>
+              );
+              const vs = d.verdicts;
+              return (
+                <tr key={d.house} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                  <td className="py-0.5 px-1.5 leading-tight">
+                    <span className="font-bold text-[#7A1818]">{d.house}.</span> {d.domainTe}
+                  </td>
+                  {cell(vs[0].score)}
+                  {cell(vs[1].score)}
+                  {cell(vs[2].score)}
+                  {cell(vs[3].score)}
+                  {cell(vs[4].score)}
+                  <td className="py-0.5 px-1 text-center font-bold font-mono" style={{ color: tone }}>
+                    {d.consensusScore > 0 ? '+' : ''}{d.consensusScore.toFixed(2)}
+                  </td>
+                  <td className="py-0.5 px-1 text-center font-mono text-[#5C3A21]">{d.spread.toFixed(1)}</td>
+                  <td className="py-0.5 px-1.5 leading-tight text-[8.5px]">
+                    {d.phalaTe}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-[9px] leading-relaxed">
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
+            <div className="font-bold text-[#7A1818] mb-0.5">సమగ్ర స్థితి</div>
+            {samanyaya.samasyayaTe}
+          </div>
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
+            <div className="font-bold text-[#7A1818] mb-0.5">పద్ధతుల భారం</div>
+            {samanyaya.prabhutvaTe}
+            <div className="mt-1 text-[8.5px] text-[#5C3A21]">
+              గమనిక: 6/8/12 భావాల్లో ఎక్కువ స్కోరు అంటే ఆ భావ విషయాలు (రోగం/ఋణం/ఆటంకాలు) సక్రియం — “శుభం” అని అర్థం కాదు.
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 border-t border-[#8B6914] pt-1.5 text-[8.5px] text-[#5C3A21] leading-relaxed">
+          ప్రమాణం: ప్రతి తీర్పు వెనుక లెక్క ఉంది (గణన వివరాలు ఇంటరాక్టివ్ గ్రంథంలో); ప్రతి తీర్పుకు గ్రంథ నియమం ఉంది.
+          యాంత్రిక గేట్ <em>npm run verify:sampradaya</em> — 3 జాతకాలు · 1165 తనిఖీలు (స్కోరు పరిధి, ఆధారం, సగటు/వ్యాప్తి గణితం,
+          కారకుల అనన్యత, దశా కిటికీ తేదీలు). జాతకం చెప్పలేని అంశాలు (పేరు, హోదా, ఆయుర్దాయ సంఖ్య, వ్యాధి నిర్ధారణ) ఇక్కడ కల్పించబడవు.
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
       {/* PAGE 14: GRANTHA MANDALA — SOURCE APPENDIX                             */}
       {/* ===================================================================== */}
       <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={14} pageTitleTe="గ్రంథ మండలం — మూల ఆధార గ్రంథములు & సిద్ధాంత ప్రమాణం" />
+        <PageHeaderStrip pageNum={15} pageTitleTe="గ్రంథ మండలం — మూల ఆధార గ్రంథములు & సిద్ధాంత ప్రమాణం" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-3 text-[11px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">గ్రంథ ప్రమాణ వాక్యం: </strong>

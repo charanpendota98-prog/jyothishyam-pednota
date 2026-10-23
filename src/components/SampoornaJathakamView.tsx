@@ -46,7 +46,7 @@ import {
   type PdfExportProgress,
 } from '../utils/pdfBookExporter.ts';
 import { SouthIndianKundaliSvg, type VargaDivision } from './ChartsSvg.tsx';
-import { ClassicalJathakaPdfDocument } from './ClassicalJathakaPdfDocument.tsx';
+import { ClassicalJathakaPdfDocument, JATHAKAM_PDF_PAGES } from './ClassicalJathakaPdfDocument.tsx';
 import { PrintSettingsModal } from './PrintSettingsModal.tsx';
 import { TajikaVarshaphalaView } from './TajikaVarshaphalaView.tsx';
 import { RoyalWhatsAppSummaryModal } from './RoyalWhatsAppSummaryModal.tsx';
@@ -330,10 +330,10 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
         <div className="no-print mb-4 bg-[#141932] border-2 border-[#C9A96E] rounded-lg p-4 flex flex-wrap items-center justify-between gap-3 shadow-xl">
           <div>
             <div className="text-xs sm:text-sm font-bold text-[#C9A96E] uppercase tracking-wider">
-              సాంప్రదాయ 12-పుటల రాజముద్రణ సంపూర్ణ జాతక మహాగ్రంథం (Astro-Vision LifeSign 12-Page Full Horoscope Book)
+              సాంప్రదాయ {JATHAKAM_PDF_PAGES}-పుటల రాజముద్రణ సంపూర్ణ జాతక మహాగ్రంథం (Astro-Vision LifeSign {JATHAKAM_PDF_PAGES}-Page Full Horoscope Book)
             </div>
             <p className="text-xs text-[#EDE8E0]/85 mt-0.5">
-              ఇది అచ్చమైన Astro-Vision సాఫ్ట్‌వేర్ & తెలుగు జ్యోతిష్య పీఠం ప్రమాణాలతో 12 పేజీల A4 సంపూర్ణ జీవిత జాతక పుస్తకంగా రూపొందించబడింది. క్రింది బటన్ నొక్కగానే నేరుగా 12-పేజీల .PDF ఫైల్ డౌన్‌లోడ్ అవుతుంది.
+              ఇది అచ్చమైన Astro-Vision సాఫ్ట్‌వేర్ & తెలుగు జ్యోతిష్య పీఠం ప్రమాణాలతో {JATHAKAM_PDF_PAGES} పేజీల A4 సంపూర్ణ జీవిత జాతక పుస్తకంగా రూపొందించబడింది. క్రింది బటన్ నొక్కగానే నేరుగా {JATHAKAM_PDF_PAGES}-పేజీల .PDF ఫైల్ డౌన్‌లోడ్ అవుతుంది.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -347,7 +347,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              12-పేజీల పూర్తి జాతకం .PDF ఫైల్ డౌన్‌లోడ్ (Direct PDF Download)
+              {JATHAKAM_PDF_PAGES}-పేజీల పూర్తి జాతకం .PDF ఫైల్ డౌన్‌లోడ్ (Direct PDF Download)
             </button>
             <button
               onClick={() => setIsPrintSettingsOpen(true)}
