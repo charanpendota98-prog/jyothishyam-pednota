@@ -374,6 +374,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
   const samanvaya = React.useMemo(() => computeDashaGocharaSamanvaya(chart), [chart]);
   const shubhaKala = React.useMemo(() => computeShubhaKala(chart), [chart]);
   const granthaPrayoga = React.useMemo(() => buildGranthaPrayoga(chart), [chart]);
+
   const granthaSampradayaNote = React.useMemo(() => granthaSampradayaNoteTe(chart), [chart]);
   const gochara = React.useMemo(() => {
     const moon = chart.planets.find((p) => p.id === 'Moon');
@@ -382,6 +383,50 @@ export const ClassicalJathakaPdfDocument: React.FC<
       siderealMode: (chart.input.ayanamsa as never) ?? 'lahiri',
     });
   }, [chart]);
+
+  // ఒక్క చూపులో సమాధానాలు — ప్రతి ప్రశ్నకూ ఇంజిన్ విలువ, పక్కన ఆ విషయపు పుట.
+  const glanceAnswers = React.useMemo(() => {
+    const pageOf = (needle: string): number | null =>
+      GRANTHA_PAGES.find((pg) => pg.titleTe.includes(needle))?.num ?? null;
+    const dom = (id: string) => vistara.domains.find((d) => d.id === id);
+    const line = (id: string) => {
+      const d = dom(id);
+      if (!d) return '—';
+      const w = d.timing?.[0];
+      return `${d.verdictTe} (${d.scorePct}%). తగిన కాలం: ${w ? `${w.periodTe} — ${w.yearsTe.split('→')[0].trim()} నుంచి` : 'కాలం లెక్కలో లేదు'}`;
+    };
+    return [
+      { qTe: 'నా జీవితం మొత్తం ఎలా ఉంటుంది?', aTe: `${vistara.overallTe}. అత్యుత్తమ రంగం: ${vistara.bestDomainTe}; శ్రద్ధ అవసరమైన రంగం: ${vistara.watchDomainTe}.`, pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'ఇప్పుడు నా జీవితంలో ఏ దశ నడుస్తోంది?', aTe: samanvaya.runningTe, pageNum: pageOf('దశా × గోచార') },
+      { qTe: 'వివాహం ఎప్పుడు?', aTe: line('marriage'), pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'ఉద్యోగం / వృత్తిలో పెరుగుదల ఎప్పుడు?', aTe: line('career'), pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'డబ్బు, ఆస్తి, పొదుపు ఎలా?', aTe: line('wealth'), pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'ఆరోగ్యం ఎలా ఉంటుంది?', aTe: line('health'), pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'పిల్లలు, కుటుంబ వృద్ధి?', aTe: line('children'), pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'విదేశ యాత్ర / స్థల మార్పు?', aTe: line('foreign'), pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'చదువు, నైపుణ్యం?', aTe: line('education'), pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'ఆధ్యాత్మికత, ధర్మ మార్గం?', aTe: line('spirituality'), pageNum: pageOf('జీవిత విస్తర') },
+      { qTe: 'నాకు బలమైన గ్రహం ఏది?', aTe: `${avastha.strongestTe} — ${avastha.summaryTe.split(';')[0]}.`, pageNum: pageOf('గ్రహ అవస్థలు') },
+      { qTe: 'బలహీన గ్రహం ఏది, దానిపై శ్రద్ధ ఎందుకు?', aTe: `${avastha.weakestTe} — అవస్థలు బలహీనంగా ఉన్నందున ఆ గ్రహం ఇచ్చే ఫలం ఆలస్యంగా వస్తుంది; పరిహార పుట చూడండి.`, pageNum: pageOf('గ్రహ అవస్థలు') },
+      {
+        qTe: 'నాలో ఏ దోషం ఉంది?',
+        aTe: (() => {
+          const present = vistaraDeep.doshas.filter((d) => d.present);
+          if (!present.length) return `${vistaraDeep.doshas.length} దోషాలు పరిశీలించాం — ఏదీ ఏర్పడలేదు.`;
+          return present
+            .map((d) => `${d.nameTe}${d.severityTe === 'తీవ్రం' ? ' (తీవ్రం)' : ''}`)
+            .join(' · ') + ` — మొత్తం ${vistaraDeep.doshas.length} లో ${present.length} ఏర్పడ్డాయి; భంగం/పరిహారం ఆ పుటలో.`;
+        })(),
+        pageNum: pageOf('దోష సూక్ష్మ'),
+      },
+      { qTe: 'ఏ భావం బలంగా, ఏది బలహీనంగా ఉంది?', aTe: `బలమైన భావం ${avPhala.strongestHouse} (SAV ${avPhala.rows[avPhala.strongestHouse - 1]?.bindus ?? 0}), బలహీనం ${avPhala.weakestHouse} (SAV ${avPhala.rows[avPhala.weakestHouse - 1]?.bindus ?? 0}).`, pageNum: pageOf('అష్టకవర్గ భావ') },
+      { qTe: 'నా జాతకానుసారం మంచి తేదీలు ఏవి?', aTe: shubhaKala.windows.flatMap((w) => w.dates).length ? `ఉదా. ${shubhaKala.windows.flatMap((w) => w.dates).sort((a, b) => b.favourableCount - a.favourableCount)[0]?.dateISO} — కార్యం వారీగా పూర్తి జాబితా పక్క పుటలో.` : 'తగిన తేదీలు దొరకలేదు.', pageNum: pageOf('శుభ ముహూర్తాలు') },
+      { qTe: 'నాకు ఇష్ట దిక్కు ఏది?', aTe: `${shubhaKala.directions[0]?.directionTe} (${shubhaKala.directions[0]?.lordTe}); వృత్తికి ${shubhaKala.directions[1]?.directionTe}.`, pageNum: pageOf('శుభ ముహూర్తాలు') },
+      { qTe: 'సాడే సాతి ఉందా?', aTe: gochara.sadeSati.active ? `ఉంది — ${gochara.sadeSati.phaseTe}. ${gochara.sadeSati.noteTe}` : `లేదు. ${gochara.sadeSati.noteTe}`, pageNum: pageOf('గోచార ఫలం') },
+      { qTe: 'ఈ సంవత్సరం ఎలా ఉంది?', aTe: samanvaya.summaryTe, pageNum: pageOf('దశా × గోచార') },
+      { qTe: 'ఏ నెలలో జాగ్రత్త పడాలి?', aTe: `అత్యంత అనుకూలం ${samanvaya.strongestMonth?.monthTe} (${samanvaya.strongestMonth?.score}/100); అత్యంత తక్కువ ${samanvaya.weakestMonth?.monthTe} (${samanvaya.weakestMonth?.score}/100).`, pageNum: pageOf('దశా × గోచార') },
+    ];
+  }, [vistara, avastha, yogaVichara, avPhala, samanvaya, shubhaKala, gochara]);
   const mandiObj = advancedAppendices.upagrahas.find((u) => u.id === 'Mandi');
   const gulikaObj = advancedAppendices.upagrahas.find((u) => u.id === 'Gulika');
 
@@ -669,8 +714,48 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 2: విషయ సూచిక — గ్రంథ పుట చిట్టా (granthaPageMap) నుంచే          */}
       {/* ===================================================================== */}
+      {/* PAGE: ఒక్క చూపులో సమాధానాలు — 19 ప్రశ్నలకు ఈ జాతకం ఇచ్చే ఉత్తరం          */}
+      {/* ===================================================================== */}
       <section id="grantha-p2" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={2} pageTitleTe="విషయ సూచిక (Table of Contents)" />
+        <PageHeaderStrip pageNum={2} pageTitleTe="ఒక్క చూపులో సమాధానాలు — మనిషి అడిగే 19 ప్రశ్నలకు ఈ జాతకం ఇచ్చే ఉత్తరం" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 mb-2 text-[9px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">ఈ పుటను ముందుగా చదవండి: </strong>
+          ఒక మనిషి తన జాతకం గురించి అడిగే ముఖ్య ప్రశ్నలన్నీ ఇక్కడ ఒకే చోట — సమాధానం ఒక్క వాక్యంలో,
+          పక్కనే ఆ విషయం పూర్తిగా వివరించిన పుట సంఖ్య. వివరాలు కావాలంటే ఆ పుటకు వెళ్లండి.
+          ప్రతి సమాధానం ఈ కుండలి గణన నుంచే — ఏదీ స్థిరంగా రాయబడలేదు.
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[8.2px] leading-snug">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-0.5 px-1 text-left w-[26%]">ప్రశ్న</th>
+              <th className="py-0.5 px-1 text-left w-[66%]">ఈ జాతకం ఇచ్చే సమాధానం</th>
+              <th className="py-0.5 px-1 text-right w-[8%]">పుట</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {glanceAnswers.map((g, idx) => (
+              <tr key={g.qTe} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-[2.5px] px-1 align-top font-semibold text-[#7A1818]">{g.qTe}</td>
+                <td className="py-[2.5px] px-1 align-top">{g.aTe}</td>
+                <td className="py-[2.5px] px-1 align-top text-right font-mono font-bold">{g.pageNum ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-2 border-t border-[#8B6914] pt-1.5 text-[8px] text-[#5C3A21] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">గుర్తుంచుకోండి: </strong>
+          ఇది “అన్నీ మంచే జరుగుతుంది” అనే పుస్తకం కాదు. ఎక్కడ బలం ఉందో, ఎక్కడ శ్రమ పడాల్సి ఉంటుందో —
+          రెండూ ఇక్కడ ఉన్నాయి. దశలు, గోచారాలు మారుతుంటాయి కాబట్టి ఈ సమాధానాలు ఈ రోజు
+          ({samanvaya.asOfISO}) నాటివి; పుస్తకంలోని కాలరేఖ పుటలు ముందు మార్పులను చూపుతాయి.
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      <section id="grantha-p3" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={3} pageTitleTe="విషయ సూచిక (Table of Contents)" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-3 text-[10px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">ఈ గ్రంథాన్ని ఎలా చదవాలి: </strong>
@@ -713,9 +798,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
 
       {/* PAGE 2: SRIPATI BHAVA CHALITA TABLE & KUNDALI, ALL 11 UPAGRAHAS & PANCHADHA MAITRI */}
       {/* ===================================================================== */}
-      <section id="grantha-p3" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p4" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={3}
+          pageNum={4}
           pageTitleTe="శ్రీపతి భావ చలిత పట్టిక, భావ చలిత కుండలి, 11 ఉపగ్రహ స్ఫుటములు & పంచధా మైత్రి"
         />
 
@@ -879,9 +964,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 3: 6 DIVISIONAL VARGA KUNDALIS (D2, D3, D4, D7, D10, D12) & VAISHESHIKAMSA */}
       {/* ===================================================================== */}
-      <section id="grantha-p4" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p5" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={4}
+          pageNum={5}
           pageTitleTe="షోడశవర్గ చక్ర మాలిక (D2, D3, D4, D7, D10, D12), షోడశవర్గ పట్టిక & వైశేషికాంశ బలం"
         />
 
@@ -1026,9 +1111,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 4: SHADBALA, ISHTA/KASHTA PHALA, 12-HOUSE BHAVA BALA & AVASTHAS */}
       {/* ===================================================================== */}
-      <section id="grantha-p5" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p6" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={5}
+          pageNum={6}
           pageTitleTe="షడ్బల పిండం, ఇష్ట-కష్ట ఫలములు, ద్వాదశ భావ బలం & త్రివిధ గ్రహావస్థలు"
         />
 
@@ -1190,9 +1275,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 5: BHINNASHTAKAVARGA 7×12 MATRIX, SHODHYA PINDA & SUDARSHANA CHAKRA */}
       {/* ===================================================================== */}
-      <section id="grantha-p6" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p7" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={6}
+          pageNum={7}
           pageTitleTe="భిన్నాష్టకవర్గ, సర్వాష్టకవర్గ, శోధ్య పిండ సాధన & సుదర్శన చక్ర సమన్వయం"
         />
 
@@ -1318,9 +1403,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 6: JAIMINI KARAKAS, JAIMINI CHARA DASHA, 22ND DREKKANA, PAPA SAMYAM & SADE SATI */}
       {/* ===================================================================== */}
-      <section id="grantha-p7" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p8" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={7}
+          pageNum={8}
           pageTitleTe="జైమిని కారకులు, జైమిని చర రాశి దశా కాలచక్రం, పాప సామ్యం & ఏలినాటి శని"
         />
 
@@ -1497,9 +1582,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 7: COMPLETE 9 MAHADASHA × 9 BHUKTI (81 ANTARDASHAS) EXACT DATES MATRIX */}
       {/* ===================================================================== */}
-      <section id="grantha-p8" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p9" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={8}
+          pageNum={9}
           pageTitleTe="వింశోత్తరి 120-సంవత్సరాల 9 మహాదశలు × 9 భుక్తులు (81 అంతర్దశల తేదీల సంపూర్ణ పట్టిక)"
         />
 
@@ -1574,9 +1659,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 8: HOROSCOPE EXECUTIVE IDENTITY & NAVAGRAHA INDIVIDUAL LIFE PREDICTIONS (PART 1: SUN TO JUPITER) */}
       {/* ===================================================================== */}
-      <section id="grantha-p9" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p10" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={9}
+          pageNum={10}
           pageTitleTe="జాతకుని సమగ్ర జీవిత స్వరూపం & నవగ్రహ వ్యక్తిగత జీవిత ఫలితములు (భాగం-1)"
         />
 
@@ -1647,9 +1732,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 9: NAVAGRAHA PREDICTIONS (PART 2: VENUS TO KETU) + MARRIAGE & CAREER BLUEPRINTS */}
       {/* ===================================================================== */}
-      <section id="grantha-p10" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p11" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={10}
+          pageNum={11}
           pageTitleTe="నవగ్రహ వ్యక్తిగత ఫలితములు (భాగం-2), వివాహ భాగస్వామి & ఉద్యోగ-వ్యాపార బ్లూప్రింట్"
         />
 
@@ -1759,9 +1844,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 10: BIRTH-TO-100 YEARS 7 LIFE EPOCHS CHRONICLE & 9 MAHADASHA PHALALU */}
       {/* ===================================================================== */}
-      <section id="grantha-p11" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p12" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={11}
+          pageNum={12}
           pageTitleTe="బాల్యం నుండి శతాయుష్షు వరకు 7 జీవిత పర్వాల విశ్లేషణ & మహాదశా ఫలితాలు"
         />
 
@@ -1839,9 +1924,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 11: DWADASHA BHAVA PHALITALU (ALL 12 HOUSES) & ALL 12 GRANTHA CITATIONS */}
       {/* ===================================================================== */}
-      <section id="grantha-p12" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p13" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={12}
+          pageNum={13}
           pageTitleTe="ద్వాదశ భావ సంపూర్ణ ఫలితములు (1–12 భావాలు) & 12 ప్రాచీన గ్రంథాల ప్రమాణ విశ్లేషణ"
         />
 
@@ -1906,8 +1991,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: DWADASHA BHAVA DEEP I — భావాలు 1–6                                */}
       {/* ===================================================================== */}
-      <section id="grantha-p13" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={13} pageTitleTe="ద్వాదశ భావ సూక్ష్మ విచారం I — భావాలు 1–6 (ఆధారం · అధిపతి · నివాసులు · దృష్టి · బలం · కాలం)" />
+      <section id="grantha-p14" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={14} pageTitleTe="ద్వాదశ భావ సూక్ష్మ విచారం I — భావాలు 1–6 (ఆధారం · అధిపతి · నివాసులు · దృష్టి · బలం · కాలం)" />
         <div className="mb-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9px] leading-snug">
           <strong className="text-[#7A1818]">సమగ్ర సమన్వయం: </strong>{vistaraDeep.synthesisTe}
           <div className="text-[8px] text-[#5C3A21] mt-0.5">{vistaraDeep.methodNoteTe}</div>
@@ -1941,8 +2026,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: DWADASHA BHAVA DEEP II — భావాలు 7–12                              */}
       {/* ===================================================================== */}
-      <section id="grantha-p14" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={14} pageTitleTe="ద్వాదశ భావ సూక్ష్మ విచారం II — భావాలు 7–12 (ఆధారం · అధిపతి · నివాసులు · దృష్టి · బలం · కాలం)" />
+      <section id="grantha-p15" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={15} pageTitleTe="ద్వాదశ భావ సూక్ష్మ విచారం II — భావాలు 7–12 (ఆధారం · అధిపతి · నివాసులు · దృష్టి · బలం · కాలం)" />
         <div className="mb-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9px] leading-snug">
           <strong className="text-[#7A1818]">బలమైన భావం: </strong>{vistaraDeep.strongBhavaTe} · <strong className="text-[#7A1818]">శ్రద్ధార్హ భావం: </strong>{vistaraDeep.weakBhavaTe}
         </div>
@@ -1975,8 +2060,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: NAVAGRAHA DEEP I — సూర్యుడు · చంద్రుడు · కుజుడు                    */}
       {/* ===================================================================== */}
-      <section id="grantha-p15" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={15} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం I — సూర్యుడు · చంద్రుడు · కుజుడు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
+      <section id="grantha-p16" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={16} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం I — సూర్యుడు · చంద్రుడు · కుజుడు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
         <div className="mb-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9px]">
           <strong className="text-[#7A1818]">బలమైన గ్రహం: </strong>{vistaraDeep.strongestGrahaTe} · <strong className="text-[#7A1818]">బలహీన గ్రహం: </strong>{vistaraDeep.weakestGrahaTe}
         </div>
@@ -2007,8 +2092,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: NAVAGRAHA DEEP II — బుధుడు · గురువు · శుక్రుడు                    */}
       {/* ===================================================================== */}
-      <section id="grantha-p16" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={16} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం II — బుధుడు · గురువు · శుక్రుడు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
+      <section id="grantha-p17" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={17} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం II — బుధుడు · గురువు · శుక్రుడు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
         <div className="space-y-2">
           {vistaraDeep.grahas.slice(3, 6).map((g) => (
             <div key={g.id} className="border border-[#8B6914]">
@@ -2036,8 +2121,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: NAVAGRAHA DEEP III — శని · రాహువు · కేతువు                        */}
       {/* ===================================================================== */}
-      <section id="grantha-p17" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={17} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం III — శని · రాహువు · కేతువు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
+      <section id="grantha-p18" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={18} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం III — శని · రాహువు · కేతువు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
         <div className="space-y-2">
           {vistaraDeep.grahas.slice(6, 9).map((g) => (
             <div key={g.id} className="border border-[#8B6914]">
@@ -2065,8 +2150,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: DOSHA DEEP — దోష పరిశీలన                                        */}
       {/* ===================================================================== */}
-      <section id="grantha-p18" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={18} pageTitleTe="దోష సూక్ష్మ పరిశీలన — ఏర్పడ్డాయా · భంగం ఉందా · ప్రభావం · పరిహారం · కాలం" />
+      <section id="grantha-p19" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={19} pageTitleTe="దోష సూక్ష్మ పరిశీలన — ఏర్పడ్డాయా · భంగం ఉందా · ప్రభావం · పరిహారం · కాలం" />
 
         <div className="mb-2 grid grid-cols-3 gap-1.5 text-[9px]">
           <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">పరిశీలించిన దోషాలు <strong className="text-[#7A1818]">{vistaraDeep.doshas.length}</strong></div>
@@ -2117,9 +2202,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 12: 6 LIFE PILLARS (FULL), DOSHA PARIKSHANA, ALL 9 PLANET REMEDIES & COLOPHON */}
       {/* ===================================================================== */}
-      <section id="grantha-p19" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p20" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={19}
+          pageNum={20}
           pageTitleTe="జీవిత 6 ప్రధాన రంగాలు, సంపూర్ణ దోష పరీక్ష, వేదోక్త ఉపాయ-పరిహార మంజరి & స్వస్తి వాక్యం"
         />
 
@@ -2229,9 +2314,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 13: TAJIKA VARSHAPHALA & 12-MONTH FORECAST CALENDAR              */}
       {/* ===================================================================== */}
-      <section id="grantha-p20" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p21" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={20}
+          pageNum={21}
           pageTitleTe={`తాజిక నీలకంఠీ వర్షఫలం (${varshaphalaReport.targetYear}–${varshaphalaReport.targetYear + 1}) & 12-నెలల దినచర్య ఫలితాలు`}
         />
 
@@ -2365,8 +2450,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 14: SAPTA — సప్త-సంప్రదాయ సమన్వయం (multi-school convergence)        */}
       {/* ===================================================================== */}
-      <section id="grantha-p21" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={21} pageTitleTe="పండిత విచారణ — సప్త-సంప్రదాయ సమన్వయం (Multi-School Convergence)" />
+      <section id="grantha-p22" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={22} pageTitleTe="పండిత విచారణ — సప్త-సంప్రదాయ సమన్వయం (Multi-School Convergence)" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-2 text-[10.5px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">పద్ధతి: </strong>
@@ -2463,8 +2548,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 16: YOGA VICHARA — ప్రతి యోగానికి ఆధారం, బలం, ఫలం               */}
       {/* ===================================================================== */}
-      <section id="grantha-p22" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={22} pageTitleTe="యోగ విచారం — ప్రతి యోగానికి ఆధారం · బలం · ఫలం · జాగ్రత్త" />
+      <section id="grantha-p23" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={23} pageTitleTe="యోగ విచారం — ప్రతి యోగానికి ఆధారం · బలం · ఫలం · జాగ్రత్త" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-2 text-[9.5px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">సారాంశం: </strong>{yogaVichara.summaryTe}{' '}
@@ -2527,8 +2612,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 17: ASHTAKAVARGA BHAVA PHALA & AVAKAHADA                        */}
       {/* ===================================================================== */}
-      <section id="grantha-p23" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={23} pageTitleTe="అష్టకవర్గ భావ ఫలాలు & అవకహడా చక్రం — బిందువుల నుంచే తీర్పు" />
+      <section id="grantha-p24" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={24} pageTitleTe="అష్టకవర్గ భావ ఫలాలు & అవకహడా చక్రం — బిందువుల నుంచే తీర్పు" />
 
         <div className="grid grid-cols-5 gap-1.5 mb-2 text-[9px]">
           <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">మొత్తం బిందువులు <strong className="text-[#7A1818]">{avPhala.totalBindus}</strong></div>
@@ -2600,8 +2685,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 18: SOOKSHMA NADI — KP SUB LORDS, PARIVARTANA, BADHAKA             */}
       {/* ===================================================================== */}
-      <section id="grantha-p24" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={24} pageTitleTe="సూక్ష్మ నాడీ విచారం — కేపీ సబ్-లార్డ్ · పరివర్తన · బాధక-మారక" />
+      <section id="grantha-p25" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={25} pageTitleTe="సూక్ష్మ నాడీ విచారం — కేపీ సబ్-లార్డ్ · పరివర్తన · బాధక-మారక" />
 
         <h3 className="text-[10px] font-bold text-[#7A1818] mb-1">కేపీ (కృష్ణమూర్తి) స్టార్-లార్డ్ · సబ్-లార్డ్ పట్టిక — 249 ఉప-విభాగ క్రమం</h3>
         <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
@@ -2682,8 +2767,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 19: JEEVITA VISTARA — DOMAIN-WISE DEEP READING                     */}
       {/* ===================================================================== */}
-      <section id="grantha-p25" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={25} pageTitleTe="జీవిత విస్తర — ప్రతి జీవన రంగం లోతైన విచారం (శాస్త్రం · విశ్లేషణ · కాలం · పరిహారం)" />
+      <section id="grantha-p26" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={26} pageTitleTe="జీవిత విస్తర — ప్రతి జీవన రంగం లోతైన విచారం (శాస్త్రం · విశ్లేషణ · కాలం · పరిహారం)" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 mb-2 text-[9.5px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">సమగ్ర తీర్పు: </strong>{vistara.overallTe}
@@ -2723,18 +2808,18 @@ export const ClassicalJathakaPdfDocument: React.FC<
         </div>
       </section>
 
-      <BhuktiPhalaPage part={0} adBook={adBook} id="grantha-p26"
-        header={<PageHeaderStrip pageNum={26} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (1/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
-      <BhuktiPhalaPage part={1} adBook={adBook} id="grantha-p27"
-        header={<PageHeaderStrip pageNum={27} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (2/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
-      <BhuktiPhalaPage part={2} adBook={adBook} id="grantha-p28"
-        header={<PageHeaderStrip pageNum={28} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (3/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
+      <BhuktiPhalaPage part={0} adBook={adBook} id="grantha-p27"
+        header={<PageHeaderStrip pageNum={27} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (1/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
+      <BhuktiPhalaPage part={1} adBook={adBook} id="grantha-p28"
+        header={<PageHeaderStrip pageNum={28} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (2/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
+      <BhuktiPhalaPage part={2} adBook={adBook} id="grantha-p29"
+        header={<PageHeaderStrip pageNum={29} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (3/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
 
       {/* ===================================================================== */}
       {/* PAGE: గ్రహ అవస్థలు — బాలాది · దీప్తాది · జాగ్రదాది · యుద్ధం · అస్తంగతం   */}
       {/* ===================================================================== */}
-      <section id="grantha-p29" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={29} pageTitleTe="గ్రహ అవస్థలు — బాలాది · దీప్తాది · జాగ్రదాది · గ్రహ యుద్ధం · అస్తంగతం" />
+      <section id="grantha-p30" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={30} pageTitleTe="గ్రహ అవస్థలు — బాలాది · దీప్తాది · జాగ్రదాది · గ్రహ యుద్ధం · అస్తంగతం" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 mb-2 text-[9px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">అవస్థ అంటే ఏమిటి: </strong>
@@ -2820,8 +2905,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: దశా × గోచార సమన్వయం — రాబోయే 12 నెలలు · ప్రత్యంతర దశలు          */}
       {/* ===================================================================== */}
-      <section id="grantha-p30" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={30} pageTitleTe={`దశా × గోచార సమన్వయం — ${samanvaya.asOfISO} నుంచి రాబోయే 12 నెలలు`} />
+      <section id="grantha-p31" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={31} pageTitleTe={`దశా × గోచార సమన్వయం — ${samanvaya.asOfISO} నుంచి రాబోయే 12 నెలలు`} />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 mb-2 text-[9px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">నడుస్తున్న కాలం: </strong>
@@ -2921,8 +3006,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: శుభ ముహూర్తాలు & శుభ దిక్కులు — ఈ జాతకుడికి కచ్చితమైన తేదీలు       */}
       {/* ===================================================================== */}
-      <section id="grantha-p31" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={31} pageTitleTe={`శుభ ముహూర్తాలు & శుభ దిక్కులు — ${shubhaKala.asOfISO} నుంచి`} />
+      <section id="grantha-p32" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={32} pageTitleTe={`శుభ ముహూర్తాలు & శుభ దిక్కులు — ${shubhaKala.asOfISO} నుంచి`} />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 mb-2 text-[9px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">ఈ పుట ఏమి ఇస్తుంది: </strong>
@@ -3024,8 +3109,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: GOCHARA — నడుస్తున్న గోచారం · సాడే సాతి · వేధ                    */}
       {/* ===================================================================== */}
-      <section id="grantha-p32" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={32} pageTitleTe={`గోచార ఫలం — ${gochara.asOfISO} నాటి గ్రహ సంచారం (జన్మ రాశి ${gochara.janmaRasiTe} నుంచి) · సాడే సాతి · వేధ`} />
+      <section id="grantha-p33" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={33} pageTitleTe={`గోచార ఫలం — ${gochara.asOfISO} నాటి గ్రహ సంచారం (జన్మ రాశి ${gochara.janmaRasiTe} నుంచి) · సాడే సాతి · వేధ`} />
 
         <div className="mb-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9.5px] leading-snug text-justify">
           <strong className="text-[#7A1818]">గోచార నియమం: </strong>
@@ -3119,8 +3204,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 23: GRAHA SAHAYAKA — ఏ గ్రహం ఏ రంగానికి సహాయం                     */}
       {/* ===================================================================== */}
-      <section id="grantha-p33" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={33} pageTitleTe="గ్రహ సహాయకులు — ఏ గ్రహం ఏ జీవన రంగానికి తోడ్పడుతుంది" />
+      <section id="grantha-p34" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={34} pageTitleTe="గ్రహ సహాయకులు — ఏ గ్రహం ఏ జీవన రంగానికి తోడ్పడుతుంది" />
 
         <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
           <thead>
@@ -3172,8 +3257,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 24: GRANTHA MANDALA — SOURCE APPENDIX                             */}
       {/* ===================================================================== */}
-      <section id="grantha-p34" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={34} pageTitleTe="గ్రంథ మండలం — మూల ఆధార గ్రంథములు & సిద్ధాంత ప్రమాణం" />
+      <section id="grantha-p35" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={35} pageTitleTe="గ్రంథ మండలం — మూల ఆధార గ్రంథములు & సిద్ధాంత ప్రమాణం" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-3 text-[11px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">గ్రంథ ప్రమాణ వాక్యం: </strong>
@@ -3256,8 +3341,8 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE: గణన పద్ధతి — సూత్రం & గ్రంథ ప్రమాణం (Method Appendix)               */}
       {/* ===================================================================== */}
-      <section id="grantha-p35" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={35} pageTitleTe="గణన పద్ధతి — ప్రతి అంకె వెనుక సూత్రం & గ్రంథ ప్రమాణం" />
+      <section id="grantha-p36" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={36} pageTitleTe="గణన పద్ధతి — ప్రతి అంకె వెనుక సూత్రం & గ్రంథ ప్రమాణం" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 mb-2 text-[9px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">పద్ధతి: </strong>

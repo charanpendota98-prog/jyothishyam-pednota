@@ -1544,6 +1544,31 @@ check(
   );
 }
 
+// ---- ఒక్క చూపులో సమాధానాలు: ప్రతి ప్రశ్నకూ పుట నంబర్ ఉందా ----
+{
+  const cardSrc = readFileSync('src/components/ClassicalJathakaPdfDocument.tsx', 'utf8');
+  check(
+    'ఒక్క చూపులో సమాధానాలు — 19 ప్రశ్నలు, ప్రతి దానికీ సమాధానం + చెల్లుబాటు అయ్యే పుట నంబర్ (— లేదు)',
+    (() => {
+      const block = cardSrc.slice(cardSrc.indexOf('const glanceAnswers'), cardSrc.indexOf('}, [vistara, avastha'));
+      const questions = (block.match(/qTe: '/g) ?? []).length;
+      // పుట అన్వేషణ నమూనాలు పుస్తకంలో నిజంగా ఉన్నాయా
+      const needles = [...block.matchAll(/pageOf\('([^']+)'\)/g)].map((m) => m[1]);
+      const titles = GRANTHA_PAGES.map((p) => p.titleTe).join(' | ');
+      const missing = [...new Set(needles)].filter((n) => !titles.includes(n));
+      return questions === 19 && missing.length === 0 && !block.includes('pageNum: null');
+    })(),
+    '19 ప్రశ్నలు · పుట సూచనలు సరైనవి'
+  );
+  check(
+    'ఒక్క చూపులో సమాధానాలు పుట — విషయ సూచిక తర్వాత (పుట 3), ముద్రితం',
+    GRANTHA_PAGES[2]?.titleTe.includes('ఒక్క చూపులో') &&
+      BOOK_HTML.includes('ఒక్క చూపులో సమాధానాలు') &&
+      BOOK_HTML.includes('మనిషి అడిగే 19 ప్రశ్నలకు'),
+    `పుట 3 = ${GRANTHA_PAGES[2]?.titleTe.slice(0, 30)}`
+  );
+}
+
 // ---- శుభ ముహూర్తాలు & దిక్కులు ----
 {
   const NOW = Date.UTC(2026, 9, 23, 3, 0, 0);
