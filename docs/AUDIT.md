@@ -1,6 +1,6 @@
 # Jyothishyam Pednota — Engineering Audit & Roadmap
 
-_Last updated: 22 Oct 2026 · branch `arena/0eca0bd4-jyothishyam-pednota`_
+_Last updated: 23 Oct 2026 · branch `arena/0eca0bd4-jyothishyam-pednota`_
 
 This document is the honest state of the system: what is computed, how it is
 verified, where it is still weak, and what to build next. It is deliberately
@@ -492,3 +492,79 @@ reconciliation: the three apparent "bugs" on our side turned out to be the
 reference implementation's. What changed is that the rules are now provable:
 `npm run verify:shadbala` went from 266 to 301 checks, with the horā cycle and
 the cheṣṭā ceiling added as invariants that do not depend on any book.
+
+---
+
+## 11. Kakṣyā refinement and the annual muhūrta planner (23 Oct 2026)
+
+Two additions, both verified against an outside reference rather than against
+ourselves.
+
+### 11.1 Aṣṭakavarga kakṣyā — the 3°45′ layer
+
+Each rāśi is divided into eight kakṣyās of **3°45′**, in the fixed order
+**Saturn → Jupiter → Mars → Sun → Venus → Mercury → Moon → Lagna**. A transiting
+planet gives its *bindu* result only when it stands in a kakṣyā whose
+contributor gave it a bindu in that sign.
+
+The tables now live in one place (`ashtakavargaTables.ts`); `calculateAshtakavarga`
+and the kakṣyā engine read the same array, so the two can no longer drift.
+
+| Gate | Result |
+| --- | --- |
+| Per-planet bindu totals (Sun 48, Moon 49, Mars 39, Mercury 54, Jupiter 56, Venus 52, Saturn 39) | 7/7 exact, Σ = 337 |
+| Kakṣyā boundaries (0°, 3.75°, 7.5°, 11.25°, 15°, 18.75°, 22.5°, 26.25°, 29.99°) | 10/10 |
+| Bindu kakṣyās reproduced from the tables **=** bhinnāṣṭakavarga counts | 84/84 (7 × 12) |
+| Transit report — 7 planets, kakṣyā ∈ 1…8, each with a grantha-phala | ✓ |
+
+That third row is the meaningful one: it re-derives every BAV number from the
+raw contributor offsets instead of trusting the stored arrays.
+
+The daily rāśi-phala now carries a six-part score —
+**candrabala 20 · tārā 15 · gōcara 30 · pañcāṅga 15 · kakṣyā 10 · daśā 10** —
+where the kakṣyā part is the bindu-weighted ratio of the seven transiting
+planets (Saturn/Jupiter weight 2, Sun 1.4, Mars 1.2, Venus/Mercury 1, Moon 0.8,
+after Muhūrta Cintāmaṇi and Bṛhat Saṁhitā 104).
+
+### 11.2 Lagna windows — a Swiss-Ephemeris golden fixture
+
+The planner's windows are only as good as the sidereal lagna. A new fixture,
+`scripts/golden/lagna-golden.json`, records **every ascendant sign change** for
+five days (Hyderabad, Tromsø, Sydney, and the reference chart) at 1-minute
+resolution straight from `swe.houses_ex(…, b'W', swe.FLG_SIDEREAL)`.
+
+```
+65 sign changes · worst deviation 1.00 min (one sampling step) · 0 sign errors
+```
+
+The 1-minute residual is exactly the fixture's step size, not a model error.
+
+### 11.3 The annual muhūrta planner
+
+`searchYearMuhurta(activity, year, lat, lng, tz)` scans all 365 days and, for
+each survivor of a cheap pañcāṅga prefilter, computes the real windows:
+
+1. **Prefilter** — tithi / vāra / nakṣatra rules of the kārya, adhika-māsa and
+   kṣaya-māsa rejection, guru/śukra retrogression and combustion.
+2. **Windows** — 2-minute sidereal lagna sampling; subtract rāhu-kāla,
+   yama-gaṇḍa, gulika, durmuhūrta, bhadrā and the night; keep ≥ 15 min; merge
+   gaps ≤ 6 min inside one lagna; pad 1 minute at each edge so a printed edge
+   never touches an inauspicious kāla.
+3. **Scoring** — tārā bala, candrabala, pañcāṅga śuddhi, hora/choṣaḍī, window
+   length and lagna suitability, then the order is fixed by the **raw** sum
+   (printing is capped at 99 so a 104 and a 101 do not tie at 100).
+
+2027, vivāha, Hyderabad: **365 scanned → 99 pass the rules → 83 candidates**,
+2.8 s. Top choices: 26 Apr (Mithuna 09:06–10:38), 20 Oct (Tulā 06:11–07:37,
+Mīna 16:05–17:37), 25 Oct, 27 Oct, 3 Nov.
+
+### 11.4 Gates added (all green)
+
+| Gate | Checks |
+| --- | --- |
+| Aṣṭakavarga tables + kakṣyā | 12 |
+| Lagna boundaries (Swiss fixture) | 1 |
+| Annual muhūrta (rules, window legality, ≥15 min, ordering) | 5 |
+
+`npm run verify:jathaka` now runs **592** gates with 0 failures; the whole
+suite stands at **8,888** mechanical checks.

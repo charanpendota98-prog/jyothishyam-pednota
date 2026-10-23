@@ -166,6 +166,8 @@ export interface DayPhala {
   gocharaHighlights: { grahaTe: string; houseFromMoon: number; verdictTe: string; themeTe: string }[];
   /** ఏడు గ్రహాల కక్ష్యా స్థానం (3°45′ సూక్ష్మత) */
   kakshya: KakshyaTransitEntry[];
+  /** శని స్థితి — సాడే సాతి / అష్టమ / కంటక శని */
+  shaniSthiti: { sadeSatiActive: boolean; phaseTe: string | null; ashtama: boolean; kantaka: boolean };
   sourceNoteTe: string;
 }
 
@@ -613,6 +615,14 @@ export function computeDayPhala(
     cautions.push('పంచక కాలం — దక్షిణ దిక్కు ప్రయాణం, శయనం, చితి సంబంధ కార్యాలు నిషేధం.');
   }
   if (moonHouse === 8) cautions.push('అష్టమ చంద్రుడు — శరీర శ్రద్ధ, శస్త్రచికిత్స/దీర్ఘ ప్రయాణం వాయిదా.');
+  // శని స్థితి — జన్మ రాశి నుంచి సాడే సాతి / అష్టమ / కంటక శని
+  if (sky.gochara.sadeSati.active) {
+    cautions.push(`సాడే సాతి ${sky.gochara.sadeSati.phaseTe ?? ''} నడుస్తోంది — శని జన్మ రాశి నుంచి ${
+      sky.gochara.grahas.find((g) => g.id === 'Saturn')?.houseFromMoon ?? ''
+    }వ భావంలో. దీర్ఘకాలిక నిర్ణయాల్లో ఓపిక అవసరం.`);
+  }
+  if (sky.gochara.ashtamaShani) cautions.push('అష్టమ శని — ఆరోగ్యం, ఖర్చు, ఒత్తిడిపై శ్రద్ధ.');
+  if (sky.gochara.kantakaShani) cautions.push('కంటక శని (4వ భావం) — గృహ, మాతృ, వాహన విషయాల్లో జాగ్రత్త.');
 
   const { grade: _g, gradeEn: _ge } = gradeOf(score);
   void _g;
@@ -649,6 +659,12 @@ export function computeDayPhala(
       themeTe: g.houseThemeTe,
     })),
     kakshya: kakshyaTransits,
+    shaniSthiti: {
+      sadeSatiActive: sky.gochara.sadeSati.active,
+      phaseTe: sky.gochara.sadeSati.phaseTe,
+      ashtama: sky.gochara.ashtamaShani,
+      kantaka: sky.gochara.kantakaShani,
+    },
     sourceNoteTe:
       'బలాలు: ముహూర్త చింతామణి (చంద్ర/తారా బలం, తిథి-కరణ నిషేధాలు) · బృహత్ సంహిత 104.4, ఫలదీపిక 26 (గోచార-వేధ) · బృహత్ పరాశర హోరా శాస్త్రం అష్టకవర్గ (కక్ష్య) · BPHS 46–47 (వింశోత్తరీ)',
   };

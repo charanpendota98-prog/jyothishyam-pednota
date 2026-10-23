@@ -2858,6 +2858,27 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
     windowBreaks === 0,
     `విండో భంగాలు ${windowBreaks} · ${report.candidates.reduce((a, c) => a + c.windows.length, 0)} కిటికీలు`
   );
+  // శని స్థితి జాగ్రత్తలు — దిన ఫలంలో నిజంగా కనిపిస్తున్నాయా
+  {
+    const g = (CHARAN_REF as any).gochara;
+    let checked = 0;
+    for (const dateISO of ['2026-10-23', '2042-06-15', '2044-03-01', '2052-01-10']) {
+      const day = computeDayPhala(CHARAN_REF, dateISO, {
+        lat: 17.385, lng: 78.4867, tzOffsetHours: 5.5, placeNameTe: 'హైదరాబాద్',
+      });
+      const s = day.shaniSthiti;
+      const matched = (s.sadeSatiActive || s.ashtama || s.kantaka)
+        ? day.cautions.some((c) => /సాడే సాతి|అష్టమ శని|కంటక శని/.test(c))
+        : true;
+      if (!matched) checked += 1;
+    }
+    check(
+      'శని స్థితి — సాడే సాతి/అష్టమ/కంటక శని జాగ్రత్తలు దిన ఫలంలో కలుపబడ్డాయి',
+      checked === 0,
+      `భేదాలు ${checked}/4 · ప్రస్తుతం ${g.sadeSati.active ? 'సాడే సాతి' : 'సాడే సాతి లేదు'}`
+    );
+  }
+
   check(
     'ముహూర్త ప్లానర్ — ప్రతి లగ్న కిటికీ కనీసం 15 నిమిషాలు',
     report.candidates.every((c) =>

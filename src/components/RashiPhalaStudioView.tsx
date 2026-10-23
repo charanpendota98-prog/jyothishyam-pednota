@@ -476,6 +476,18 @@ export default function RashiPhalaStudioView({ chart, lang = 'te' }: Props) {
                   ? 'కక్ష్యా గోచారం (రాశిలో 3°45′ సూక్ష్మత — అష్టకవర్గ బిందువు)'
                   : 'Kakshya transit (3°45′ precision — ashtakavarga bindu)'}
               </div>
+              {day.shaniSthiti.sadeSatiActive || day.shaniSthiti.ashtama || day.shaniSthiti.kantaka ? (
+                <div className="mb-1.5 text-[10.5px] text-amber-300/80">
+                  శని స్థితి:{' '}
+                  {[
+                    day.shaniSthiti.sadeSatiActive ? `సాడే సాతి (${day.shaniSthiti.phaseTe ?? ''})` : null,
+                    day.shaniSthiti.ashtama ? 'అష్టమ శని' : null,
+                    day.shaniSthiti.kantaka ? 'కంటక శని' : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+              ) : null}
               <div className="grid gap-1 sm:grid-cols-2">
                 {day.kakshya.map((k) => (
                   <div key={k.graha} className="flex items-center gap-2 text-[10.5px]">
