@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { VastuPlotPlannerPanel } from './VastuPlotPlannerPanel.tsx';
 import {
   Compass,
   Grid3x3,
@@ -830,6 +831,13 @@ export function VastuShastraView({
         </div>
       </div>
 
+
+      {/* ప్లాట్ ప్లాన్ (ఇన్‌పుట్ → సెట్‌బ్యాక్ → BUA → గదులు → వ్యయం → డ్రాయింగ్) */}
+      <VastuPlotPlannerPanel
+        defaultName={personName}
+        defaultVillage={place ? (isTe ? place.labelTe : place.label) : defaultPlaceName ?? ''}
+        isTe={isTe}
+      />
 
       {/* Advanced engineering + Vastu plan */}
       <div className="rounded-2xl border border-[#66CBBF]/25 bg-gradient-to-br from-[#0C1A1E] to-[#0B0F1E] p-5 space-y-4">

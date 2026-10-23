@@ -46,6 +46,7 @@ import { computeLagnaFunctional } from '../src/engine/lagnaFunctionalEngine';
 import { generateVastuReport } from '../src/engine/vastuShastraEngine';
 import { localizeVastuReport } from '../src/engine/vastuBilingual';
 import { buildVastuProjectPlan } from '../src/engine/vastuProjectPlan';
+import { buildPlotPlan, ROOM_META, overlaps, toSqft, ZONE_LABEL_EN } from '../src/engine/vastuPlotPlannerEngine';
 import { bilingualName, englishToTeluguSmart, teluguToLatin } from '../src/engine/teluguTransliteration';
 import { resolveNamaAkshara } from '../src/engine/namaAksharaEngine';
 import { TELUGU_NAKSHATRAS as NAMA_NAKSHATRAS } from '../src/engine/teluguJathakam';
@@ -71,6 +72,7 @@ import { generateAstroVisionMasterReport } from '../src/engine/astroVisionAndTra
 import { generateSiddhantaAdvancedAppendices } from '../src/engine/siddhantaAdvancedAppendices';
 import { generateSampoornaLifeChronicle } from '../src/engine/sampoornaLifeChronicleEngine';
 import { VastuShastraView } from '../src/components/VastuShastraView';
+import VastuPlanDrawing from '../src/components/VastuPlanDrawing';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -936,6 +938,164 @@ check(
   /[\u0C00-\u0C7F]/.test(vastuRaw.summaryTe) && /[\u0C00-\u0C7F]/.test(vastuRaw.audit.gradeTe),
   'తెలుగు నివేదిక తెలుగులోనే ఉంది'
 );
+// ─────────────────────────────────────────────────────��───────────────────
+//  ప్లాట్ ప్లాన్ ఇంజిన్ — స్థల సామర్థ్యం, గదుల అమరిక, వ్యయం
+// ─────────────────────────────────────────────────────────────────────────
+console.log('\n── ప్లాట్ ప్లాన్ ఇంజిన్ (సెట్‌బ్యాక్ · FSI · గది అమరిక · వ్యయం) ──');
+
+check(
+  'యూనిట్ మార్పిడి: 1 గుంట = 1089 చ.అ. · 1 ఎకరం = 40 గుంట · 1 చ.గజం = 9 చ.అ.',
+  toSqft(1, 'gunta') === 1089 && toSqft(1, 'acre') === 43560 && toSqft(1, 'sqyd') === 9,
+  `${toSqft(1, 'gunta')} · ${toSqft(1, 'acre')} · ${toSqft(1, 'sqyd')}`
+);
+
+const plot1g = buildPlotPlan({ areaValue: 1, unit: 'gunta', facing: 'E', use: 'residential', floors: 2, familySize: 4 });
+checkNum('1 గుంట = 1089 చ.అ. లెక్క', plot1g.plot.areaSqft, 1089, 1, 'చ.అ.');
+check(
+  '1 గుంట ప్లాట్: సెట్‌బ్యాక్ → నిర్మాణ స్థలం 686 చ.అ. · కవరేజ్ ≤ అనుమతి · FSI ≤ అనుమతి',
+  Math.abs(plot1g.capacity.envelopeSqft - 686) <= 3 &&
+    plot1g.capacity.coverageActualPct <= plot1g.rules.coveragePct + 0.05 &&
+    plot1g.capacity.farUsed <= plot1g.capacity.farLimit + 0.01,
+  `${plot1g.capacity.envelopeSqft} చ.అ. · ${plot1g.capacity.coverageActualPct}% ≤ ${plot1g.rules.coveragePct}% · FSI ${plot1g.capacity.farUsed} ≤ ${plot1g.capacity.farLimit}`
+);
+
+// ఎనిమిది ముఖాలకూ గదులు ఖచ్చితంగా భవనాన్ని నింపుతాయా (ఖాళీ/అతిక్రమణ లేకుండా)
+const tilingBad: string[] = [];
+for (const facing of ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const) {
+  const p = buildPlotPlan({ areaValue: 1, unit: 'gunta', facing, use: 'residential', floors: 2 });
+  const rooms = p.rooms;
+  for (let i = 0; i < rooms.length; i++) {
+    for (let j = i + 1; j < rooms.length; j++) {
+      if (overlaps(rooms[i], rooms[j])) tilingBad.push(`${facing}:${rooms[i].key}×${rooms[j].key}`);
+    }
+  }
+  const sum = rooms.reduce((s, r) => s + r.w * r.h, 0);
+  if (Math.abs(sum - p.building.w * p.building.h) > 2) tilingBad.push(`${facing}:ఖాళీ ${(p.building.w * p.building.h - sum).toFixed(1)}`);
+}
+check(
+  'ఎనిమిది ముఖాలలోనూ గదులు అతిక్రమణ/ఖాళీ లేకుండా భవనాన్ని నింపుతాయి',
+  tilingBad.length === 0,
+  tilingBad.length ? tilingBad.slice(0, 3).join(' | ') : '8/8 ముఖాలు ఖచ్చితమైన టైలింగ్'
+);
+
+// గది కనిష్ఠ కొలతలు — పల్చన స్ట్రిప్‌లు రాకూడదు
+check(
+  'ఏ గదీ 3′ కంటే ఇరుకుగా లేదు (పల్చన స్ట్రిప్‌లు లేవు)',
+  [0.5, 1, 2, 3].every((g) =>
+    buildPlotPlan({ areaValue: g, unit: 'gunta', facing: 'N', use: 'residential', floors: 2 }).rooms.every(
+      (r) => Math.min(r.w, r.h) >= 3
+    )
+  ),
+  '0.5 / 1 / 2 / 3 గుంట — అన్ని గదుల కనిష్ఠ వైపు ≥ 3′'
+);
+
+// "1 గుంటలో ½ గుంట ఇల్లు" — ఫీజిబిలిటీ
+const half = buildPlotPlan({ areaValue: 1, unit: 'gunta', facing: 'E', use: 'residential', targetBuiltSqft: 544, floors: 1 });
+check(
+  '1 గుంట ప్లాట్‌లో ½ గుంట (544 చ.అ.) ఇల్లు ఒకే అంతస్తులో కుదురుతుంది',
+  half.feasibility.fitsOnGround && Math.abs(half.building.w * half.building.h - 544) <= 6,
+  `నిర్మాణం ${Math.round(half.building.w * half.building.h)} చ.అ. · ${half.feasibility.noteTe.slice(0, 60)}…`
+);
+const tooBig = buildPlotPlan({ areaValue: 0.5, unit: 'gunta', facing: 'N', use: 'residential', targetBuiltSqft: 900, floors: 1 });
+check(
+  'సామర్థ్యానికి మించిన లక్ష్యాన్ని తిరస్కరిస్తుంది (½ గుంటలో 900 చ.అ.)',
+  !tooBig.feasibility.fitsOnGround && !tooBig.feasibility.fitsInTotal,
+  `గరిష్ఠం ${tooBig.feasibility.maxTotalSqft} చ.అ.`
+);
+
+// వాడకం రకాలు
+const rental = buildPlotPlan({ areaValue: 1, unit: 'gunta', facing: 'W', use: 'rental', floors: 2 });
+const commercial = buildPlotPlan({ areaValue: 1200, unit: 'sqft', facing: 'S', use: 'commercial', floors: 2 });
+check(
+  'అద్దె మోడ్: యూనిట్లు + గదులు + అద్దె బ్యాండ్; వాణిజ్య మోడ్: దుకాణం + క్యాష్',
+  rental.units.length >= 1 &&
+    rental.units.every((u) => u.rooms.length >= 4 && /₹/.test(u.rentBandTe)) &&
+    commercial.rooms.some((r) => r.key === 'shop') &&
+    commercial.rooms.some((r) => r.key === 'cash'),
+  `అద్దె ${rental.units.length} యూనిట్లు · వాణిజ్యం ${commercial.rooms.map((r) => r.labelEn).join(', ')}`
+);
+check(
+  'వాడకానికి సంబంధించని తనిఖీలు చూపబడవు (గది లేకపోతే ఆ తనిఖీ ఉండదు)',
+  rental.checks.every((c) => !['pooja'].includes(c.id)) &&
+    commercial.checks.every((c) => !['pooja', 'kitchen', 'master'].includes(c.id)) &&
+    rental.units.every((u) => u.rooms.every((r) => r.key !== 'pooja')),
+  `అద్దె ${rental.checks.map((c) => c.id).join(',')} · వాణిజ్యం ${commercial.checks.map((c) => c.id).join(',')}`
+);
+
+// ఆర్థిక లెక్క
+const econ = buildPlotPlan({
+  areaValue: 1, unit: 'gunta', facing: 'E', use: 'residential', floors: 2,
+  landRate: 1500000, rateUnit: 'gunta',
+});
+check(
+  'ఆర్థికం: భూమి విలువ + నిర్మాణ వ్యయం = మొత్తం ప్రాజెక్టు వ్యయం; రాబడి శాతం > 0',
+  econ.economics.landValueTotal === 1500000 &&
+    econ.economics.totalProjectCost === econ.economics.landValueTotal + econ.economics.buildCost &&
+    econ.economics.grossYieldPct > 0 &&
+    econ.economics.linesTe.length === econ.economics.linesEn.length,
+  `₹${econ.economics.landValueTotal} + ₹${econ.economics.buildCost} = ₹${econ.economics.totalProjectCost} · ${econ.economics.grossYieldPct}%`
+);
+
+// ద్విభాషా సమానత్వం — ఆంగ్ల ఫీల్డ్‌లలో తెలుగు ఉండకూడదు
+const biBad: string[] = [];
+const stripTe = (v: unknown, path: string) => {
+  if (typeof v === 'string') {
+    if (/En$/.test(path) && /[\u0C00-\u0C7F]/.test(v)) biBad.push(path);
+  } else if (Array.isArray(v)) v.forEach((x, i) => stripTe(x, `${path}[${i}]`));
+  else if (v && typeof v === 'object') for (const k of Object.keys(v as object)) stripTe((v as never)[k], k);
+};
+stripTe({ econ: econ.economics, summary: econ.summaryEn, warn: econ.warningsEn, assume: econ.assumptionsEn, checks: econ.checks, feat: econ.features, ent: econ.entrance }, 'plan');
+check(
+  'ప్లాన్‌లోని ప్రతి ఆంగ్ల వాక్యం తెలుగు అక్షరాలు లేకుండా ఉంది',
+  biBad.length === 0,
+  biBad.length ? biBad.slice(0, 3).join(' | ') : '0 మిశ్రమ లిపి'
+);
+check(
+  'దిక్కుల ఆంగ్ల లేబుళ్లు పూర్తి (9 మండలాలు)',
+  Object.keys(ZONE_LABEL_EN).length === 9 && !Object.values(ZONE_LABEL_EN).some((v) => /[\u0C00-\u0C7F]/.test(v)),
+  Object.values(ZONE_LABEL_EN).slice(0, 3).join(' · ')
+);
+
+// ప్యానెల్ ప్లాన్‌ను వాస్తు వ్యూకు కలిపిందా (ఇన్‌పుట్ → ప్లాన్)
+check(
+  'వాస్తు వ్యూలో ప్లాట్ ప్లాన్ ప్యానెల్ కలిసి ఉంది (SSR లోనే ఇన్‌పుట్ ఫీల్డ్‌లు కనిపిస్తాయి)',
+  (() => {
+    const html = renderToString(
+      React.createElement(VastuShastraView, { lang: 'te', defaultName: 'రమేష్', defaultPlaceName: 'హైదరాబాద్' })
+    );
+    return (
+      html.includes('ప్లాట్ ప్లాన్ తయారీ') &&
+      html.includes('ప్లాన్ తయారు చేయి') &&
+      html.includes('భూమి విలువ') &&
+      html.includes('పకడగదులు') === false
+    );
+  })(),
+  'పేరు · గ్రామం · భూమి విలువ · విస్తీర్ణం · ముఖం · ఫోటో — ఇన్‌పుట్‌లు వ్యూలో ఉన్నాయి'
+);
+
+// డ్రాయింగ్ SSR — NaN/undefined లేకుండా, నాలుగు వాడకాలకూ
+check(
+  'వాస్తు ప్లాన్ డ్రాయింగ్ SSR: నాలుగు వాడకాలకూ NaN/undefined లేకుండా రెండర్ అవుతుంది',
+  (() => {
+    const cases = [
+      { areaValue: 1, unit: 'gunta' as const, facing: 'E' as const, use: 'residential' as const, floors: 2 },
+      { areaValue: 0.5, unit: 'gunta' as const, facing: 'N' as const, use: 'residential' as const, floors: 1 },
+      { areaValue: 1, unit: 'gunta' as const, facing: 'W' as const, use: 'rental' as const, floors: 2 },
+      { areaValue: 1200, unit: 'sqft' as const, facing: 'S' as const, use: 'commercial' as const, floors: 2 },
+    ];
+    for (const c of cases) {
+      const plan = buildPlotPlan(c);
+      for (const isTe of [true, false]) {
+        const html = renderToString(React.createElement(VastuPlanDrawing, { plan, isTe }));
+        if (/NaN|undefined/.test(html)) return false;
+        if (!isTe && /[\u0C00-\u0C7F]/.test(html)) return false;
+      }
+    }
+    return true;
+  })(),
+  '4 వాడకాలు × 2 భాషలు — డ్రాయింగ్ శుభ్రం'
+);
+
 check(
   'వాస్తు ప్లాన్: 16 గదులు × పరిహారాలు + 9 సేవలు (విద్యుత్…నిర్మాణం)',
   (() => {
