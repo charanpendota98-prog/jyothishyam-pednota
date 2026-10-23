@@ -210,10 +210,28 @@ function aspectsHouse(fromHouse: number, id: string, target: number): boolean {
   return aspectsOf(id).includes(dist);
 }
 
+const DELIVERY_TE: Record<number, string> = {
+  1: 'స్వయం ప్రయత్నం, వ్యక్తిత్వం ద్వారా',
+  2: 'కుటుంబం, ధనం, వాక్కు ద్వారా',
+  3: 'సోదరులు, ధైర్యం, చిన్న ప్రయాణాల ద్వారా',
+  4: 'తల్లి, గృహం, విద్య ద్వారా',
+  5: 'సంతానం, జ్ఞానం, పూర్వ పుణ్యం ద్వారా',
+  6: 'శ్రమ, సేవ, పోటీ ద్వారా — కష్టపడి, ఆలస్యంగా',
+  7: 'భాగస్వామ్యం, దాంపత్యం ద్వారా',
+  8: 'ఆకస్మిక మార్పులు, వారసత్వం ద్వారా',
+  9: 'తండ్రి, ధర్మం, అదృష్టం ద్వారా',
+  10: 'వృత్తి, కీర్తి, హోదా ద్వారా',
+  11: 'లాభం, మిత్రులు, కోరికల ద్వారా',
+  12: 'ఖర్చు, విదేశం, ఏకాంతం ద్వారా',
+};
+
 const WEEKDAY_TE: Record<string, string> = {
   Sun: 'ఆదివారం', Moon: 'సోమవారం', Mars: 'మంగళవారం', Mercury: 'బుధవారం',
   Jupiter: 'గురువారం', Venus: 'శుక్రవారం', Saturn: 'శనివారం', Rahu: 'శనివారం', Ketu: 'మంగళవారం',
 };
+
+const lordStrengthTe = (ratio: number) =>
+  ratio >= 100 ? 'బలంగా' : ratio >= 85 ? 'సమర్థంగా' : 'బలహీనంగా';
 
 const fmtDate = (iso: string) => iso.slice(0, 10);
 
@@ -252,12 +270,13 @@ function dashaPeriodsFor(
   planetId: string,
   dashas: DashaNode[],
   nowMs: number,
-  limit = 2
+  limit = 2,
+  birthMs = 0
 ): string[] {
   const out: string[] = [];
   for (const md of dashas) {
-    if (md.lord === planetId) {
-      out.push(`మహాదశ ${fmtDate(md.startLocal)} → ${fmtDate(md.endLocal)} (${md.widthTe})`);
+    if (md.lord === planetId && md.endMs > birthMs) {
+      out.push(`మహాదశ ${fmtDate(md.startLocal)} → ${fmtDate(md.endLocal)} (${md.widthTe})${birthMs > 0 && md.startMs < birthMs ? ' — జన్మ సమయంలో నడుస్తున్న దశ' : ''}`);
     }
   }
   // ప్రస్తుతం/తర్వాత వచ్చే భుక్తిని ఎంచుకో — గతంలో మునిగిన దశలు పనికిరావు
@@ -282,7 +301,6 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
   const nowMs = Date.now();
   const birthMs = (chart.julianDay - 2440587.5) * 86400000;
   void nakSpan;
-  void birthMs;
 
   const planetById = (id: string) => chart.planets.find((p) => p.id === id);
   const sbRow = (id: string) => sb.rows.find((r) => r.id === id);
@@ -345,11 +363,11 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
             : 'శ్రద్ధార్హ (24 లోపు)';
 
     const verdictTe =
-      scorePct >= 72
+      scorePct >= 62
         ? 'బలవత్ — ఈ భావ ఫలం సహజంగానే సిద్ధిస్తుంది'
-        : scorePct >= 55
+        : scorePct >= 48
           ? 'మధ్యమ — ప్రయత్నంతో ఫలం; ఆలస్యం కానీ నిరాశ కాదు'
-          : scorePct >= 40
+          : scorePct >= 36
             ? 'శ్రమసాధ్యం — పరిహారం + క్రమశిక్షణ అవసరం'
             : 'శ్రద్ధార్హ — ఈ భావంలో నష్టభయం; పరిహారం తప్పనిసరి';
 
@@ -364,15 +382,15 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       headingTe: '2. భావాధిపతి స్థితి',
       bodyTe:
         `${lordName} ${lordHouse}వ భావంలో (${BHAVA_THEMES_TE[Math.max(0, lordHouse - 1)]}) — ${DIGNITY_TE[lord?.dignity ?? ''] ?? lord?.dignity ?? '—'}` +
-        `${lord?.isRetrograde ? ', వక్రీ' : ''}. షడ్బల నిష్పత్తి ${ratio.toFixed(1)}%${lordNature ? `; ఈ లగ్నానికి ${lordNature.natureTe}` : ''}. ` +
-        `అందువల్ల ${BHAVA_THEMES_TE[h - 1].split(',')[0]} సంబంధ విషయాలు ${BHAVA_THEMES_TE[Math.max(0, lordHouse - 1)].split(',')[0]} మార్గం ద్వారా ఫలిస్తాయి — అధిపతి బలం ఎంత, ఫలం అంత.`,
+        `${lord?.isRetrograde ? ', వక్రీ' : ''}. షడ్బల నిష్పత్తి ${ratio.toFixed(1)}% (${lordStrengthTe(ratio)})${lordNature ? `; ఈ లగ్నానికి ${lordNature.natureTe}` : ''}. ` +
+        `అందువల్ల ఈ భావ ఫలం ${DELIVERY_TE[lordHouse] ?? 'అధిపతి మార్గం ద్వారా'} సిద్ధిస్తుంది.`,
     });
 
     sections.push({
       headingTe: '3. భావ నివాసులు',
       bodyTe:
         occupants.length === 0
-          ? 'ఈ భావంలో ఏ గ్రహమూ లేదు. ఫలం పూర్తిగా భావాధిపతి స్థితిపైనే ఆధారపడి ఉంటుంది — ' + (ratio >= 100 ? `అధిపతి ${ratio.toFixed(1)}% బలంతో ఉన్నందున ఈ భావం నిశ్శబ్దంగా, కానీ నిరంతరంగా పనిచేస్తుంది.` : `అధిపతి ${ratio.toFixed(1)}% మాత్రమే కావడం వల్ల ఈ భావం బాహ్యంగా కనిపించదు; ఫలం ఆలస్యంగా, పరోక్షంగా వస్తుంది.`)
+          ? 'ఈ భావంలో ఏ గ్రహమూ లేదు. ఫలం పూర్తిగా భావాధిపతి స్థితిపైనే ఆధారపడి ఉంటుంది — ' + (ratio >= 100 ? `అధిపతి ${ratio.toFixed(1)}% బలంతో ఉన్నందున ఈ భావం నిశ్శబ్దంగా, కానీ నిరంతరంగా పనిచేస్తుంది.` : ratio >= 85 ? `అధిపతి ${ratio.toFixed(1)}% — సమర్థుడు; ఫలం వస్తుంది, కొంత ఆలస్యంతో.` : `అధిపతి ${ratio.toFixed(1)}% మాత్రమే — ఈ భావం బాహ్యంగా కనిపించదు; ఫలం ఆలస్యంగా, పరోక్షంగా వస్తుంది.`)
           : occupants
               .map(
                 (o) =>
@@ -408,7 +426,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
 
     const timingTe: string[] = [];
     for (const id of [lordId, ...occupIds]) {
-      const p = dashaPeriodsFor(id, dashas, nowMs, 2);
+      const p = dashaPeriodsFor(id, dashas, nowMs, 2, birthMs);
       if (p.length) timingTe.push(`${PLANET_TE[id] ?? id}: ${p.join(' · ')}`);
     }
     if (!timingTe.length) timingTe.push('ఈ భావానికి సంబంధించిన దశా కాలం 120 సంవత్సరాల చక్రంలో స్పష్టంగా లేదు.');
@@ -518,14 +536,14 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
         headingTe: '2. అధిపత్యం & కర్మ',
         bodyTe:
           (func
-            ? `${PLANET_TE[id]} ఈ లగ్నానికి ${func.ownsHouses.length ? `${func.ownsHouses.join(', ')} భావాల అధిపతి` : 'భావాధిపత్యం లేదు (ఛాయా గ్రహం)'}; ${func.natureTe}${func.isYogakaraka ? '; **యోగకారకుడు**' : ''}${func.isKendradhipatiDosha ? '; కేంద్రాధిపత్య దోషం' : ''}. `
+            ? `${PLANET_TE[id]} ఈ లగ్నానికి ${func.ownsHouses.length ? `${func.ownsHouses.length === 1 ? `${func.ownsHouses[0]}వ భావానికి` : `${func.ownsHouses.join(', ')} భావాలకు`} అధిపతి` : 'భావాధిపత్యం లేదు (ఛాయా గ్రహం)'}; ${func.natureTe}${func.isYogakaraka ? '; **యోగకారకుడు**' : ''}${func.isKendradhipatiDosha ? '; కేంద్రాధిపత్య దోషం' : ''}. `
             : '') +
           `${lagnaHouse}వ భావంలో ఉన్నందున ${BHAVA_THEMES_TE[lagnaHouse - 1]} రంగంలో ఈ గ్రహపు ఫలం నేరుగా కనిపిస్తుంది.`,
       },
       {
         headingTe: '3. బలం (షడ్బలం)',
         bodyTe: row
-          ? `మొత్తం ${row.totalVirupas.toFixed(2)} విరూపాలు (${row.totalRupas.toFixed(2)} రూపాలు; అవసరం ${(row.requiredVirupas / 60).toFixed(2)} రూపాలు) — నిష్పత్తి ${row.ratioPercent.toFixed(1)}%, ర్యాంక్ ${rank}/7. బలమైన అంశం ${strongest.name} ${strongest.v.toFixed(2)}, బలహీన అంశం ${weakest.name} ${weakest.v.toFixed(2)}. ఇష్ట ఫలం ${ishta.toFixed(1)}, కష్ట ఫలం ${kashta.toFixed(1)}.`
+          ? `మొత్తం ${row.totalVirupas.toFixed(2)} విరూపాలు (${row.totalRupas.toFixed(2)} రూపాలు; అవసరం ${(row.requiredVirupas / 60).toFixed(2)} రూపాలు) — నిష్పత్తి ${row.ratioPercent.toFixed(1)}%, ర్యాంక్ ${rank}/7. బలమైన అంశం ${strongest.name} ${strongest.v.toFixed(2)}, బలహీన అంశం ${weakest.name} ${weakest.v.toFixed(2)}. ఇష్ట ఫలం ${ishta.toFixed(1)}, కష్ట ఫలం ${kashta.toFixed(1)}${id === 'Sun' || id === 'Moon' ? ' (వీరికి చేష్టా బలం 0 కాబట్టి ఇష్ట-కష్ట సూత్రం సున్నా వైపు ఉంటుంది — ఫలం కాల/పక్ష బలాల నుంచే తీర్చాలి)' : ''}.`
           : 'ఛాయా గ్రహం — షడ్బలం లెక్కించబడదు; దాని ఫలం రాహు/కేతు స్థానం, దృష్టి, దశా ద్వారా మాత్రమే తీర్చబడుతుంది.',
       },
       {
@@ -542,7 +560,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       },
     ];
 
-    const timing = dashaPeriodsFor(id, dashas, nowMs, 2);
+    const timing = dashaPeriodsFor(id, dashas, nowMs, 2, birthMs);
     sections.push({
       headingTe: '6. కాల ఫలం',
       bodyTe: timing.length
@@ -619,18 +637,20 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       present,
       severityTe: present ? (hits.includes(fromLagna) && hits.includes(fromMoon) ? 'తీవ్రం' : 'మధ్యమం') : 'లేదు',
       evidenceTe: `కుజుడు ${mars.house}వ భావంలో — లగ్నం నుంచి ${fromLagna}వ, చంద్రుని నుంచి ${fromMoon}వ స్థానం.`,
-      bhangaTe: jupAspect
-        ? `గురువు దృష్టి కుజునిపై ఉంది — దోష భంగం (ఉపశమనం).`
-        : mars.dignity === 'Own Sign' || mars.dignity === 'Exalted' || mars.dignity === 'Moolatrikona'
-          ? 'కుజుడు స్వ/ఉచ్చ స్థానంలో — దోష తీవ్రత తగ్గుతుంది.'
-          : 'దోష భంగానికి స్పష్ట ఆధారం లేదు.',
+      bhangaTe: !present
+        ? '—'
+        : jupAspect
+          ? 'గురువు దృష్టి కుజునిపై ఉంది — దోష భంగం (ఉపశమనం).'
+          : mars.dignity === 'Own Sign' || mars.dignity === 'Exalted' || mars.dignity === 'Moolatrikona'
+            ? 'కుజుడు స్వ/ఉచ్చ స్థానంలో — దోష తీవ్రత తగ్గుతుంది.'
+            : 'దోష భంగానికి స్పష్ట ఆధారం లేదు.',
       effectTe: present
         ? 'దాంపత్యంలో ఆతురత, అహం ఘర్షణ; వివాహానంతరం మొదటి సంవత్సరాలు సర్దుబాటు అవసరం. ఇది వ్యక్తి దోషం కాదు — గ్రహ స్థితి మాత్రమే.'
         : 'కుజ దోషం లేదు — దాంపత్య భావంపై ఈ దోష ప్రభావం లేదు.',
       remedyTe: present
         ? 'కుజునికి మంగళవారం నిమ్మ/ఎరుపు వస్తు దానం; హనుమత్ ఆరాధన; వివాహానికి ముందు కుజ శాంతి.'
         : 'పరిహారం అవసరం లేదు.',
-      timingTe: present ? dashaPeriodsFor('Mars', dashas, nowMs, 1).join(' · ') : '—',
+      timingTe: present ? dashaPeriodsFor('Mars', dashas, nowMs, 1, birthMs).join(' · ') : '—',
       sourceTe: 'బృహత్ పరాశర హోరా · ముహూర్త చింతామణి',
     });
   }
@@ -657,7 +677,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       bhangaTe: allOneSide ? 'రాహు-కేతు మధ్య గ్రహాలు ఒకే వైపు ఉండటం వల్ల జీవితం ఒకే దిశలో తీవ్రంగా నడుస్తుంది — ఇది దోషమే కాదు, ఏకాగ్రత కూడా.' : 'భంగం అవసరం లేదు.',
       effectTe: allOneSide ? 'ఆలస్యమైన ఆరంభాలు, తర్వాత ఆకస్మిక ఎదుగుదల; ఒక రంగంలో మాత్రమే జీవితం కేంద్రీకరణ.' : 'ప్రభావం లేదు.',
       remedyTe: allOneSide ? 'నాగ ప్రతిష్ఠ / సర్ప శాంతి; శనివారం నాగుల చిత్ర పూజ.' : '—',
-      timingTe: allOneSide ? dashaPeriodsFor('Rahu', dashas, nowMs, 1).join(' · ') : '—',
+      timingTe: allOneSide ? dashaPeriodsFor('Rahu', dashas, nowMs, 1, birthMs).join(' · ') : '—',
       sourceTe: 'కాళ సర్ప యోగ శాస్త్రం',
     });
   }
@@ -682,7 +702,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       bhangaTe: present ? 'గురువు/శుక్ర దృష్టి లేదా చంద్రుని కేంద్ర స్థితి ఉంటే భంగం — ఈ కుండలిలో అటువంటి ఆధారం లేదు.' : 'దోషం లేదు.',
       effectTe: present ? 'మానసిక ఒంటరితనం, ఆర్థిక హెచ్చుతగ్గులు; స్వయం కృషి తప్పనిసరి.' : 'ప్రభావం లేదు.',
       remedyTe: present ? 'సోమవారం శివ ఆరాధన, పాలు/వెండి దానం, చంద్రునికి సంబంధించిన ముత్యం ధారణ (రత్న నిపుణుడి సలహాతో).' : '—',
-      timingTe: present ? dashaPeriodsFor('Moon', dashas, nowMs, 1).join(' · ') : '—',
+      timingTe: present ? dashaPeriodsFor('Moon', dashas, nowMs, 1, birthMs).join(' · ') : '—',
       sourceTe: 'బృహత్ పరాశర హోరా',
     });
   }
@@ -705,7 +725,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
         ? 'జన్మతః నెమ్మది పెరుగుదల, బాధ్యత భారం ముందుగానే; 30 ఏళ్ల తర్వాత స్థిరత్వం. ఇది గోచార సాడే సాతి కాదు — ఆ కాలం గోచార అధ్యాయంలో విడిగా ఉంది.'
         : 'జన్మ చక్రంలో శని చంద్రునికి 12/1/2 స్థానాల్లో లేడు.',
       remedyTe: active ? 'శనివారం నువ్వుల నూనె దీపం, శని స్తోత్రం, శ్రమ దానం.' : '—',
-      timingTe: active ? dashaPeriodsFor('Saturn', dashas, nowMs, 1).join(' · ') : '—',
+      timingTe: active ? dashaPeriodsFor('Saturn', dashas, nowMs, 1, birthMs).join(' · ') : '—',
       sourceTe: 'జన్మ చక్ర గ్రహ స్థితి (గోచారం వేరు)',
     });
   }
@@ -725,7 +745,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       bhangaTe: combust.some((p) => p.isRetrograde) ? 'వక్రీ గ్రహం అస్తంగత దోషాన్ని తగ్గిస్తుంది.' : '—',
       effectTe: combust.length ? 'ఆ గ్రహాల ఫలం ఆత్మ/అధికారం కిందికి వస్తుంది; వ్యక్తిగత ప్రకాశం తగ్గుతుంది.' : 'ప్రభావం లేదు.',
       remedyTe: combust.length ? 'సూర్య నమస్కారాలు, ఆదిత్య హృదయం; ఆ గ్రహానికి సంబంధించిన దానం.' : '—',
-      timingTe: combust.length ? dashaPeriodsFor('Sun', dashas, nowMs, 1).join(' · ') : '—',
+      timingTe: combust.length ? dashaPeriodsFor('Sun', dashas, nowMs, 1, birthMs).join(' · ') : '—',
       sourceTe: 'బృహత్ పరాశర హోరా (అస్తంగత నిర్ణయం)',
     });
   }
@@ -741,7 +761,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       bhangaTe: same ? 'గురువు బలం (షడ్బలం) దోష తీవ్రతను తగ్గిస్తుంది.' : '—',
       effectTe: same ? 'గురు/ధర్మ విషయాల్లో అపార్థాలు, భ్రమ; గురు ఆశీర్వాదం తప్పనిసరి.' : 'ప్రభావం లేదు.',
       remedyTe: same ? 'గురువారం పసుపు దానం, గురు ఆరాధన; రాహు శాంతి.' : '—',
-      timingTe: same ? dashaPeriodsFor('Jupiter', dashas, nowMs, 1).join(' · ') : '—',
+      timingTe: same ? dashaPeriodsFor('Jupiter', dashas, nowMs, 1, birthMs).join(' · ') : '—',
       sourceTe: 'సంప్రదాయ దోష పరిశీలన',
     });
   }
@@ -757,7 +777,7 @@ export function computeBhavaGrahaVistara(chart: CompleteChartResult): BhavaGraha
       bhangaTe: 'రాహు-కేతు మధ్య గ్రహ బలం ఉంటే ఉపశమనం.',
       effectTe: `${withSun ? 'ఆత్మగౌరవం, తండ్రి, అధికారం' : 'మనస్సు, తల్లి'} విషయాల్లో అస్థిరత; జీవితంలో పెద్ద మలుపులు.`,
       remedyTe: 'సూర్య/చంద్ర గ్రహణ శాంతి; రాహు/కేతు ఆరాధన, నాగ ప్రతిష్ఠ.',
-      timingTe: dashaPeriodsFor('Rahu', dashas, nowMs, 1).join(' · '),
+      timingTe: dashaPeriodsFor('Rahu', dashas, nowMs, 1, birthMs).join(' · '),
       sourceTe: 'సంప్రదాయ గ్రహణ దోష నిర్ణయం',
     });
   }
