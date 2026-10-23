@@ -1,3 +1,4 @@
+import { EPHEMERIS_ACCURACY } from '../generated/ephemerisAccuracy.ts';
 /**
  * granthaProvenanceEngine.ts — ప్రమాణ పట్టిక (Provenance Audit)
  * ---------------------------------------------------------------------------
@@ -372,7 +373,7 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
   // గేట్ల సంఖ్యలు: జాతక గేట్లు స్వయంగా ఉత్పత్తి అయ్యే ఫైలు నుంచి (డ్రిఫ్ట్ రాదు);
   // మిగిలినవి ఆయా స్క్రిప్ట్‌ల అంకెలు — మారితే ఇక్కడా మార్చాలి (గేట్ దీన్ని తనిఖీ చేస్తుంది).
   const GATE_COUNTS = {
-    astro: 660,
+    astro: EPHEMERIS_ACCURACY.measurements,
     panchanga: 365,
     lunar: 411,
     rise: 4745,

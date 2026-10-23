@@ -58,6 +58,16 @@ import {
 } from '../src/components/ClassicalJathakaPdfDocument.tsx';
 import { GRANTHA_PAGES, granthaPartsTe } from '../src/engine/granthaPageMap.ts';
 import { JATHAKA_GATES } from '../src/generated/verificationStats.ts';
+import {
+  computeDayPhala,
+  computeWeekPhala,
+  computeMonthPhala,
+  computeYearPhala,
+  festivalsForYear,
+  dashaAt,
+  gradeOf,
+  TARA_NAMES_TE,
+} from '../src/engine/rashiPhalaluPanditEngine.ts';
 import { buildGranthaProvenance } from '../src/engine/granthaProvenanceEngine.ts';
 import { computeGocharaReport } from '../src/engine/gocharaVedhaEngine.ts';
 import { computeGrahaAvastha } from '../src/engine/grahaAvasthaEngine.ts';
@@ -73,6 +83,7 @@ import { generateSiddhantaAdvancedAppendices } from '../src/engine/siddhantaAdva
 import { generateSampoornaLifeChronicle } from '../src/engine/sampoornaLifeChronicleEngine';
 import { VastuShastraView } from '../src/components/VastuShastraView';
 import VastuPlanDrawing from '../src/components/VastuPlanDrawing';
+import RashiPhalaStudioView from '../src/components/RashiPhalaStudioView.tsx';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -2435,6 +2446,224 @@ console.log(`\n— ముద్రణా గ్రంథం (PDF ${JATHAKAM_PDF_
 //  UI లో చూపే తనిఖీ సంఖ్యలు ఇక్కడే నిర్ణయమవుతాయి — చేతితో రాసిన అంకెలు కావు.
 //  (గేట్ జోడించినప్పుడల్లా UI తనంతట తానే సరిపోతుంది.)
 // ─────────────────────────────────────────────────────────────────────────
+/* ================================================================== *
+ *  రాశి ఫలాలు & ముహూర్త స్టూడియో — యాంత్రిక గేట్లు
+ *  (రోజు/వారం/నెల/సంవత్సర ఫలాలు నిజంగా లెక్కించిన పంచాంగం + గోచారం + దశలపైనే
+ *   నిర్మితమా అని పరీక్షిస్తాయి.)
+ * ================================================================== */
+{
+  const geo = { lat: 17.385, lng: 78.4867, tzOffsetHours: 5.5, placeNameTe: 'హైదరాబాద్' };
+  const dates = ['2026-10-23', '2027-01-15', '2027-08-09'];
+  for (const chart of [CHARAN_REF, NADI]) {
+    for (const dateISO of dates) {
+      const day = computeDayPhala(chart, dateISO, geo);
+      const p = computeDayPanchanga(dateISO, {
+        lat: geo.lat,
+        lng: geo.lng,
+        tzOffsetHours: geo.tzOffsetHours,
+        placeName: geo.placeNameTe,
+      });
+      const partsSum = day.parts.reduce((a, b) => a + b.score, 0);
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — బలం 0…100 లోపల`,
+        day.score >= 0 && day.score <= 100,
+        `${day.score}/100 · ${day.grade}`
+      );
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — పంచాంగ భాగాల మొత్తం = మొత్తం బలం`,
+        partsSum === day.score,
+        `భాగాలు ${partsSum} / మొత్తం ${day.score}`
+      );
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — ప్రతి భాగానికి ఆధార గ్రంథం ఉంది`,
+        day.parts.every((x) => x.sourceTe.trim().length > 5 && x.reasonTe.trim().length > 5),
+        day.parts.map((x) => `${x.labelTe}:${x.score}/${x.max}`).join(' · ')
+      );
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — తిథి/నక్షత్రం పంచాంగంతో సరిపోతాయి`,
+        day.tithiTe.startsWith(`${p.tithi.pakshaTe} ${p.tithi.nameTe}`) &&
+          day.nakshatraTe.startsWith(p.nakshatra.nameTe),
+        `${day.tithiTe} / ${day.nakshatraTe}`
+      );
+      // శుభ కాలాలు ఎేదీ రాహు/యమ/గుళిక/దుర్ముహూర్తంతో కలవకూడదు
+      const bad = p.kalas.filter((k) => k.quality === 'inauspicious' && k.startJd !== null);
+      const hhmm = (t: string) => {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+      };
+      const clash = day.windows.filter((w) => {
+        const a = hhmm(w.startTime);
+        const b = hhmm(w.endTime) > a ? hhmm(w.endTime) : a + 1;
+        return bad.some((k) => {
+          const c = hhmm(k.startTime);
+          const d = hhmm(k.endTime) > c ? hhmm(k.endTime) : c + 1;
+          return Math.min(b, d) - Math.max(a, c) > 0;
+        });
+      });
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — శుభ కాలాలపై అశుభ కాలం ప్రభావం లేదు`,
+        clash.length === 0,
+        `${day.windows.length} విండోలు · ఘర్షణ ${clash.length}`
+      );
+      // దశా చక్రం
+      const chain = dashaAt(chart, dateISO);
+      const maha = chart.dashas.find((d) => d.lord === chain.maha);
+      const antar = maha?.antardashas.find((a) => a.lord === chain.antar);
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — దశా/అంతర్దశ తేదీల మధ్య ఉన్నాయి`,
+        Boolean(
+          maha &&
+            dateISO >= maha.startDate &&
+            dateISO <= maha.endDate &&
+            (!antar || (dateISO >= antar.startDate && dateISO <= antar.endDate))
+        ),
+        `${chain.maha}/${chain.antar}/${chain.pratyantar} (${maha?.startDate} → ${maha?.endDate})`
+      );
+      // తారా సూచిక స్వతంత్ర పునఃగణన
+      const moon = chart.planets.find((x) => x.id === 'Moon')!;
+      const janmaNak = Math.floor(moon.siderealLon / (360 / 27)) % 27;
+      const tara = ((p.nakshatra.number - 1 - janmaNak + 27) % 27) % 9;
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — తారా సూచిక సూత్రం ప్రకారం సరైనది`,
+        day.tarabalaTe.includes(TARA_NAMES_TE[tara]),
+        `తార ${tara + 1}/9 (${TARA_NAMES_TE[tara]}) — ${day.tarabalaTe.slice(0, 40)}`
+      );
+      // చంద్రబల భావం
+      const janmaRasi = moon.d1Sign;
+      const moonHouse = ((p.moonSignIndex - janmaRasi + 12) % 12) + 1;
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — చంద్రబల భావం సరైనది`,
+        day.chandrabalaTe.includes(`${moonHouse}వ భావం`),
+        `జన్మ రాశి ${janmaRasi + 1} · చంద్ర రాశి ${p.moonSignIndex + 1} → ${moonHouse}వ భావం`
+      );
+      check(
+        `ఫలం ${chart.input.name} ${dateISO} — గ్రేడు స్కోరుకు సరిపోతుంది`,
+        day.grade === gradeOf(day.score).grade,
+        `${day.score} → ${day.grade}`
+      );
+    }
+  }
+
+  // ── వారం ──
+  const week = computeWeekPhala(CHARAN_REF, '2026-10-23', geo);
+  check('వార ఫలం — 7 రోజులు, వరుస తేదీలు', week.days.length === 7, `${week.startISO} → ${week.endISO}`);
+  check(
+    'వార ఫలం — సగటు = రోజుల సగటు',
+    week.averageScore === Math.round(week.days.reduce((a, b) => a + b.score, 0) / 7),
+    `${week.averageScore}`
+  );
+  check(
+    'వార ఫలం — అత్యుత్తమ/బలహీన రోజులు నిజంగా అత్యుత్తమ/బలహీన',
+    week.days.every((d) => d.score <= week.days.find((x) => x.dateISO === week.bestISO)!.score) &&
+      week.days.every((d) => d.score >= week.days.find((x) => x.dateISO === week.weakestISO)!.score),
+    `ఉత్తమం ${week.bestISO} · బలహీనం ${week.weakestISO}`
+  );
+
+  // ── నెల ──
+  const month = computeMonthPhala(CHARAN_REF, 2027, 2, geo);
+  check('నెల ఫలం — ఫిబ్రవరి 2027 = 28 రోజులు', month.days.length === 28, `${month.days.length}`);
+  check(
+    'నెల ఫలం — సగటు = రోజుల సగటు',
+    month.averageScore === Math.round(month.days.reduce((a, b) => a + b.score, 0) / month.days.length),
+    `${month.averageScore}`
+  );
+  check(
+    'నెల ఫలం — ఉత్తమ తేదీలు అవరోహణ క్రమంలో',
+    month.bestDays.every((d, i) => i === 0 || month.bestDays[i - 1].score >= d.score),
+    month.bestDays.map((d) => `${d.dateISO}:${d.score}`).join(' ')
+  );
+  check(
+    'నెల ఫలం — ప్రతి రోజూ పంచాంగ అంగాలు నిండుగా ఉన్నాయి',
+    month.days.every((d) => d.tithiTe.trim().length > 2 && d.nakshatraTe.trim().length >= 2),
+    '28/28'
+  );
+
+  // ── సంవత్సరం ──
+  const year = computeYearPhala(CHARAN_REF, 2027, geo);
+  check('సంవత్సర ఫలం — 12 నెలలు', year.months.length === 12, year.months.map((m) => m.average).join(','));
+  check(
+    'సంవత్సర ఫలం — సగటు = నెలల సగటు',
+    year.averageScore === Math.round(year.months.reduce((a, b) => a + b.average, 0) / 12),
+    `${year.averageScore}`
+  );
+  check(
+    'సంవత్సర ఫలం — బలమైన నెల నిజంగా గరిష్ఠం',
+    year.months.every((m) => m.average <= year.months.find((x) => x.month === year.strongestMonth)!.average),
+    `నెల ${year.strongestMonth}`
+  );
+
+  // ── పండుగల నియమ ఇంజిన్ ──
+  const fest2026 = festivalsForYear(2026, geo);
+  const fest2027 = festivalsForYear(2027, geo);
+  check('పండుగలు 2026 — 60 కంటే ఎక్కువ', fest2026.length > 60, `${fest2026.length}`);
+  // మకర సంక్రమణ దిన నియమం (తెలుగు పంచాంగం): ప్రవేశం మధ్యాహ్నానికి ముందైతే అదే రోజు,
+  // మధ్యాహ్నం తర్వాత/రాత్రి అయితే మరుసటి రోజు.
+  //   2025-01-14 08:55 → 14 జనవరి · 2026-01-14 15:07 → 15 జనవరి · 2027-01-14 21:10 → 15 జనవరి
+  const makara = (list: typeof fest2026) => list.find((f) => f.nameTe.includes('మకర సంక్రమణం'))?.dateISO ?? 'లేదు';
+  check(
+    'పండుగలు 2026 — మకర సంక్రమణం 15 జనవరి (ప్రవేశం 15:07, మధ్యాహ్నం తర్వాత)',
+    makara(fest2026) === '2026-01-15',
+    `ఇంజిన్: ${makara(fest2026)}`
+  );
+  check(
+    'పండుగలు 2027 — మకర సంక్రమణం 15 జనవరి (ప్రవేశం 21:10, రాత్రి)',
+    makara(fest2027) === '2027-01-15',
+    `ఇంజిన్: ${makara(fest2027)}`
+  );
+  const fest2025 = festivalsForYear(2025, geo);
+  check(
+    'పండుగలు 2025 — మకర సంక్రమణం 14 జనవరి (ప్రవేశం 08:55, మధ్యాహ్నానికి ముందు)',
+    makara(fest2025) === '2025-01-14',
+    `ఇంజిన్: ${makara(fest2025)}`
+  );
+  check(
+    'పండుగలు — భోగి సంక్రమణానికి ముందు రోజు, కనుమ తర్వాత రోజు',
+    fest2026.some((f) => f.dateISO === '2026-01-14' && f.nameTe.startsWith('భోగి')) &&
+      fest2026.some((f) => f.dateISO === '2026-01-16' && f.nameTe.startsWith('కనుమ')),
+    fest2026
+      .filter((f) => ['2026-01-14', '2026-01-16'].includes(f.dateISO))
+      .map((f) => `${f.dateISO}:${f.nameTe}`)
+      .join(' | ')
+  );
+  check(
+    'పండుగలు — అన్నీ ఆ సంవత్సరానికే చెందినవి',
+    fest2026.every((f) => f.dateISO.startsWith('2026')) && fest2027.every((f) => f.dateISO.startsWith('2027')),
+    `2026: ${fest2026.length} · 2027: ${fest2027.length}`
+  );
+
+  // ── సత్య vs మధ్యమ రాహు ──
+  const meanChart = chartOf({ ...(CHARAN_REF.input as Parameters<typeof chartOf>[0]), nodeConvention: 'mean' });
+  const trueChart = chartOf({ ...(CHARAN_REF.input as Parameters<typeof chartOf>[0]), nodeConvention: 'true' });
+  const meanRahu = meanChart.planets.find((x) => x.id === 'Rahu')!;
+  const trueRahu = trueChart.planets.find((x) => x.id === 'Rahu')!;
+  const nodeDelta = Math.abs(((trueRahu.siderealLon - meanRahu.siderealLon + 540) % 360) - 180);
+  check(
+    'రాహు — సత్య మరియు మధ్యమ పాతాలు భిన్నం, భేదం 3° లోపు',
+    nodeDelta > 0.0001 && nodeDelta < 3,
+    `భేదం ${nodeDelta.toFixed(4)}° (మధ్యమ ${meanRahu.siderealLon.toFixed(3)} · సత్య ${trueRahu.siderealLon.toFixed(3)})`
+  );
+  // ── స్టూడియో వీక్షణం ఎర్రర్ లేకుండా రెండర్ అవుతోందా (SSR) ──
+  {
+    const html = renderToString(
+      React.createElement(RashiPhalaStudioView, { chart: CHARAN_REF, lang: 'te' })
+    );
+    check(
+      'రాశి ఫల స్టూడియో — SSR లో నిండుగా రెండర్ అవుతుంది',
+      html.length > 15000 &&
+        ['చంద్రబలం', 'తారాబలం', 'శుభ కాలాలు', 'గోచార స్థితి', 'దశ'].every((k) => html.includes(k)),
+      `${html.length} అక్షరాలు`
+    );
+  }
+
+  check(
+    'కేతు — ఎప్పుడూ రాహువుకు సరిగ్గా 180°',
+    Math.abs(
+      ((trueChart.planets.find((x) => x.id === 'Ketu')!.siderealLon - trueRahu.siderealLon + 540) % 360) - 180
+    ) < 1e-6 || Math.abs(trueChart.planets.find((x) => x.id === 'Ketu')!.siderealLon - ((trueRahu.siderealLon + 180) % 360)) < 1e-6,
+    `${trueRahu.siderealLon.toFixed(4)} ↔ ${trueChart.planets.find((x) => x.id === 'Ketu')!.siderealLon.toFixed(4)}`
+  );
+}
+
 const TOTAL_GATES = pass + failures.length;
 mkdirSync('src/generated', { recursive: true });
 writeFileSync(

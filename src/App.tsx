@@ -37,6 +37,7 @@ import { VastuShastraView } from './components/VastuShastraView.tsx';
 import { HinduCalendarView } from './components/HinduCalendarView.tsx';
 import { GocharaView } from './components/GocharaView.tsx';
 import { JathakaDeepView } from './components/JathakaDeepView.tsx';
+import RashiPhalaStudioView from './components/RashiPhalaStudioView.tsx';
 import { GranthaSourcesView } from './components/GranthaSourcesView.tsx';
 import { AccuracyLedgerPanel } from './components/AccuracyLedgerPanel.tsx';
 import { RoyalWhatsAppSummaryModal } from './components/RoyalWhatsAppSummaryModal.tsx';
@@ -79,6 +80,7 @@ type ActiveWorkspaceTab =
   | 'hindu_calendar'
   | 'gochara'
   | 'jathaka_deep'
+  | 'phala_studio'
   | 'granthas';
 
 const INITIAL_PROFILES: BirthInput[] = [
@@ -315,6 +317,13 @@ export default function App() {
       shortTe: 'పూర్తి జాతకం',
       labelEn: 'Full Jathakam Book',
       icon: <BookOpen className="w-4 h-4" />,
+    },
+    {
+      id: 'phala_studio',
+      labelTe: 'రాశి ఫలాలు & ముహూర్త స్టూడియో (ఏ తేదీకైనా)',
+      shortTe: 'రాశి ఫలాలు',
+      labelEn: 'Rashi Phala Studio',
+      icon: <Sparkles className="w-4 h-4" />,
     },
     {
       id: 'varshaphala',
@@ -1037,6 +1046,25 @@ export default function App() {
                         <option value="koch">కోచ్ (Koch)</option>
                       </select>
                     </div>
+
+                    <div>
+                      <label className="block text-xs text-[#EDE8E0]/60 mb-1">
+                        రాహు పాతం (Rahu Node)
+                      </label>
+                      <select
+                        value={birthInput.nodeConvention ?? 'mean'}
+                        onChange={(e) =>
+                          setBirthInput({
+                            ...birthInput,
+                            nodeConvention: e.target.value as 'mean' | 'true',
+                          })
+                        }
+                        className="w-full bg-[#090C18] border border-white/15 rounded-lg px-2.5 py-2 text-xs text-[#EDE8E0] focus:outline-none focus:border-[#C9A96E]"
+                      >
+                        <option value="mean">మధ్యమ రాహు (Mean — పంచాంగ సంప్రదాయం)</option>
+                        <option value="true">సత్య రాహు (True — ఖగోళ స్థితి)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </aside>
@@ -1454,6 +1482,8 @@ export default function App() {
             </section>
           </div>
         )}
+
+        {activeTab === 'phala_studio' && <RashiPhalaStudioView chart={chart} lang={lang} />}
 
         {activeTab === 'varshaphala' && (
           <TajikaVarshaphalaView chart={chart} />

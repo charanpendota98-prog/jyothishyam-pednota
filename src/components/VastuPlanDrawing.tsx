@@ -21,6 +21,10 @@ export interface VastuPlanDrawingProps {
   showDimensions?: boolean;
   /** true = తెలుగు లేబుళ్లు, false = ఆంగ్లం */
   isTe?: boolean;
+  /** 9×9 పరమశాయిక మండలం చూపాలా */
+  showMandala?: boolean;
+  /** తలుపు/కిటికీ గుర్తులు చూపాలా */
+  showOpenings?: boolean;
   className?: string;
 }
 
@@ -43,7 +47,15 @@ const ftIn = (v: number) => {
   return i === 0 ? `${f}′` : `${f}′-${i}″`;
 };
 
-export default function VastuPlanDrawing({ plan, maxWidth = 760, showDimensions = true, isTe = true, className }: VastuPlanDrawingProps) {
+export default function VastuPlanDrawing({
+  plan,
+  maxWidth = 760,
+  showDimensions = true,
+  isTe = true,
+  showMandala = false,
+  showOpenings = true,
+  className,
+}: VastuPlanDrawingProps) {
   const geom = useMemo(() => {
     const W = plan.plot.widthFt;
     const D = plan.plot.depthFt;
@@ -209,6 +221,36 @@ export default function VastuPlanDrawing({ plan, maxWidth = 760, showDimensions 
       {/* భవనం */}
       {rectEl(plan.building, { fill: '#f7fafc', stroke: '#1a202c', strokeWidth: 1.8 })}
 
+      {/* 9×9 పరమశాయిక మండలం (బ్రహ్మస్థానం) */}
+      {showMandala && (
+        <g>
+          {plan.mandala.map((p) => (
+            <rect
+              key={`m-${p.index}`}
+              x={X(p.x)}
+              y={Y(p.y, p.h)}
+              width={p.w * S}
+              height={p.h * S}
+              fill={p.vithi === 'brahmi' ? '#f6e05e' : p.vithi === 'daivi' ? '#bee3f8' : 'none'}
+              fillOpacity={p.vithi === 'brahmi' ? 0.35 : p.vithi === 'daivi' ? 0.18 : 0}
+              stroke="#2d3748"
+              strokeOpacity={p.vithi === 'paisachika' ? 0.18 : 0.3}
+              strokeWidth={0.5}
+            />
+          ))}
+          <rect
+            x={X(plan.building.x + (plan.building.w * 3) / 9)}
+            y={Y(plan.building.y + (plan.building.h * 6) / 9, (plan.building.h * 3) / 9)}
+            width={(plan.building.w * 3 * S) / 9}
+            height={(plan.building.h * 3 * S) / 9}
+            fill="none"
+            stroke="#975a16"
+            strokeWidth={1}
+            strokeDasharray="4 3"
+          />
+        </g>
+      )}
+
       {/* గదులు */}
       {(isRental ? plan.units.flatMap((u) => u.rooms) : rooms).map((r) => (
         <g key={r.id}>
@@ -220,6 +262,57 @@ export default function VastuPlanDrawing({ plan, maxWidth = 760, showDimensions 
           {roomLabel(r)}
         </g>
       ))}
+
+      {/* తలుపులు / కిటికీలు */}
+      {showOpenings &&
+        plan.openings.map((o, i) => {
+          const horiz = o.side === 'N' || o.side === 'S';
+          const len = o.width * S;
+          if (o.kind === 'window') {
+            return horiz ? (
+              <g key={`o-${i}`}>
+                <line x1={X(o.x)} y1={Y(o.y) - 1.6} x2={X(o.x) + len} y2={Y(o.y) - 1.6} stroke="#2b6cb0" strokeWidth={2.2} />
+                <line x1={X(o.x)} y1={Y(o.y) + 1.6} x2={X(o.x) + len} y2={Y(o.y) + 1.6} stroke="#2b6cb0" strokeWidth={0.9} />
+              </g>
+            ) : (
+              <g key={`o-${i}`}>
+                <line x1={X(o.x) - 1.6} y1={Y(o.y)} x2={X(o.x) - 1.6} y2={Y(o.y) - len} stroke="#2b6cb0" strokeWidth={2.2} />
+                <line x1={X(o.x) + 1.6} y1={Y(o.y)} x2={X(o.x) + 1.6} y2={Y(o.y) - len} stroke="#2b6cb0" strokeWidth={0.9} />
+              </g>
+            );
+          }
+          // తలుపు: కుడ్యంపై ఖాళీ + తిరిగే ఆర్చ్
+          if (o.side === 'N' || o.side === 'S') {
+            const yy = Y(o.y);
+            const down = o.side === 'N' ? 1 : -1;
+            return (
+              <g key={`o-${i}`}>
+                <rect x={X(o.x)} y={yy - 1.6} width={len} height={3.2} fill="#ffffff" />
+                <path
+                  d={`M ${X(o.x)} ${yy} L ${X(o.x)} ${yy + down * len} A ${len} ${len} 0 0 ${down > 0 ? 1 : 0} ${X(o.x) + len} ${yy}`}
+                  fill="none"
+                  stroke="#7b341e"
+                  strokeWidth={1}
+                  strokeDasharray="2 2"
+                />
+              </g>
+            );
+          }
+          const xx = X(o.x);
+          const right = o.side === 'E' ? -1 : 1;
+          return (
+            <g key={`o-${i}`}>
+              <rect x={xx - 1.6} y={Y(o.y) - len} width={3.2} height={len} fill="#ffffff" />
+              <path
+                d={`M ${xx} ${Y(o.y)} L ${xx + right * len} ${Y(o.y)} A ${len} ${len} 0 0 ${right > 0 ? 1 : 0} ${xx} ${Y(o.y) - len}`}
+                fill="none"
+                stroke="#7b341e"
+                strokeWidth={1}
+                strokeDasharray="2 2"
+              />
+            </g>
+          );
+        })}
 
       {/* అద్దె యూనిట్ సరిహద్దులు */}
       {plan.units.map((u) => (

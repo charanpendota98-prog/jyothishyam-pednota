@@ -23,6 +23,8 @@
  *    తుది ప్లాన్‌ను స్థానిక అనుమతి (MRO/DTCP) ప్రకారం నిర్ధారించుకోవాలి అని ప్లాన్‌లోనే ముద్రిస్తుంది.
  */
 
+import { OUTER_32_ORDER } from './vastuShastraEngine';
+
 /* ================================================================== *
  *  Units
  * ================================================================== */
@@ -276,6 +278,53 @@ export interface PlanRoom extends Rect {
   unitIndex?: number;
 }
 
+export type VithiKey = 'brahmi' | 'daivi' | 'manushya' | 'paisachika';
+
+export const VITHI_LABEL_TE: Record<VithiKey, string> = {
+  brahmi: 'బ్రహ్మి వీథి (బ్రహ్మస్థానం · మధ్య 3×3)',
+  daivi: 'దైవి వీథి (లోపలి వలయం · 16 పదాలు)',
+  manushya: 'మానుషి వీథి (మధ్య వలయం · 24 పదాలు)',
+  paisachika: 'పైశాచిక వీథి (బాహ్య వలయం · 32 దేవతలు)',
+};
+
+export const VITHI_LABEL_EN: Record<VithiKey, string> = {
+  brahmi: 'Brahmi vithi (Brahmasthanam · central 3×3)',
+  daivi: 'Daivi vithi (inner ring · 16 padas)',
+  manushya: 'Manushya vithi (middle ring · 24 padas)',
+  paisachika: 'Paisachika vithi (outer ring · 32 devatas)',
+};
+
+/**
+ * పరమశాయిక మండలం — 9×9 = 81 పదాలు.
+ *   బ్రహ్మి 3×3 = 9 · దైవి 16 · మానుషి 24 · పైశాచిక 32  → మొత్తం 81.
+ * బయటి వలయంలో 32 దేవతలు ఉత్తర-తూర్పు మూల నుంచి **ప్రదక్షిణ క్రమంలో** (తూర్పు → దక్షిణం →
+ * పడమర → ఉత్తరం) అమరుతారు — `vastuShastraEngine.OUTER_32_ORDER` లోని ప్రామాణిక క్రమమే.
+ */
+export interface MandalaPada {
+  index: number; // 1..81
+  row: number; // 0 = ఉత్తరం (పైన)
+  col: number; // 0 = పడమర (ఎడమ)
+  vithi: VithiKey;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  devataTe?: string;
+  devataEn?: string;
+}
+
+export interface PlanOpening {
+  roomId: string;
+  kind: 'door' | 'window';
+  side: 'N' | 'S' | 'E' | 'W';
+  /** N/S కుడ్యంపై ఎడమ (పడమర) చివర; E/W కుడ్యంపై కింద (దక్షిణం) చివర */
+  x: number;
+  y: number;
+  width: number;
+  labelTe: string;
+  labelEn: string;
+}
+
 export interface UnitPlan {
   index: number;
   labelTe: string;
@@ -356,6 +405,12 @@ export interface PlotPlan {
   };
   rooms: PlanRoom[];
   units: UnitPlan[];
+  /** 81-పద పరమశాయిక మండలం (భవనంపై అమర్చినది) */
+  mandala: MandalaPada[];
+  /** ప్రతి గది కేంద్రం ఏ పదంలో ఉంది */
+  roomPadas: { roomId: string; pada: number; vithi: VithiKey; devataTe?: string }[];
+  /** తలుపులు / కిటికీలు */
+  openings: PlanOpening[];
   parking: Rect[];
   features: { key: string; labelTe: string; labelEn: string; rect: Rect; noteTe: string; noteEn: string }[];
   entrance: {
@@ -537,6 +592,169 @@ function remedyFor(key: PlanRoomKey, dik: Dik8): string {
     stair: 'మెట్లను నైరుతి/దక్షిణానికి జరపండి; కుదరకపోతే మెట్ల కింద నిల్వ ఉంచకండి, లోహపు వస్తువు ఉంచండి.',
   };
   return map[key] ?? `${ROOM_META[key].labelTe}ను ${ROOM_META[key].ideal[0]} దిక్కుకు జరపడం శ్రేష్ఠం.`;
+}
+
+/* ================================================================== *
+ *  Vastu Purusha Mandala (9×9 = 81 padas) + openings
+ * ================================================================== */
+
+/** 9×9 పరిధి క్రమం: ఈశాన్య మూల నుంచి ప్రదక్షిణగా 32 పదాలు */
+function perimeterOrder(): { row: number; col: number }[] {
+  const out: { row: number; col: number }[] = [];
+  for (let r = 0; r <= 8; r++) out.push({ row: r, col: 8 }); // ఉత్తర-తూర్పు → ఆగ్నేయం (తూర్పు అంచు)
+  for (let c = 7; c >= 0; c--) out.push({ row: 8, col: c }); // దక్షిణ అంచు
+  for (let r = 7; r >= 0; r--) out.push({ row: r, col: 0 }); // పడమర అంచు
+  for (let c = 1; c <= 7; c++) out.push({ row: 0, col: c }); // ఉత్తర అంచు
+  return out;
+}
+
+const perimeterCache = perimeterOrder();
+
+function vithiOf(row: number, col: number): VithiKey {
+  const edge = Math.min(row, col, 8 - row, 8 - col);
+  if (edge === 0) return 'paisachika';
+  if (edge === 1) return 'manushya';
+  if (edge === 2) return 'daivi';
+  return 'brahmi';
+}
+
+/** భవనంపై 81 పదాల మండలాన్ని అమర్చడం (ఉత్తరం పైన) */
+export function buildMandala(building: Rect): MandalaPada[] {
+  const w = building.w / 9;
+  const h = building.h / 9;
+  const devataAt = new Map<string, { te: string; en: string }>();
+  perimeterCache.forEach((cell, i) => {
+    const d = OUTER_32_ORDER[i];
+    if (d) devataAt.set(`${cell.row}:${cell.col}`, { te: d.te, en: d.en });
+  });
+  const out: MandalaPada[] = [];
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      const d = devataAt.get(`${row}:${col}`);
+      out.push({
+        index: row * 9 + col + 1,
+        row,
+        col,
+        vithi: vithiOf(row, col),
+        x: round2(building.x + col * w),
+        y: round2(building.y + (8 - row) * h),
+        w: round2(w),
+        h: round2(h),
+        devataTe: d?.te,
+        devataEn: d?.en,
+      });
+    }
+  }
+  return out;
+}
+
+/** గది కేంద్రం ఏ పదంలో ఉంది */
+export function padaOfPoint(building: Rect, x: number, y: number): MandalaPada {
+  const col = Math.min(8, Math.max(0, Math.floor(((x - building.x) / Math.max(1e-6, building.w)) * 9)));
+  const row = Math.min(8, Math.max(0, Math.floor((1 - (y - building.y) / Math.max(1e-6, building.h)) * 9)));
+  const d = perimeterCache.findIndex((c) => c.row === row && c.col === col);
+  const devata = d >= 0 ? OUTER_32_ORDER[d] : undefined;
+  const w = building.w / 9;
+  const h = building.h / 9;
+  return {
+    index: row * 9 + col + 1,
+    row,
+    col,
+    vithi: vithiOf(row, col),
+    x: round2(building.x + col * w),
+    y: round2(building.y + (8 - row) * h),
+    w: round2(w),
+    h: round2(h),
+    devataTe: devata?.te,
+    devataEn: devata?.en,
+  };
+}
+
+const OPENING_MIN = 2.5;
+
+/**
+ * తలుపులు + కిటికీలు:
+ *   • తలుపు — గది నుంచి భవన కేంద్రానికి దారి ఉన్న కుడ్యంపై (అంటే లోపలి గదుల మధ్య సంబంధం),
+ *     కుడ్య మధ్యలో 3′ వెడల్పు (చిన్న గదుల్లో 2.5′).
+ *   • కిటికీ — భవనపు బయటి అంచున ఉన్న ప్రతి కుడ్యంపై; శౌచాలయం/నిల్వకు చిన్నది.
+ *   ఇవి **ప్రతిపాదిత** స్థానాలు; నిర్మాణ సమయంలో కలపడం/జరపడం సాధ్యం.
+ */
+export function buildOpenings(building: Rect, rooms: PlanRoom[]): PlanOpening[] {
+  const out: PlanOpening[] = [];
+  const cx = building.x + building.w / 2;
+  const cy = building.y + building.h / 2;
+  const EPS = 0.6;
+  const entranceX = 0; // కేవలం డాక్యుమెంటేషన్ కోసం (ప్రవేశ ద్వారం ప్లాన్.entrance లో ఉంది)
+
+  // భవన కేంద్రం వైపు ఉన్న అంచున ఉన్న గదులకు ఆ వైపు తలుపు ఇవ్వము (లోపలి గది గుండా వెళ్లాల్సి వస్తుంది);
+  // అలాంటప్పుడు బయటి అంచుకు ఆనుకున్న వైపు తలుపు పెడతాము.
+  const corridorSides = (r: PlanRoom): ('N' | 'S' | 'E' | 'W')[] => {
+    const sides: ('N' | 'S' | 'E' | 'W')[] = [];
+    const midY = r.y + r.h / 2;
+    const midX = r.x + r.w / 2;
+    if (midY < cy - 0.5) sides.push('N');
+    if (midY > cy + 0.5) sides.push('S');
+    if (midX < cx - 0.5) sides.push('E');
+    if (midX > cx + 0.5) sides.push('W');
+    if (!sides.length) sides.push('S');
+    return sides;
+  };
+
+  for (const r of rooms) {
+    const midX = r.x + r.w / 2;
+    const midY = r.y + r.h / 2;
+    const dw = round2(Math.min(3, Math.max(OPENING_MIN, Math.min(r.w, r.h) * 0.4)));
+
+    // కేంద్రం వైపు ముఖ్య దిశ, లేకపోతే దాని నుంచి తిరిగి
+    const dx = cx - midX;
+    const dy = cy - midY;
+    const toward: ('N' | 'S' | 'E' | 'W')[] =
+      Math.abs(dx) >= Math.abs(dy)
+        ? [dx >= 0 ? 'E' : 'W', dy >= 0 ? 'N' : 'S']
+        : [dy >= 0 ? 'N' : 'S', dx >= 0 ? 'E' : 'W'];
+
+    const isFacade = (side: 'N' | 'S' | 'E' | 'W') =>
+      (side === 'N' && Math.abs(r.y + r.h - (building.y + building.h)) < EPS) ||
+      (side === 'S' && Math.abs(r.y - building.y) < EPS) ||
+      (side === 'E' && Math.abs(r.x + r.w - (building.x + building.w)) < EPS) ||
+      (side === 'W' && Math.abs(r.x - building.x) < EPS);
+
+    const candidates = [...toward, ...corridorSides(r)];
+    const side = candidates.find((sd) => !isFacade(sd)) ?? candidates[0];
+
+    const horizontal = side === 'N' || side === 'S';
+    out.push({
+      roomId: r.id,
+      kind: 'door',
+      side,
+      x: round2(horizontal ? midX - dw / 2 : side === 'E' ? r.x + r.w : r.x),
+      y: round2(horizontal ? (side === 'N' ? r.y + r.h : r.y) : midY - dw / 2),
+      width: dw,
+      labelTe: `తలుపు (${side === 'N' ? 'ఉత్తర' : side === 'S' ? 'దక్షిణ' : side === 'E' ? 'తూర్పు' : 'పడమర'} కుడ్యం)`,
+      labelEn: `Door (${side === 'N' ? 'north' : side === 'S' ? 'south' : side === 'E' ? 'east' : 'west'} wall)`,
+    });
+
+    // ---- కిటికీలు: బయటి అంచుకు ఆనుకున్న ప్రతి కుడ్యంపై ----
+    const small = r.key === 'toilet' || r.key === 'bath' || r.key === 'store' || r.key === 'cash';
+    for (const sd of ['N', 'S', 'E', 'W'] as const) {
+      if (!isFacade(sd)) continue;
+      const span = sd === 'N' || sd === 'S' ? r.w : r.h;
+      const width = round2(Math.min(small ? 2 : 4, Math.max(OPENING_MIN, span * (small ? 0.3 : 0.45))));
+      const horiz = sd === 'N' || sd === 'S';
+      out.push({
+        roomId: r.id,
+        kind: 'window',
+        side: sd,
+        x: round2(horiz ? midX - width / 2 : sd === 'E' ? r.x + r.w : r.x),
+        y: round2(horiz ? (sd === 'N' ? r.y + r.h : r.y) : midY - width / 2),
+        width,
+        labelTe: `కిటికీ (${sd === 'N' ? 'ఉత్తరం' : sd === 'S' ? 'దక్షిణం' : sd === 'E' ? 'తూర్పు' : 'పడమర'})`,
+        labelEn: `Window (${sd === 'N' ? 'north' : sd === 'S' ? 'south' : sd === 'E' ? 'east' : 'west'})`,
+      });
+    }
+  }
+  void entranceX;
+  return out;
 }
 
 /* ================================================================== *
@@ -1173,6 +1391,18 @@ export function buildPlotPlan(input: PlotPlanInput): PlotPlan {
       : []),
   ];
 
+  // ---- పరమశాయిక మండలం (81 పదాలు) + ద్వార/కిటికీ స్థానాలు ----
+  const mandala = buildMandala(building);
+  const roomPadas = allRooms.map((r) => {
+    const pada = padaOfPoint(building, r.x + r.w / 2, r.y + r.h / 2);
+    return { roomId: r.id, pada: pada.index, vithi: pada.vithi, devataTe: pada.devataTe };
+  });
+  const openings = buildOpenings(building, allRooms);
+  const brahmiRooms = allRooms.filter((r) => {
+    const p = padaOfPoint(building, r.x + r.w / 2, r.y + r.h / 2);
+    return p.vithi === 'brahmi';
+  });
+
   // ---- తనిఖీలు (తెలుగు + ఆంగ్లం) ----
   const checks: PlanCheck[] = [];
   const pctEnv = Math.round((envelopeSqft / areaSqft) * 100);
@@ -1242,6 +1472,39 @@ export function buildPlotPlan(input: PlotPlanInput): PlotPlan {
       detailTe: `ప్రధాన గది ${ZONE_LABEL_TE[masterRoom.zone]}లో.`,
       detailEn: `Master bedroom in the ${ZONE_LABEL_EN[masterRoom.zone]}.`,
     });
+  checks.push({
+    id: 'brahmasthan',
+    labelTe: 'బ్రహ్మస్థానం (మధ్య 3×3 పదాలు) — శౌచాలయం/వంటగది/మెట్లు లేవు',
+    labelEn: 'Brahmasthanam (central 3×3 padas) has no toilet / kitchen / staircase',
+    ok: !brahmiRooms.some((r) => ['toilet', 'kitchen', 'stair'].includes(r.key)),
+    detailTe: brahmiRooms.length
+      ? `మధ్య పదాలలో: ${brahmiRooms.map((r) => r.labelTe).join(', ')}.`
+      : 'మధ్య 3×3 పదాలు ఖాళీగా ఉన్నాయి.',
+    detailEn: brahmiRooms.length
+      ? `Central padas hold: ${brahmiRooms.map((r) => r.labelEn).join(', ')}.`
+      : 'The central 3×3 padas are open.',
+  });
+  checks.push({
+    id: 'openings',
+    labelTe: 'ప్రతి మూసిన గదికి తలుపు, ప్రతి బయటి కుడ్యానికి కిటికీ',
+    labelEn: 'Every enclosed room has a door; every facade wall gets a window',
+    ok:
+      allRooms.every((r) => openings.some((o) => o.roomId === r.id && o.kind === 'door')) &&
+      allRooms.every((r) => {
+        const facadeSides = ['N', 'S', 'E', 'W'].filter(
+          (side) =>
+            (side === 'N' && Math.abs(r.y + r.h - (building.y + building.h)) < 0.6) ||
+            (side === 'S' && Math.abs(r.y - building.y) < 0.6) ||
+            (side === 'E' && Math.abs(r.x + r.w - (building.x + building.w)) < 0.6) ||
+            (side === 'W' && Math.abs(r.x - building.x) < 0.6)
+        );
+        return facadeSides.every((side) =>
+          openings.some((o) => o.roomId === r.id && o.kind === 'window' && o.side === side)
+        );
+      }),
+    detailTe: `${openings.filter((o) => o.kind === 'door').length} తలుపులు · ${openings.filter((o) => o.kind === 'window').length} కిటికీలు.`,
+    detailEn: `${openings.filter((o) => o.kind === 'door').length} doors · ${openings.filter((o) => o.kind === 'window').length} windows.`,
+  });
   checks.push({
     id: 'tiling',
     labelTe: 'గదులు ఒకదానిపై ఒకటి పడకుండా, ఖాళీ లేకుండా అమరాయి',
@@ -1466,6 +1729,9 @@ export function buildPlotPlan(input: PlotPlanInput): PlotPlan {
     },
     rooms,
     units,
+    mandala,
+    roomPadas,
+    openings,
     parking,
     features,
     entrance,

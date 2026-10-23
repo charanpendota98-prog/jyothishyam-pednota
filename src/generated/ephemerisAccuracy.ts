@@ -18,8 +18,8 @@ export const EPHEMERIS_ACCURACY = {
   "fixtureEpochs": 30,
   "firstUtc": "1900-06-15T00:00:00",
   "lastUtc": "2030-12-31T23:59:00",
-  "measurements": 660,
-  "passed": 660,
+  "measurements": 912,
+  "passed": 912,
   "failed": 0,
   "rows": [
     {
@@ -197,6 +197,30 @@ export const EPHEMERIS_ACCURACY = {
       "maxArcsec": 22.95,
       "tolDeg": 0.01,
       "where": "New York 1975"
+    },
+    {
+      "key": "cusp:placidus",
+      "labelTe": "భావ కుస్పులు — ప్లాసిడస్",
+      "maxDeg": 0.000028,
+      "maxArcsec": 0.1,
+      "tolDeg": 0.03,
+      "where": "హెల్సింకి 2010 · భావం 6"
+    },
+    {
+      "key": "cusp:koch",
+      "labelTe": "భావ కుస్పులు — కోచ్",
+      "maxDeg": 0.000045,
+      "maxArcsec": 0.16,
+      "tolDeg": 0.03,
+      "where": "హెల్సింకి 2010 · భావం 5"
+    },
+    {
+      "key": "cusp:porphyry",
+      "labelTe": "భావ కుస్పులు — పోర్ఫిరీ",
+      "maxDeg": 0.000027,
+      "maxArcsec": 0.1,
+      "tolDeg": 0.03,
+      "where": "లండన్ 2001 · భావం 1"
     }
   ],
   "classicalMaxDeg": 0.006374000000050728

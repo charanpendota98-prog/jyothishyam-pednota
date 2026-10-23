@@ -160,6 +160,9 @@ const LABEL: Record<string, string> = {
   Jupiter: 'గురువు', Venus: 'శుక్రుడు', Saturn: 'శని', Uranus: 'యురేనస్', Neptune: 'నెప్ట్యూన్',
   Pluto: 'ప్లూటో', Rahu: 'రాహు (మధ్యమ)', Ketu: 'కేతు (మధ్యమ)', RahuTrue: 'రాహు (సత్య)',
   asc: 'లగ్నం', mc: 'మధ్యాకాశం',
+  'cusp:placidus': 'భావ కుస్పులు — ప్లాసిడస్',
+  'cusp:koch': 'భావ కుస్పులు — కోచ్',
+  'cusp:porphyry': 'భావ కుస్పులు — పోర్ఫిరీ',
   ...Object.fromEntries(AYANAMSA_MODES.map((m) => ['ay:' + m.id, m.label])),
 };
 
@@ -173,6 +176,58 @@ for (const key of Object.keys(maxErr)) {
   console.log(
     `  ${(LABEL[key] ?? key).padEnd(16)} ${m.err.toFixed(4).padStart(8)}°  ${tolOf(key).toFixed(3).padStart(6)}°   ${ok ? '✓' : '✗'}     ${m.label}`
   );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ *  భావ కుస్పులు — Placidus / Koch / Porphyry
+ *  స్విస్ ఎఫెమెరిస్ `swe.houses` (P/K/O) తో 12 కుస్పుల పోలిక. సహనం 0.001°.
+ * ────────────────────────────────────────────────────────────────────────── */
+const cuspGolden = JSON.parse(
+  readFileSync('scripts/golden/house-cusps-golden.json', 'utf8')
+) as {
+  source: string;
+  cases: {
+    label: string;
+    utc: string;
+    lat: number;
+    lon: number;
+    placidus: number[];
+    koch: number[];
+    porphyry: number[];
+    asc: number;
+    mc: number;
+  }[];
+};
+
+console.log('\n  భావ కుస్పులు — Swiss swe.houses తో పోలిక (సహనం 0.001°)');
+for (const c of cuspGolden.cases) {
+  const date = c.utc.slice(0, 10);
+  const time = c.utc.slice(11, 16);
+  for (const system of ['placidus', 'koch', 'porphyry'] as const) {
+    const ch = calculateChart({
+      name: 'cusp',
+      gender: 'male',
+      date,
+      time,
+      lat: c.lat,
+      lng: c.lon,
+      tzOffsetHours: 0,
+      city: c.label,
+      country: 'test',
+      ayanamsa: 'lahiri',
+      houseSystem: system,
+    } as Parameters<typeof calculateChart>[0]);
+    const ref = c[system];
+    ch.houses.forEach((h, i) => {
+      const err = diff(h.tropicalCusp, ref[i]);
+      checks += 1;
+      const key = `cusp:${system}`;
+      const cur = maxErr[key];
+      if (!cur || err > cur.err) maxErr[key] = { err, label: `${c.label} · భావం ${i + 1}`, ours: h.tropicalCusp, ref: ref[i] };
+      if (err <= 0.001) pass += 1;
+      else failures.push(`cusp:${system} భావం ${i + 1}: ${err.toFixed(4)}° (${c.label}) — app ${h.tropicalCusp.toFixed(3)} / ref ${ref[i].toFixed(3)}`);
+    });
+  }
 }
 
 // ── యాప్ లో చూపడానికి యంత్ర-పఠనీయ ఫలితం ─────────────────────────────────

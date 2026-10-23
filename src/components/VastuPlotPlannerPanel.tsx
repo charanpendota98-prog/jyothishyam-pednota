@@ -16,6 +16,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { buildPlotPlan } from '../engine/vastuPlotPlannerEngine.ts';
 import type { Dik8, PlotUnit, PlotUse } from '../engine/vastuPlotPlannerEngine.ts';
+import { VITHI_LABEL_EN, VITHI_LABEL_TE } from '../engine/vastuPlotPlannerEngine.ts';
 import VastuPlanDrawing from './VastuPlanDrawing.tsx';
 
 const UNITS: { id: PlotUnit; te: string; en: string }[] = [
@@ -69,6 +70,8 @@ export function VastuPlotPlannerPanel({ defaultName = '', defaultVillage = '', i
   const [rateUnit, setRateUnit] = useState<PlotUnit>('gunta');
   const [targetSqft, setTargetSqft] = useState(0);
   const [parkingCars, setParkingCars] = useState(1);
+  const [showMandala, setShowMandala] = useState(false);
+  const [showOpenings, setShowOpenings] = useState(true);
   const [widthFt, setWidthFt] = useState<number>(0);
   const [depthFt, setDepthFt] = useState<number>(0);
 
@@ -424,7 +427,15 @@ export function VastuPlotPlannerPanel({ defaultName = '', defaultVillage = '', i
       {/* ---------------- ఫలితం ---------------- */}
       {plan && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <label className="flex items-center gap-1.5 text-[11px] text-[#EDE8E0]/70 cursor-pointer">
+              <input type="checkbox" checked={showMandala} onChange={(e) => setShowMandala(e.target.checked)} className="accent-[#5BBFB5]" />
+              {isTe ? '81-పద మండలం' : '81-pada mandala'}
+            </label>
+            <label className="flex items-center gap-1.5 text-[11px] text-[#EDE8E0]/70 cursor-pointer">
+              <input type="checkbox" checked={showOpenings} onChange={(e) => setShowOpenings(e.target.checked)} className="accent-[#5BBFB5]" />
+              {isTe ? 'తలుపులు / కిటికీలు' : 'Doors / windows'}
+            </label>
             <button
               type="button"
               onClick={downloadSvg}
@@ -441,7 +452,7 @@ export function VastuPlotPlannerPanel({ defaultName = '', defaultVillage = '', i
             </button>
           </div>
           <div className="rounded-xl bg-white p-2 overflow-auto" ref={drawRef}>
-            <VastuPlanDrawing plan={plan} isTe={isTe} />
+            <VastuPlanDrawing plan={plan} isTe={isTe} showMandala={showMandala} showOpenings={showOpenings} />
           </div>
           <div className="grid gap-1 sm:grid-cols-3 text-[10.5px]">
             {plan.features.map((f) => (
@@ -540,6 +551,37 @@ export function VastuPlotPlannerPanel({ defaultName = '', defaultVillage = '', i
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {plan.roomPadas.length > 0 && (
+            <div className="rounded-xl border border-[#C9A96E]/20 bg-white/[0.02] p-3 overflow-x-auto">
+              <div className="text-[11px] uppercase tracking-wider text-[#C9A96E] mb-1">
+                {isTe ? 'పద నిర్ణయం (81-పద మండలం)' : 'Pada placement (81-pada mandala)'}
+              </div>
+              <table className="w-full text-[10.5px] text-[#EDE8E0]/80">
+                <thead>
+                  <tr className="text-left text-[#EDE8E0]/45">
+                    <th className="py-0.5">{isTe ? 'గది' : 'Room'}</th>
+                    <th>{isTe ? 'పదం' : 'Pada'}</th>
+                    <th>{isTe ? 'వీథి' : 'Vithi'}</th>
+                    <th>{isTe ? 'దేవత' : 'Devata'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.roomPadas.map((rp) => {
+                    const room = plan.rooms.find((r) => r.id === rp.roomId);
+                    return (
+                      <tr key={rp.roomId} className="border-t border-white/5">
+                        <td className="py-0.5">{room ? (isTe ? room.labelTe : room.labelEn) : rp.roomId}</td>
+                        <td className="font-mono-tabular">{rp.pada}</td>
+                        <td>{isTe ? VITHI_LABEL_TE[rp.vithi] : VITHI_LABEL_EN[rp.vithi]}</td>
+                        <td>{rp.devataTe ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

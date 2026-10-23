@@ -16,3 +16,6 @@ jathaka-pandita*.html
 # scratch audit harness
 .tmp/
 .cache/
+
+# persisted pandit profile store
+data/

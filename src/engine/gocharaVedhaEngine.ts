@@ -192,6 +192,11 @@ export interface GocharaOptions {
   siderealMode?: SiderealMode;
   tzOffsetHours?: number;
   asOfISO?: string;
+  /**
+   * తేలికైన మోడ్ — రాశి ప్రవేశ క్షణాలు, సాడే సాతి కిటికీలు లెక్కించబడవు.
+   * రోజువారీ/నెలవారీ ఫలాల్లో వందల సార్లు పిలిచేటప్పుడు ఇది అవసరం.
+   */
+  light?: boolean;
 }
 
 /**
@@ -213,10 +218,13 @@ export function computeGocharaReport(
     })();
   const jd = localMidnightJd(asOfISO, tz) + 0.5; // local noon — stable for the whole civil day
 
+  const light = options.light === true;
   const positions = GRAHA_ORDER.map((id) => {
     const lon = grahaSiderealLongitude(id, jd, mode);
     const signIndex = Math.floor(lon / 30) % 12;
-    const next = nextSignIngressJd(id, jd, mode);
+    const next = light
+      ? { jd: Number.NaN, signIndex }
+      : nextSignIngressJd(id, jd, mode);
     return { id, lon, signIndex, next };
   });
 
@@ -258,7 +266,7 @@ export function computeGocharaReport(
           ? `${GRAHA_NAMES_TE[p.id]} ${house}వ భావంలో శుభ స్థానమే కానీ ${vedhaBy} వేధ వల్ల ఫలం ఆలస్యం/నిరోధం.`
           : `${GRAHA_NAMES_TE[p.id]} ${house}వ భావంలో — ${theme} విషయంలో జాగ్రత్త అవసరం.`;
 
-    const daysToIngress = Math.round(p.next.jd - jd);
+    const daysToIngress = light ? 0 : Math.round(p.next.jd - jd);
     return {
       id: p.id,
       nameTe: GRAHA_NAMES_TE[p.id],
@@ -279,7 +287,7 @@ export function computeGocharaReport(
       vedhaHouse,
       vedhaBy,
       effectTe,
-      nextIngressISO: civilDateAt(p.next.jd, tz),
+      nextIngressISO: light ? '' : civilDateAt(p.next.jd, tz),
       nextIngressSignTe: RASI_TE[p.next.signIndex],
       daysToIngress,
     };
@@ -301,6 +309,7 @@ export function computeGocharaReport(
    * కాబట్టి తదుపరి సాడే సాతి కిటికీని (ఉదా. 2041–2049) చూపాలంటే రెండు శని చక్రాల లోతు కావాలి.
    */
   const saturnIngresses = (() => {
+    if (light) return [] as { jd: number; signIndex: number }[];
     const out: { jd: number; signIndex: number }[] = [];
     let cursor = jd - 11 * 365.25;
     out.push({ jd: cursor, signIndex: Math.floor(grahaSiderealLongitude('Saturn', cursor, mode) / 30) % 12 });
@@ -393,7 +402,7 @@ export function computeGocharaReport(
   const favourableCount = grahas.filter((g) => g.verdict === 'good').length;
   const blockedCount = grahas.filter((g) => g.verdict === 'blocked').length;
 
-  const upcomingIngresses = grahas
+  const upcomingIngresses = (light ? [] : grahas)
     .filter((g) => g.daysToIngress <= 400)
     .sort((a, b) => a.daysToIngress - b.daysToIngress)
     .slice(0, 10)

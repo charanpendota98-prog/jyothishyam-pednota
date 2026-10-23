@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -38,6 +39,40 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 
+/**
+ * జెమినీ మోడల్ ఎంపిక.
+ * `gemini-3.8-flash` అనే మోడల్ Google API లో లేదు — అలాంటి పేరుతో పిలిస్తే
+ * ప్రతిసారి 404 వచ్చి, నిశ్శబ్దంగా స్థిర (static) సమాధానం ఇవ్వబడేది.
+ * ఇప్పుడు నిజంగా ఉన్న మోడల్‌లు మాత్రమే, వరుసగా ప్రయత్నిస్తాము.
+ */
+const GEMINI_MODELS: string[] = [
+  process.env.GEMINI_MODEL,
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+].filter((m): m is string => Boolean(m && m.trim()));
+
+/** మోడల్ ఒకటి పని చేయకపోతే తదుపరిది ప్రయత్నించి, పనిచేసిన దాన్ని గుర్తుపెట్టుకుంటాము. */
+let workingModel: string | null = null;
+async function generateWithFallback(
+  ai: GoogleGenAI,
+  params: Omit<Parameters<GoogleGenAI['models']['generateContent']>[0], 'model'>
+): Promise<{ text: string; model: string }> {
+  const order = workingModel
+    ? [workingModel, ...GEMINI_MODELS.filter((m) => m !== workingModel)]
+    : GEMINI_MODELS;
+  let lastErr: unknown = null;
+  for (const model of order) {
+    try {
+      const response = await ai.models.generateContent({ ...params, model });
+      workingModel = model;
+      return { text: response.text ?? '', model };
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr ?? new Error('No Gemini model available');
+}
+
 function getGenAIClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
@@ -53,8 +88,38 @@ function getGenAIClient(): GoogleGenAI | null {
   });
 }
 
+/* ------------------------------------------------------------------ *
+ *  వాడుకరి ప్రొఫైల్‌లు — డిస్క్‌లో నిల్వ (సర్వర్ రీస్టార్ట్ అయినా పోకుండా)
+ * ------------------------------------------------------------------ */
+const PROFILE_STORE_DIR = process.env.JYOTHISHYA_DATA_DIR || path.join(__dirname, 'data');
+const PROFILE_STORE_FILE = path.join(PROFILE_STORE_DIR, 'profiles.json');
+
+function loadStoredProfiles(): BirthInput[] | null {
+  try {
+    if (!fs.existsSync(PROFILE_STORE_FILE)) return null;
+    const raw = fs.readFileSync(PROFILE_STORE_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((p) => p && typeof p.name === 'string');
+  } catch (err) {
+    console.warn('[profiles] నిల్వ చదవలేకపోయాం:', err);
+    return null;
+  }
+}
+
+function persistProfiles(profiles: BirthInput[]) {
+  try {
+    fs.mkdirSync(PROFILE_STORE_DIR, { recursive: true });
+    const tmp = `${PROFILE_STORE_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(profiles, null, 2), 'utf8');
+    fs.renameSync(tmp, PROFILE_STORE_FILE);
+  } catch (err) {
+    console.warn('[profiles] నిల్వ చేయలేకపోయాం:', err);
+  }
+}
+
 // Pre-populated Astrologer Workspace Client Profiles (Telugu & International)
-const savedProfiles: BirthInput[] = [
+const SEED_PROFILES: BirthInput[] = [
   {
     id: 'charan-telugu-jathakam',
     name: 'చరణ్ పెందోట (Charan Pendota)',
@@ -112,6 +177,9 @@ const savedProfiles: BirthInput[] = [
     notes: 'ధనుర్లగ్న ఆదర్శ జాతక చక్రం — హంస మహాపురుష యోగం & రాజయోగ ప్రమాణం.',
   },
 ];
+
+/** ప్రారంభ ప్రొఫైల్‌లు: డిస్క్‌లో ఉన్నవి ఉంటే అవి, లేకపోతే ఉదాహరణ ప్రొఫైల్‌లు. */
+const savedProfiles: BirthInput[] = loadStoredProfiles() ?? [...SEED_PROFILES];
 
 /* ==================================================================== *
  *  Panchanga / calendar / gochara / sources API
@@ -410,8 +478,7 @@ Detected Yogas: ${chart.vedicYogas.map((y) => `${y.name} (${y.citation})`).join(
 Planetary Positions:
 ${planetSummary}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+    const { text: rawJson, model } = await generateWithFallback(ai, {
       contents: promptText,
       config: {
         responseMimeType: 'application/json',
@@ -438,13 +505,14 @@ ${planetSummary}`;
       },
     });
 
-    const rawText = response.text?.trim();
+    const rawText = rawJson.trim();
     if (rawText) {
       const parsed = JSON.parse(rawText);
       return res.json({
         report: parsed,
         passages,
         engineMode: 'gemini-rag-synthesis',
+        model,
       });
     }
 
@@ -521,8 +589,7 @@ app.post('/api/ai/chat', async (req, res) => {
       )
       .join('; ');
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+    const { text: answerText, model: answerModel } = await generateWithFallback(ai, {
       contents: `Chart of ${chart.input.name}:
 Ascendant (లగ్నం): ${teJathakam.janmaLagnamTe} (${chart.ascendant.formattedDMS})
 Janma Rasi (జన్మ రాశి): ${teJathakam.janmaRasiTe}, Nakshatra: ${teJathakam.janmaNakshatramTe} Pada ${teJathakam.janmaPadam}
@@ -535,8 +602,9 @@ Respond in clear, scholarly TELUGU (తెలుగు భాషలో) citing s
     });
 
     return res.json({
-      answer: response.text || teJathakam.currentDashaPhalamTe.phalamTe,
+      answer: answerText || teJathakam.currentDashaPhalamTe.phalamTe,
       citations: passages.slice(0, 3).map((p) => p.reference),
+      model: answerModel,
     });
   } catch {
     const chart = calculateChart(input, tradition);
@@ -566,6 +634,7 @@ app.post('/api/profiles', (req, res) => {
   } else {
     savedProfiles.unshift(record);
   }
+  persistProfiles(savedProfiles);
   res.json({ profile: record, profiles: savedProfiles });
 });
 
@@ -574,12 +643,13 @@ app.delete('/api/profiles/:id', (req, res) => {
   const idx = savedProfiles.findIndex((p) => p.id === id);
   if (idx >= 0) {
     savedProfiles.splice(idx, 1);
+    persistProfiles(savedProfiles);
   }
   res.json({ profiles: savedProfiles });
 });
 
 async function startServer() {
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT ?? 3000);
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({

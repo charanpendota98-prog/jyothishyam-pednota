@@ -271,7 +271,7 @@ export interface VastuDevata {
   governsTe: string;
 }
 
-const OUTER_32_ORDER: { te: string; en: string; governs: string }[] = [
+export const OUTER_32_ORDER: { te: string; en: string; governs: string }[] = [
   // North-East quadrant
   { te: 'ఆదితి', en: 'Aditi', governs: 'స్వాతంత్ర్యం, విస్తారం, రక్షణ' },
   { te: 'దితి', en: 'Diti', governs: 'నిరాశ, ఓర్పు, సంయమనం' },
