@@ -568,7 +568,7 @@ export function generateSiddhantaAdvancedAppendices(
     2: {
       te: 'పారిజాతాంశ ★ (2 వర్గాలలో స్వ/ఉచ్చ)',
       sanskrit: 'Parijatamsa',
-      phalaTe: 'ఉదార స్వభావం, ధర్మ నిষ্ঠ, సుఖ-సంతోషాలు మరియు గౌరవం.',
+      phalaTe: 'ఉదార స్వభావం, ధర్మ నిష్ఠ, సుఖ-సంతోషాలు మరియు గౌరవం.',
     },
     3: {
       te: 'ఉత్తమాంశ ★★ (3 వర్గాలలో స్వ/ఉచ్చ)',

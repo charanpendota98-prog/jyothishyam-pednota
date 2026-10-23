@@ -1,4 +1,8 @@
 import { ZODIAC_SIGNS, type CompleteChartResult } from './ephemeris.ts';
+import { computePillarScore, buildPillarNarrative, PILLAR_SPECS } from './pillarBalaEngine.ts';
+import { mahadashaPhala } from './mahadashaPhalaEngine.ts';
+import { TELUGU_RASIS } from './rasiNames.ts';
+import { computeLagnaFunctional, PLANET_TE } from './lagnaFunctionalEngine.ts';
 
 export type AppLanguage = 'te' | 'en';
 
@@ -168,29 +172,8 @@ export const STATE_DISTRICT_ATLAS: StateEntry[] = [
   },
 ];
 
-// 12 Rasis in Telugu
-export const TELUGU_RASIS: {
-  index: number;
-  nameTe: string;
-  nameEn: string;
-  lordTe: string;
-  tattvamTe: string;
-  swabhavamTe: string;
-}[] = [
-  { index: 0, nameTe: 'మేష రాశి', nameEn: 'Aries (Mesha)', lordTe: 'కుజుడు (అంగారకుడు)', tattvamTe: 'అగ్ని తత్వం', swabhavamTe: 'చర రాశి' },
-  { index: 1, nameTe: 'వృషభ రాశి', nameEn: 'Taurus (Vrishabha)', lordTe: 'శుక్రుడు', tattvamTe: 'భూ తత్వం', swabhavamTe: 'స్థిర రాశి' },
-  { index: 2, nameTe: 'మిథున రాశి', nameEn: 'Gemini (Mithuna)', lordTe: 'బుధుడు', tattvamTe: 'వాయు తత్వం', swabhavamTe: 'ద్విস্বభావ రాశి' },
-  { index: 3, nameTe: 'కర్కాటక రాశి', nameEn: 'Cancer (Karkataka)', lordTe: 'చంద్రుడు', tattvamTe: 'జల తత్వం', swabhavamTe: 'చర రాశి' },
-  { index: 4, nameTe: 'సింహ రాశి', nameEn: 'Leo (Simha)', lordTe: 'సూర్యుడు (రవి)', tattvamTe: 'అగ్ని తత్వం', swabhavamTe: 'స్థిర రాశి' },
-  { index: 5, nameTe: 'కన్యా రాశి', nameEn: 'Virgo (Kanya)', lordTe: 'బుధుడు', tattvamTe: 'భూ తత్వం', swabhavamTe: 'ద్విస్వభావ రాశి' },
-  { index: 6, nameTe: 'తులా రాశి', nameEn: 'Libra (Tula)', lordTe: 'శుక్రుడు', tattvamTe: 'వాయు తత్వం', swabhavamTe: 'చర రాశి' },
-  { index: 7, nameTe: 'వృశ్చిక రాశి', nameEn: 'Scorpio (Vrishchika)', lordTe: 'కుజుడు (అంగారకుడు)', tattvamTe: 'జల తత్వం', swabhavamTe: 'స్థిర రాశి' },
-  { index: 8, nameTe: 'ధనుస్సు రాశి', nameEn: 'Sagittarius (Dhanussu)', lordTe: 'గురువు (బృహస్పతి)', tattvamTe: 'అగ్ని తత్వం', swabhavamTe: 'ద్విస్వభావ రాశి' },
-  { index: 9, nameTe: 'మకర రాశి', nameEn: 'Capricorn (Makara)', lordTe: 'శని (మందుడు)', tattvamTe: 'భూ తత్వం', swabhavamTe: 'చర రాశి' },
-  { index: 10, nameTe: 'కుంభ రాశి', nameEn: 'Aquarius (Kumbha)', lordTe: 'శని (మందుడు)', tattvamTe: 'వాయు తత్వం', swabhavamTe: 'స్థిర రాశి' },
-  { index: 11, nameTe: 'మీన రాశి', nameEn: 'Pisces (Meena)', lordTe: 'గురువు (బృహస్పతి)', tattvamTe: 'జల తత్వం', swabhavamTe: 'ద్విస్వభావ రాశి' },
-];
-
+// 12 Rasis in Telugu — ఒకే మూలం: rasiNames.ts (చక్ర భేదం తప్పకుండా)
+export { TELUGU_RASIS } from './rasiNames.ts';
 // Planets in Telugu + Short Chart Labels
 export const TELUGU_PLANETS: Record<
   string,
@@ -330,17 +313,17 @@ export const TELUGU_NAKSHATRAS: {
 }[] = [
   { index: 0, nameTe: 'అశ్విని', nameEn: 'Ashwini', lordTe: 'కేతువు', deityTe: 'అశ్వినీ దేవతలు', ganaTe: 'దేవ గణం', yoniTe: 'అశ్వ (గుర్రం)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'పాద రజ్జు', padasTe: ['చూ', 'చే', 'చో', 'లా'] },
   { index: 1, nameTe: 'భరణి', nameEn: 'Bharani', lordTe: 'శుక్రుడు', deityTe: 'యమధర్మరాజు', ganaTe: 'మనుష్య గణం', yoniTe: 'గజ (ఏనుగు)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'కటి రజ్జు', padasTe: ['లీ', 'లూ', 'లే', 'లో'] },
-  { index: 2, nameTe: 'కృత్తిక', nameEn: 'Krittika', lordTe: 'సూర్యుడు (రవి)', deityTe: 'అగ్ని దేవుడు', ganaTe: 'రాక్షస గణం', yoniTe: 'మేష (గొర్రె)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'నాభి రజ్జు', padasTe: ['ఆ', 'ఈ', 'ఊ', 'ఏ'] },
+  { index: 2, nameTe: 'కృత్తిక', nameEn: 'Krittika', lordTe: 'సూర్యుడు (రవి)', deityTe: 'అగ్ని దేవుడు', ganaTe: 'రాక్షస గణం', yoniTe: 'మేష (గొర్రె)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'నాభి రజ్జు', padasTe: ['అ', 'ఈ', 'ఉ', 'ఏ'] },
   { index: 3, nameTe: 'రోహిణి', nameEn: 'Rohini', lordTe: 'చంద్రుడు', deityTe: 'బ్రహ్మ దేవుడు', ganaTe: 'మనుష్య గణం', yoniTe: 'సర్ప (పాము)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['ఓ', 'వా', 'వీ', 'వూ'] },
   { index: 4, nameTe: 'మృగశిర', nameEn: 'Mrigashira', lordTe: 'కుజుడు', deityTe: 'చంద్రుడు (సోముడు)', ganaTe: 'దేవ గణం', yoniTe: 'సర్ప (పాము)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'శిరో రజ్జు', padasTe: ['వే', 'వో', 'కా', 'కీ'] },
-  { index: 5, nameTe: 'ఆర్ద్ర', nameEn: 'Ardra', lordTe: 'రాహువు', deityTe: 'రుద్రుడు (శివుడు)', ganaTe: 'మనుష్య గణం', yoniTe: 'శ్వాన (కుక్క)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['కూ', 'ఘం', 'జ్ఞ', 'ఛా'] },
+  { index: 5, nameTe: 'ఆర్ద్ర', nameEn: 'Ardra', lordTe: 'రాహువు', deityTe: 'రుద్రుడు (శివుడు)', ganaTe: 'మనుష్య గణం', yoniTe: 'శ్వాన (కుక్క)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['కూ', 'ఘ', 'ఙ', 'ఛ'] },
   { index: 6, nameTe: 'పునర్వసు', nameEn: 'Punarvasu', lordTe: 'గురువు', deityTe: 'అదితి దేవత', ganaTe: 'దేవ గణం', yoniTe: 'మార్జాల (పిల్లి)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'నాభి రజ్జు', padasTe: ['కే', 'కో', 'హా', 'హీ'] },
   { index: 7, nameTe: 'పుష్యమి', nameEn: 'Pushya', lordTe: 'శని', deityTe: 'బృహస్పతి', ganaTe: 'దేవ గణం', yoniTe: 'మేష (గొర్రె)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'కటి రజ్జు', padasTe: ['హూ', 'హే', 'హో', 'డా'] },
   { index: 8, nameTe: 'ఆశ్లేష', nameEn: 'Ashlesha', lordTe: 'బుధుడు', deityTe: 'నాగ దేవతలు', ganaTe: 'రాక్షస గణం', yoniTe: 'మార్జాల (పిల్లి)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'పాద రజ్జు', padasTe: ['డీ', 'డూ', 'డే', 'డో'] },
-  { index: 9, nameTe: 'మఖ', nameEn: 'Magha', lordTe: 'కేతువు', deityTe: 'పితృ దేవతలు', ganaTe: 'రాక్షస గణం', yoniTe: 'మూషిక (ఎలుక)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'పాద రజ్జు', padasTe: ['మా', 'మీ', 'మూ', 'మే'] },
+  { index: 9, nameTe: 'మఘ', nameEn: 'Magha', lordTe: 'కేతువు', deityTe: 'పితృ దేవతలు', ganaTe: 'రాక్షస గణం', yoniTe: 'మూషిక (ఎలుక)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'పాద రజ్జు', padasTe: ['మా', 'మీ', 'మూ', 'మే'] },
   { index: 10, nameTe: 'పుబ్బ (పూర్వ ఫల్గుణి)', nameEn: 'Purva Phalguni', lordTe: 'శుక్రుడు', deityTe: 'భగ దేవుడు', ganaTe: 'మనుష్య గణం', yoniTe: 'మూషిక (ఎలుక)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'కటి రజ్జు', padasTe: ['మో', 'టా', 'టీ', 'టూ'] },
   { index: 11, nameTe: 'ఉత్తర (ఉత్తర ఫల్గుణి)', nameEn: 'Uttara Phalguni', lordTe: 'సూర్యుడు (రవి)', deityTe: 'అర్యముడు', ganaTe: 'మనుష్య గణం', yoniTe: 'గో (ఆవు)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'నాభి రజ్జు', padasTe: ['టే', 'టో', 'పా', 'పీ'] },
-  { index: 12, nameTe: 'హస్త', nameEn: 'Hasta', lordTe: 'చంద్రుడు', deityTe: 'సవితృ (సూర్యుడు)', ganaTe: 'దేవ గణం', yoniTe: 'మహిష (దున్న)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['పూ', 'షం', 'ణా', 'ఠా'] },
+  { index: 12, nameTe: 'హస్త', nameEn: 'Hasta', lordTe: 'చంద్రుడు', deityTe: 'సవితృ (సూర్యుడు)', ganaTe: 'దేవ గణం', yoniTe: 'మహిష (దున్న)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['పూ', 'ష', 'ణ', 'ఠ'] },
   { index: 13, nameTe: 'చిత్త', nameEn: 'Chitra', lordTe: 'కుజుడు', deityTe: 'విశ్వకర్మ', ganaTe: 'రాక్షస గణం', yoniTe: 'వ్యాఘ్ర (పులి)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'శిరో రజ్జు', padasTe: ['పే', 'పో', 'రా', 'రీ'] },
   { index: 14, nameTe: 'స్వాతి', nameEn: 'Swati', lordTe: 'రాహువు', deityTe: 'వాయు దేవుడు', ganaTe: 'దేవ గణం', yoniTe: 'మహిష (దున్న)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['రూ', 'రే', 'రో', 'తా'] },
   { index: 15, nameTe: 'విశాఖ', nameEn: 'Vishakha', lordTe: 'గురువు', deityTe: 'ఇంద్రాగ్నులు', ganaTe: 'రాక్షస గణం', yoniTe: 'వ్యాఘ్ర (పులి)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'నాభి రజ్జు', padasTe: ['తీ', 'తూ', 'తే', 'తో'] },
@@ -349,12 +332,12 @@ export const TELUGU_NAKSHATRAS: {
   { index: 18, nameTe: 'మూల', nameEn: 'Mula', lordTe: 'కేతువు', deityTe: 'నిరృతి (అలక్ష్మి)', ganaTe: 'రాక్షస గణం', yoniTe: 'శ్వాన (కుక్క)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'పాద రజ్జు', padasTe: ['యే', 'యో', 'భా', 'భీ'] },
   { index: 19, nameTe: 'పూర్వాషాఢ', nameEn: 'Purva Ashadha', lordTe: 'శుక్రుడు', deityTe: 'జల దేవతలు (ఆపః)', ganaTe: 'మనుష్య గణం', yoniTe: 'వానర (కోతి)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'కటి రజ్జు', padasTe: ['భూ', 'ధా', 'ఫా', 'ఢా'] },
   { index: 20, nameTe: 'ఉత్తరాషాఢ', nameEn: 'Uttara Ashadha', lordTe: 'సూర్యుడు (రవి)', deityTe: 'విశ్వేదేవతలు', ganaTe: 'మనుష్య గణం', yoniTe: 'నకుల (ముంగిస)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'నాభి రజ్జు', padasTe: ['భే', 'భో', 'జా', 'జీ'] },
-  { index: 21, nameTe: 'శ్రవణం', nameEn: 'Shravana', lordTe: 'చంద్రుడు', deityTe: 'శ్రీ మహావిష్ణువు', ganaTe: 'దేవ గణం', yoniTe: 'వానర (కోతి)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['జూ', 'జే', 'జో', 'ఖా'] },
+  { index: 21, nameTe: 'శ్రవణం', nameEn: 'Shravana', lordTe: 'చంద్రుడు', deityTe: 'శ్రీ మహావిష్ణువు', ganaTe: 'దేవ గణం', yoniTe: 'వానర (కోతి)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['ఖీ', 'ఖూ', 'ఖే', 'ఖో'] },
   { index: 22, nameTe: 'ధనిష్ఠ', nameEn: 'Dhanishta', lordTe: 'కుజుడు', deityTe: 'అష్ట వసువులు', ganaTe: 'రాక్షస గణం', yoniTe: 'సింహ (సింహం)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'శిరో రజ్జు', padasTe: ['గా', 'గీ', 'గూ', 'గే'] },
   { index: 23, nameTe: 'శతభిషం', nameEn: 'Shatabhisha', lordTe: 'రాహువు', deityTe: 'వరుణ దేవుడు', ganaTe: 'రాక్షస గణం', yoniTe: 'అశ్వ (గుర్రం)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'కంఠ రజ్జు', padasTe: ['గో', 'సా', 'సీ', 'సూ'] },
   { index: 24, nameTe: 'పూర్వాభాద్ర', nameEn: 'Purva Bhadrapada', lordTe: 'గురువు', deityTe: 'అజైకపాదుడు', ganaTe: 'మనుష్య గణం', yoniTe: 'సింహ (సింహం)', nadiTe: 'ఆది నాడి (వాత)', rajjuTe: 'నాభి రజ్జు', padasTe: ['సే', 'సో', 'దా', 'దీ'] },
-  { index: 25, nameTe: 'ఉత్తరాభాద్ర', nameEn: 'Uttara Bhadrapada', lordTe: 'శని', deityTe: 'అహిర్బుధన్యుడు', ganaTe: 'మనుష్య గణం', yoniTe: 'గో (ఆవు)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'కటి రజ్జు', padasTe: ['దూ', 'థం', 'ఝా', 'ఞా'] },
-  { index: 26, nameTe: 'రేవతి', nameEn: 'Revati', lordTe: 'బుధుడు', deityTe: 'పూష (సూర్యుడు)', ganaTe: 'దేవ గణం', yoniTe: 'గజ (ఏనుగు)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'పాద రజ్జు', padasTe: ['దే', 'దో', 'చా', 'చీ'] },
+  { index: 25, nameTe: 'ఉత్తరాభాద్ర', nameEn: 'Uttara Bhadrapada', lordTe: 'శని', deityTe: 'అహిర్బుధన్యుడు', ganaTe: 'మనుష్య గణం', yoniTe: 'గో (ఆవు)', nadiTe: 'మధ్య నాడి (పిత్త)', rajjuTe: 'కటి రజ్జు', padasTe: ['దూ', 'థ', 'ఝ', 'ఞ'] },
+  { index: 26, nameTe: 'రేవతి', nameEn: 'Revati', lordTe: 'బుధుడు', deityTe: 'పూష (సూర్యుడు)', ganaTe: 'దేవ గణం', yoniTe: 'గజ (ఏనుగు)', nadiTe: 'అంత్య నాడి (కఫ)', rajjuTe: 'పాద రజ్జు', padasTe: ['దే', 'దో', 'చ', 'చి'] },
 ];
 
 // 60 Telugu Ugadi Samvatsaralu (Prabhava to Akshaya)
@@ -801,12 +784,6 @@ const LAGNA_SHASTRA_DATA: {
   tattvamTe: string;
   swabhavamTe: string;
   prakritiTe: string;
-  shubhaTe: string;
-  yogakarakaTe: string;
-  papaTe: string;
-  marakaTe: string;
-  badhakaHouse: number;
-  badhakaLordTe: string;
   directionTe: string;
   vivaranamTe: string;
 }[] = [
@@ -815,12 +792,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'అగ్ని తత్వం (Fiery)',
     swabhavamTe: 'చర రాశి (Movable / Dynamic)',
     prakritiTe: 'పిత్త ప్రకృతి — ధైర్య, నాయకత్వ, చురుకైన స్వభావం',
-    shubhaTe: 'సూర్యుడు (5వ అధిపతి), గురువు (9వ భాగ్య-అధిపతి), కుజుడు (లగ్నాధిపతి)',
-    yogakarakaTe: 'సూర్యుడు & గురువు (పంచమ-నవమ త్రికోణాధిపతులు)',
-    papaTe: 'బుధుడు (3, 6 అధిపతి), శుక్రుడు (2, 7 అధిపతి)',
-    marakaTe: 'శుక్రుడు (2, 7 స్థానముల అధిపతి) మరియు శని',
-    badhakaHouse: 11,
-    badhakaLordTe: 'శని (11వ లాభ-బాధక స్థానాధిపతి)',
     directionTe: 'తూర్పు దిశ (East)',
     vivaranamTe: 'బృహత్ పరాశర హోరా శాస్త్రం ప్రకారం మేష లగ్న జాతకులు స్వతంత్ర భావాలు, ఆత్మవిశ్వాసం, పట్టుదల మరియు నాయకత్వ లక్షణాలు కలిగి ఉంటారు. గురు-సూర్య సంయోగం లేదా దృష్టి వీరికి గొప్ప రాజయోగాన్ని ఇస్తుంది.',
   },
@@ -829,12 +800,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'భూ తత్వం (Earthy)',
     swabhavamTe: 'స్థిర రాశి (Fixed / Determined)',
     prakritiTe: 'వాత-కఫ ప్రకృతి — సహనం, కళాభిరుచి, ఆర్థిక స్థిరత్వం',
-    shubhaTe: 'శని (9, 10 అధిపతి), బుధుడు (2, 5 అధిపతి), సూర్యుడు (4వ అధిపతి)',
-    yogakarakaTe: 'శని భగవానుడు (9వ భాగ్య & 10వ రాజ్య స్థానాధిపతి — పరమ రాజయోగకారకుడు)',
-    papaTe: 'గురువు (8, 11 అధిపతి), కుజుడు (7, 12 అధిపతి), చంద్రుడు (3వ అధిపతి)',
-    marakaTe: 'కుజుడు (7, 12 అధిపతి) మరియు గురువు',
-    badhakaHouse: 9,
-    badhakaLordTe: 'శని (స్థిర లగ్నానికి 9వ స్థానం బాధకమైనా శని యోగకారకుడిగా శుభుడు)',
     directionTe: 'దక్షిణ / ఆగ్నేయ దిశ (South-East)',
     vivaranamTe: 'వృషభ లగ్నానికి శని ఏకైక రాజయోగకారకుడు (ధర్మ-కర్మాధిపతి). వీరు స్థిరమైన ఆలోచన, ఆర్థిక ప్రణాళిక, కళాత్మక దృష్టి మరియు కుటుంబ నిబద్ధత కలిగి ఉంటారు.',
   },
@@ -843,12 +808,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'వాయు తత్వం (Airy)',
     swabhavamTe: 'ద్విస్వభావ రాశి (Dual / Intellectual)',
     prakritiTe: 'త్రిదోష సమ తత్వం — మేధాశక్తి, వాక్చాతుర్యం, బహుముఖ ప్రజ్ఞ',
-    shubhaTe: 'శుక్రుడు (5, 12 అధిపతి), బుధుడు (1, 4 అధిపతి), శని (9వ అధిపతి)',
-    yogakarakaTe: 'శుక్రుడు (పంచమ త్రికోణాధిపతి) & బుధుడు',
-    papaTe: 'కుజుడు (6, 11 అధిపతి), గురువు (7, 10 కేంద్ర ఆధిపత్య దోషం), సూర్యుడు (3వ అధిపతి)',
-    marakaTe: 'చంద్రుడు (2వ అధిపతి) మరియు గురువు (7వ అధిపతి)',
-    badhakaHouse: 7,
-    badhakaLordTe: 'గురువు (7వ కళత్ర-బాధక స్థానాధిపతి)',
     directionTe: 'పశ్చిమ / ఉత్తర దిశ (West / North)',
     vivaranamTe: 'మిథున లగ్న జాతకులు అపారమైన జ్ఞానం, గణిత/సాంకేతిక నైపుణ్యం, చర్చా చాతుర్యం మరియు కమ్యూనికేషన్ రంగాలలో విశేష ప్రతిభ కనబరుస్తారు. శుక్ర-బుధ కలయిక మహోన్నత లక్ష్మీ-సరస్వతి యోగాన్ని ఇస్తుంది.',
   },
@@ -857,12 +816,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'జల తత్వం (Watery)',
     swabhavamTe: 'చర రాశి (Movable / Sensitive)',
     prakritiTe: 'కఫ ప్రకృతి — దయాగుణం, మాతృభక్తి, ఊహాశక్తి, సంరక్షణ స్వభావం',
-    shubhaTe: 'కుజుడు (5, 10 అధిపతి), గురువు (9వ అధిపతి), చంద్రుడు (లగ్నాధిపతి)',
-    yogakarakaTe: 'కుజుడు (5వ కోణ & 10వ కేంద్ర అధిపతి — సంపూర్ణ రాజయోగకారకుడు)',
-    papaTe: 'శుక్రుడు (4, 11 అధిపతి), బుధుడు (3, 12 అధిపతి), శని (7, 8 అధిపతి)',
-    marakaTe: 'శని (7, 8 అధిపతి) మరియు సూర్యుడు (2వ ధనాధిపతి)',
-    badhakaHouse: 11,
-    badhakaLordTe: 'శుక్రుడు (11వ బాధక స్థానాధిపతి)',
     directionTe: 'ఉత్తర దిశ (North)',
     vivaranamTe: 'కర్కాటక లగ్నానికి కుజుడు పంచమ-దశమాధిపతిగా పరమ రాజయోగకారకుడు. వీరు సహృదయులు, కీర్తికాంక్ష కలవారు, ఉన్నత ఆశయాలు మరియు ప్రజాదరణ పొందే వ్యక్తిత్వం కలిగి ఉంటారు.',
   },
@@ -871,12 +824,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'అగ్ని తత్వం (Fiery)',
     swabhavamTe: 'స్థిర రాశి (Fixed / Royal)',
     prakritiTe: 'పిత్త ప్రకృతి — తేజస్సు, ఆత్మగౌరవం, పరిపాలనా దక్షత, ఉదార స్వభావం',
-    shubhaTe: 'కుజుడు (4, 9 అధిపతి), గురువు (5వ అధిపతి), సూర్యుడు (లగ్నాధిపతి)',
-    yogakarakaTe: 'కుజుడు (4వ సుఖ కేంద్ర & 9వ భాగ్య త్రికోణాధిపతి — పరమ రాజయోగకారకుడు)',
-    papaTe: 'బుధుడు (2, 11 అధిపతి), శుక్రుడు (3, 10 అధిపతి), శని (6, 7 అధిపతి)',
-    marakaTe: 'శని (6, 7 అధిపతి) మరియు బుధుడు (2వ అధిపతి)',
-    badhakaHouse: 9,
-    badhakaLordTe: 'కుజుడు (9వ అధిపతి అయినా కేంద్ర-కోణాధిపతిగా శుభయోగాన్నే ఇస్తాడు)',
     directionTe: 'తూర్పు దిశ (East)',
     vivaranamTe: 'సింహ లగ్న జాతకులు రాజసము, ధర్మబద్ధత, నాయకత్వ పటిమ మరియు ఉన్నత ఆశయాలు కలిగి ఉంటారు. సూర్య-కుజ-గురు గ్రహాల బలం వీరికి ప్రభుత్వ/అధికార పదవులను ప్రసాదిస్తుంది.',
   },
@@ -885,12 +832,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'భూ తత్వం (Earthy)',
     swabhavamTe: 'ద్విస్వభావ రాశి (Dual / Analytical)',
     prakritiTe: 'వాత-పిత్త ప్రకృతి — విశ్లేషణా శక్తి, వ్యాపార దక్షత, క్రమశిక్షణ',
-    shubhaTe: 'శుక్రుడు (2, 9 అధిపతి), బుధుడు (1, 10 అధిపతి)',
-    yogakarakaTe: 'శుక్రుడు (భాగ్యాధిపతి) & బుధుడు (లగ్న-రాజ్యాధిపతి)',
-    papaTe: 'కుజుడు (3, 8 అధిపతి), గురువు (4, 7 అధిపతి), చంద్రుడు (11వ అధిపతి)',
-    marakaTe: 'గురువు (7వ అధిపతి) మరియు కుజుడు (8వ అధిపతి)',
-    badhakaHouse: 7,
-    badhakaLordTe: 'గురువు (7వ కళత్ర-బాధక స్థానాధిపతి)',
     directionTe: 'దక్షిణ / ఉత్తర దిశ (South / North)',
     vivaranamTe: 'కన్యా లగ్న జాతకులు సూక్ష్మబుద్ధి, వాణిజ్య/సాంకేతిక/వైద్య/గణిత రంగాలలో ప్రావీణ్యం మరియు ప్రణాళికాబద్ధమైన జీవనం కలిగి ఉంటారు. బుధ-శుక్రుల సంయోగం అఖండ ధన-రాజయోగాన్ని ఇస్తుంది.',
   },
@@ -899,26 +840,14 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'వాయు తత్వం (Airy)',
     swabhavamTe: 'చర రాశి (Movable / Balanced)',
     prakritiTe: 'కఫ-వాత ప్రకృతి — న్యాయబుద్ధి, కలుపుగోలుతనం, వాణిజ్య చతురత',
-    shubhaTe: 'శని (4, 5 అధిపతి), బుధుడు (9, 12 అధిపతి), శుక్రుడు (లగ్నాధిపతి)',
-    yogakarakaTe: 'శని భగవానుడు (4వ కేంద్ర & 5వ త్రికోణాధిపతి — పరమ రాజయోగకారకుడు)',
-    papaTe: 'గురువు (3, 6 అధిపతి), సూర్యుడు (11వ అధిపతి), కుజుడు (2, 7 అధిపతి)',
-    marakaTe: 'కుజుడు (2, 7 ఉభయ మారకాధిపతి)',
-    badhakaHouse: 11,
-    badhakaLordTe: 'సూర్యుడు (11వ లాభ-బాధక స్థానాధిపతి)',
     directionTe: 'పశ్చిమ దిశ (West)',
-    vivaranamTe: 'తులా లగ్నానికి శని చతుర్థ-పంచమాధిపతిగా ఏకైక రాజయోగకారకుడు. వీరు సమతుల్యత, диплоమాటిక్ నైపుణ్యం, వ్యాపార దక్షత మరియు సామాజిక గౌరవం కలిగి ఉంటారు.',
+    vivaranamTe: 'తులా లగ్నానికి శని చతుర్థ-పంచమాధిపతిగా ఏకైక రాజయోగకారకుడు. వీరు సమతుల్యత, దౌత్య నైపుణ్యం, వ్యాపార దక్షత మరియు సామాజిక గౌరవం కలిగి ఉంటారు.',
   },
   {
     // 7: Vrischika (Scorpio)
     tattvamTe: 'జల తత్వం (Watery)',
     swabhavamTe: 'స్థిర రాశి (Fixed / Intense)',
-    prakritiTe: 'పిత్త-కఫ ప్రకృతి — పట్టుదల, పరిశోధనా శక్తి, అంతర్দৃষ্টি, సాహసం',
-    shubhaTe: 'చంద్రుడు (9వ భాగ్యాధిపతి), గురువు (2, 5 అధిపతి), సూర్యుడు (10వ రాజ్యాధిపతి)',
-    yogakarakaTe: 'సూర్య-చంద్రులు (9, 10 ధర్మ-కర్మాధిపతులు) & గురువు (ధన-పంచమాధిపతి)',
-    papaTe: 'బుధుడు (8, 11 అధిపతి), శుక్రుడు (7, 12 అధిపతి), శని (3, 4 అధిపతి)',
-    marakaTe: 'శుక్రుడు (7, 12 అధిపతి) మరియు బుధుడు',
-    badhakaHouse: 9,
-    badhakaLordTe: 'చంద్రుడు (9వ స్థానాధిపతి అయినప్పటికీ భాగ్యాధిపతిగా శుభప్రదుడు)',
+    prakritiTe: 'పిత్త-కఫ ప్రకృతి — పట్టుదల, పరిశోధనా శక్తి, అంతర్దృష్టి, సాహసం',
     directionTe: 'ఉత్తర దిశ (North)',
     vivaranamTe: 'వృశ్చిక లగ్న జాతకులు లోతైన ఆలోచన, పరిశోధన, సాంకేతిక/వైద్య/రక్షణ రంగాలలో నైపుణ్యం మరియు అసాధారణ మనోబలం కలిగి ఉంటారు. గురు, సూర్య, చంద్రుల బలం ఉన్నత పదవులను ఇస్తుంది.',
   },
@@ -926,13 +855,7 @@ const LAGNA_SHASTRA_DATA: {
     // 8: Dhanussu (Sagittarius)
     tattvamTe: 'అగ్ని తత్వం (Fiery)',
     swabhavamTe: 'ద్విస్వభావ రాశి (Dual / Philosophical)',
-    prakritiTe: 'పిత్త ప్రకృతి — ధర్మచింతన, సత్యనిষ্ঠ, ఆదర్శవాదం, విద్యాధిక్యత',
-    shubhaTe: 'సూర్యుడు (9వ భాగ్యాధిపతి), కుజుడు (5వ కోణాధిపతి), గురువు (1, 4 అధిపతి)',
-    yogakarakaTe: 'సూర్యుడు (9వ భాగ్యాధిపతి) & బుధుడు (7, 10 అధిపతి — సూర్య సంయోగంతో రాజయోగం)',
-    papaTe: 'శుక్రుడు (6, 11 అధిపతి), శని (2, 3 అధిపతి)',
-    marakaTe: 'శని (2వ అధిపతి) మరియు శుక్రుడు (6, 11 అధిపతి)',
-    badhakaHouse: 7,
-    badhakaLordTe: 'బుధుడు (7వ కళత్ర-బాధక స్థానాధిపతి)',
+    prakritiTe: 'పిత్త ప్రకృతి — ధర్మచింతన, సత్యనిష్ఠ, ఆదర్శవాదం, విద్యాధిక్యత',
     directionTe: 'తూర్పు / ఈశాన్య దిశ (East / North-East)',
     vivaranamTe: 'ధనుర్లగ్న జాతకులు ధర్మబద్ధులు, విద్యావంతులు, గురు-దైవ భక్తి కలవారు మరియు ఉన్నత ఆశయాలతో జీవించేవారు. సూర్య-గురు-కుజ గ్రహాల బలం వీరికి అపారమైన కీర్తి ప్రతిష్ఠలను తెస్తుంది.',
   },
@@ -941,12 +864,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'భూ తత్వం (Earthy)',
     swabhavamTe: 'చర రాశి (Movable / Pragmatic)',
     prakritiTe: 'వాత ప్రకృతి — కార్యదీక్ష, ఓర్పు, నిర్వాహక శక్తి, ఆచరణాత్మకత',
-    shubhaTe: 'శుక్రుడు (5, 10 అధిపతి), బుధుడు (6, 9 అధిపతి), శని (లగ్నాధిపతి)',
-    yogakarakaTe: 'శుక్రుడు (5వ త్రికోణ & 10వ రాజ్య అధిపతి — సంపూర్ణ రాజయోగకారకుడు)',
-    papaTe: 'కుజుడు (4, 11 అధిపతి), గురువు (3, 12 అధిపతి), చంద్రుడు (7వ అధిపతి)',
-    marakaTe: 'చంద్రుడు (7వ అధిపతి) మరియు కుజుడు',
-    badhakaHouse: 11,
-    badhakaLordTe: 'కుజుడు (11వ లాభ-బాధక స్థానాధిపతి)',
     directionTe: 'దక్షిణ దిశ (South)',
     vivaranamTe: 'మకర లగ్నానికి శుక్రుడు పంచమ-దశమాధిపతిగా ఏకైక రాజయోగకారకుడు. వీరు కఠిన పరిశ్రమ, పట్టుదల, వ్యాపార-పరిపాలనా నైపుణ్యంతో జీవితంలో స్థిరమైన ఉన్నత శిఖరాలను అధిరోహిస్తారు.',
   },
@@ -955,12 +872,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'వాయు తత్వం (Airy)',
     swabhavamTe: 'స్థిర రాశి (Fixed / Humanitarian)',
     prakritiTe: 'వాత-పిత్త ప్రకృతి — నూతన ఆవిష్కరణలు, తాత్వికత, ప్రజాసేవ, మేధాశక్తి',
-    shubhaTe: 'శుక్రుడు (4, 9 అధిపతి), సూర్యుడు (7వ కేంద్రం), శని (లగ్నాధిపతి)',
-    yogakarakaTe: 'శుక్రుడు (4వ సుఖ కేంద్ర & 9వ భాగ్య త్రికోణాధిపతి — పరమ రాజయోగకారకుడు)',
-    papaTe: 'గురువు (2, 11 అధిపతి), చంద్రుడు (6వ అధిపతి), బుధుడు (5, 8 అధిపతి)',
-    marakaTe: 'గురువు (2వ ధనాధిపతి) మరియు సూర్యుడు (7వ అధిపతి)',
-    badhakaHouse: 9,
-    badhakaLordTe: 'శుక్రుడు (9వ అధిపతి అయినా కేంద్ర-కోణాధిపతిగా పరమ శుభుడు)',
     directionTe: 'పశ్చిమ దిశ (West)',
     vivaranamTe: 'కుంభ లగ్నానికి శుక్రుడు చతుర్థ-నవమాధిపతిగా పరమ రాజయోగకారకుడు. వీరు శాస్త్రీయ దృక్పథం, లోతైన ఆలోచన, మానవతావాదం మరియు స్థిరమైన స్నేహభావం కలిగి ఉంటారు.',
   },
@@ -969,12 +880,6 @@ const LAGNA_SHASTRA_DATA: {
     tattvamTe: 'జల తత్వం (Watery)',
     swabhavamTe: 'ద్విస్వభావ రాశి (Dual / Spiritual)',
     prakritiTe: 'కఫ ప్రకృతి — సాత్విక గుణం, కరుణ, ఆధ్యాత్మిక జ్ఞానం, సృజనాత్మకత',
-    shubhaTe: 'చంద్రుడు (5వ త్రికోణాధిపతి), కుజుడు (2, 9 భాగ్యాధిపతి), గురువు (1, 10 అధిపతి)',
-    yogakarakaTe: 'కుజుడు (9వ భాగ్యాధిపతి) & చంద్రుడు (5వ పంచమాధిపతి)',
-    papaTe: 'సూర్యుడు (6వ అధిపతి), శుక్రుడు (3, 8 అధిపతి), శని (11, 12 అధిపతి)',
-    marakaTe: 'బుధుడు (4, 7 అధిపతి) మరియు శని',
-    badhakaHouse: 7,
-    badhakaLordTe: 'బుధుడు (7వ కళత్ర-బాధక స్థానాధిపతి)',
     directionTe: 'ఉత్తర / ఈశాన్య దిశ (North / North-East)',
     vivaranamTe: 'మీన లగ్న జాతకులు ఉదార స్వభావం, విద్యా-ఆధ్యాత్మిక రంగాలలో ప్రతిభ, దైవభక్తి మరియు గౌరవప్రదమైన వ్యక్తిత్వం కలిగి ఉంటారు. గురు-కుజ-చంద్రుల బలం వీరికి ఉన్నత రాజయోగాన్ని ఇస్తుంది.',
   },
@@ -1033,7 +938,7 @@ const PHALADEEPIKA_HOUSE_EFFECTS: Record<string, string[]> = {
     '5వ ఇంట చంద్రుడు: సున్నితమైన మేధాశక్తి, సంతాన సౌఖ్యం, దైవభక్తి మరియు ఊహాశక్తి.',
     '6వ ఇంట చంద్రుడు: సేవాభావం, ఆహార-ఆరోగ్య విషయాలలో క్రమశిక్షణ అవసరం.',
     '7వ ఇంట చంద్రుడు: సుందరమైన, సహృదయ జీవిత భాగస్వామి, వ్యాపార మరియు సామాజిక గుర్తింపు.',
-    '8వ ఇంట చంద్రుడు: అంతర్দৃষ্টি, గూఢ శాస్త్ర ఆసక్తి, మానసిక ప్రశాంతత కొరకు ధ్యానం శ్రేయస్కరం.',
+    '8వ ఇంట చంద్రుడు: అంతర్దృష్టి, గూఢ శాస్త్ర ఆసక్తి, మానసిక ప్రశాంతత కొరకు ధ్యానం శ్రేయస్కరం.',
     '9వ ఇంట చంద్రుడు: పుణ్యకార్యాలు, తీర్థయాత్రలు, అదృష్ట వృద్ధి మరియు ధర్మబద్ధ జీవనం.',
     '10వ ఇంట చంద్రుడు: వృత్తిలో ప్రజాదరణ, కీర్తి, వ్యాపార/నిర్వహణ రంగాలలో శుభ పురోగతి.',
     '11వ ఇంట చంద్రుడు: ఆర్థిక లాభాలు, మిత్రుల సహకారం, కోరికలు నెరవేరే శుభ యోగం.',
@@ -1104,7 +1009,7 @@ const PHALADEEPIKA_HOUSE_EFFECTS: Record<string, string[]> = {
     '6వ ఇంట శని: శత్రు-ఋణ-రోగాలను జయించే ఉక్కు సంకల్పం, పోటీలలో విజయం (ఉపచయ రాజయోగం).',
     '7వ ఇంట శని: దిగ్బల స్థానం — స్థిరమైన భాగస్వామ్యం, బాధ్యతాయుతమైన దాంపత్యం, ప్రజలతో సంబంధాలు.',
     '8వ ఇంట శని: ఆయుష్కారకుడు అష్టమంలో ఉండటం వల్ల పూర్ణ ఆయుర్దాయం మరియు పరిశోధనా శక్తి.',
-    '9వ ఇంట శని: సంప్రదాయ నిষ্ঠ, ధర్మబద్ధ జీవనం, ఆలస్యంగానైనా శాశ్వత భాగ్యోదయం.',
+    '9వ ఇంట శని: సంప్రదాయ నిష్ఠ, ధర్మబద్ధ జీవనం, ఆలస్యంగానైనా శాశ్వత భాగ్యోదయం.',
     '10వ ఇంట శని: కర్మయోగి — కష్టపడి ఉన్నత అధికార స్థాయికి చేరుకోవడం, పారిశ్రామిక/ఉద్యోగ విజయం.',
     '11వ ఇంట శని: అత్యంత శుభప్రదమైన లాభ స్థానం — భూ-ధన లాభాలు, స్థిరమైన ఆదాయం, అభీష్ట సిద్ధి.',
     '12వ ఇంట శని: విదేశీ/దూర ప్రాంత ఉద్యోగ యోగం, ఆధ్యాత్మిక సేవ, ఖర్చులలో క్రమశిక్షణ.',
@@ -1124,7 +1029,7 @@ const PHALADEEPIKA_HOUSE_EFFECTS: Record<string, string[]> = {
     '12వ ఇంట రాహువు: విదేశీ నివాస యోగం, బహుళజాతి సంస్థలలో ఉద్యోగం, ధ్యాన సాధన.',
   ],
   Ketu: [
-    '1వ ఇంట కేతువు: ఆధ్యాత్మిక అంతర్দৃষ্টি, వైరాగ్య/తాత్విక బుద్ధి, గణపతి అనుగ్రహం.',
+    '1వ ఇంట కేతువు: ఆధ్యాత్మిక అంతర్దృష్టి, వైరాగ్య/తాత్విక బుద్ధి, గణపతి అనుగ్రహం.',
     '2వ ఇంట కేతువు: ఆధ్యాత్మిక/శాస్త్ర వాక్కు, మంత్ర ఉపాసన, ఆర్థిక విషయాలలో జాగ్రత్త.',
     '3వ ఇంట కేతువు: మానసిక ధైర్యం, గూఢ నైపుణ్యాలు, సంకల్ప బలంతో విజయం.',
     '4వ ఇంట కేతువు: ఆధ్యాత్మిక వాతావరణం, వైదిక/సాంకేతిక విద్యపై ఆసక్తి.',
@@ -1201,18 +1106,28 @@ export function generateTeluguSampoornaJathakam(
 
   // Lagna Shastra Pramanam
   const lagnaShastraRaw = LAGNA_SHASTRA_DATA[lagnaSignIdx] ?? LAGNA_SHASTRA_DATA[0];
-  const badhakaRasiTe = TELUGU_RASIS[(lagnaSignIdx + lagnaShastraRaw.badhakaHouse - 1) % 12].nameTe;
+  // శుభ/పాప/యోగకారక/మారక/బాధక విభజన ఇక చేతి పట్టిక నుండి కాదు —
+  // లగ్న గణితం నుండి నేరుగా లెక్కిస్తాము (lagnaFunctionalEngine).
+  const functional = computeLagnaFunctional(lagnaSignIdx);
+  const badhakaRasiTe = TELUGU_RASIS[(lagnaSignIdx + functional.badhakaHouse - 1) % 12].nameTe;
+  // శ్లోక/గ్రంథ వాక్యాలలో వాడే సంక్షిప్త రూపాలు (పూర్తి వాక్యం కాదు)
+  const ykShortTe = functional.yogakarakas.length
+    ? functional.yogakarakas.map((p) => PLANET_TE[p]).join(', ')
+    : 'ఏకగ్ర యోగకారకుడు లేడు';
+  const shubhaShortTe = functional.benefics.map((p) => PLANET_TE[p]).join(', ');
+  const bestBeneficTe = PLANET_TE[functional.bestBenefic];
+  const badhakaShortTe = `${functional.badhakaHouse}వ భావం (${badhakaRasiTe}) — అధిపతి ${PLANET_TE[functional.badhakaLord]}`;
   const lagnaShastraPramanam: LagnaShastraPramanamTe = {
     lagnaNameTe: lagnaRasiObj.nameTe,
     tattvamTe: lagnaShastraRaw.tattvamTe,
     swabhavamTe: lagnaShastraRaw.swabhavamTe,
     prakritiTe: lagnaShastraRaw.prakritiTe,
-    shubhaGrahaluTe: lagnaShastraRaw.shubhaTe,
-    yogakarakaGrahaTe: lagnaShastraRaw.yogakarakaTe,
-    papaGrahaluTe: lagnaShastraRaw.papaTe,
-    marakaGrahaluTe: lagnaShastraRaw.marakaTe,
-    badhakaSthanamTe: `${lagnaShastraRaw.badhakaHouse}వ భావం (${badhakaRasiTe})`,
-    badhakadhipatiTe: lagnaShastraRaw.badhakaLordTe,
+    shubhaGrahaluTe: functional.shubhaTe,
+    yogakarakaGrahaTe: functional.yogakarakaTe,
+    papaGrahaluTe: functional.papaTe,
+    marakaGrahaluTe: functional.marakaTe,
+    badhakaSthanamTe: `${functional.badhakaHouse}వ భావం (${badhakaRasiTe})`,
+    badhakadhipatiTe: functional.badhakaTe,
     lagnaSwaroopaVivaranamTe: lagnaShastraRaw.vivaranamTe,
   };
 
@@ -1535,6 +1450,26 @@ export function generateTeluguSampoornaJathakam(
     }),
   ];
 
+  // ── శుభ/పాప స్వభావం — బృహత్ పరాశర అ.3 ────────────────────────────────────
+  // గురు, శుక్రులు నిత్య శుభులు; శుక్ల చంద్రుడు శుభుడు, కృష్ణ చంద్రుడు పాపుడు;
+  // బుధుడు పాపుల సహవాసంలో ఉంటే పాపుడు. సూర్యుడు, కుజుడు, శని, రాహు, కేతు పాపులు.
+  const shuklaPaksha = chart.panchanga.tithi.number <= 15;
+  const signOfPlanet = (id: string) => chart.planets.find((p) => p.id === id)?.d1Sign ?? -1;
+  const mercuryMalefic = (() => {
+    const msign = signOfPlanet('Mercury');
+    const mal =
+      ['Sun', 'Mars', 'Saturn'].filter((id) => signOfPlanet(id) === msign).length + (shuklaPaksha ? 0 : 1);
+    const ben =
+      ['Jupiter', 'Venus'].filter((id) => signOfPlanet(id) === msign).length + (shuklaPaksha ? 1 : 0);
+    return mal > ben;
+  })();
+  const grahaNature = (id: string): 'subha' | 'papa' => {
+    if (id === 'Moon') return shuklaPaksha ? 'subha' : 'papa';
+    if (id === 'Mercury') return mercuryMalefic ? 'papa' : 'subha';
+    if (id === 'Jupiter' || id === 'Venus') return 'subha';
+    return 'papa';
+  };
+
   // Build 12 Bhava (Dwadasha Bhava) detailed Telugu predictions with Aspects (Drishti) & Classical Sutras
   const bhavaDefinitions: {
     num: number;
@@ -1542,7 +1477,6 @@ export function generateTeluguSampoornaJathakam(
     titleEn: string;
     domainTe: string;
     shastraSutraTe: string;
-    kendraTrikonaBonus: string;
   }[] = [
     {
       num: 1,
@@ -1550,7 +1484,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '1st Bhava — Self, Constitution, Character & Fame',
       domainTe: 'దేహ ఆరోగ్యం, ఆత్మవిశ్వాసం, వ్యక్తిత్వం మరియు సమాజంలో గౌరవ ప్రతిష్ఠలు',
       shastraSutraTe: 'బృహత్ పరాశర హోరా శాస్త్రం (తనుభావ అధ్యాయం): "లగ్నేశో బలసంయుక్తః కేంద్రకోణగతోఽపి వా, దీర్ఘాయుర్ధనవాన్ మానీ రాజతుల్యో భవేన్నరః"',
-      kendraTrikonaBonus: 'లగ్నం కేంద్ర-త్రికోణ ఉభయ స్థానం కావడం వల్ల జాతకునికి స్వయంకృషితో ఉన్నత స్థాయికి చేరే శక్తి ఉంటుంది.',
     },
     {
       num: 2,
@@ -1558,7 +1491,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '2nd Bhava — Wealth, Family, Speech & Treasury',
       domainTe: 'ధన సంపాదన, నిల్వ ఆస్తులు, వాక్చాతుర్యం మరియు కుటుంబ సౌఖ్యం',
       shastraSutraTe: 'ఫలదీపిక (ధనభావ సూత్రం): "ధనేశో లాభసంయుక్తః కేంద్రే వా కోణమారుహేత్, బహువిత్తాన్వితో వక్తా కుటుంబసుఖభాగ్భవేత్"',
-      kendraTrikonaBonus: 'వాక్కులో స్పష్టత, నిజాయితీ కలిగి ఉండి కుటుంబానికి పెద్దదిక్కుగా వ్యవహరిస్తారు.',
     },
     {
       num: 3,
@@ -1566,7 +1498,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '3rd Bhava — Courage, Siblings, Communication & Enterprise',
       domainTe: 'సాహసం, పట్టుదల, సహోదర వర్గ సహకారం మరియు స్వల్ప ప్రయాణాలు',
       shastraSutraTe: 'సారావళి (సహజ భావ ప్రమాణం): "విక్రమస్థే శుభే వాఽపి పాపే చోపచయాన్వితే, ధైర్యవాన్ సోదరైర్యుక్తః స్వభుజార్జితవిత్తవాన్"',
-      kendraTrikonaBonus: 'ఏ పనినైనా వెనుకాడకుండా పూర్తి చేసే పరాక్రమం మరియు స్వతంత్ర ఆలోచనా విధానం ఉంటాయి.',
     },
     {
       num: 4,
@@ -1574,7 +1505,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '4th Bhava — Mother, Real Estate, Vehicles & Inner Peace',
       domainTe: 'మాతృ సౌఖ్యం, స్వంత గృహ-భూమి-వాహన యోగాలు మరియు ఉన్నత విద్యాభ్యాసం',
       shastraSutraTe: 'జాతక పారిజాతం (చతుర్థ భావ శ్లోకం): "సుఖేశే కేంద్రకోణస్థే శుక్రేందుబలసంయుతే, గృహక్షేత్రాదిసంపన్నో వాహనాढ్యో భవేన్నరః"',
-      kendraTrikonaBonus: 'చతుర్థ కేంద్ర బలం వల్ల సొంత ఇల్లు, భూమి, వాహన సౌకర్యాలు మరియు సంఘంలో మంచి పేరు లభిస్తాయి.',
     },
     {
       num: 5,
@@ -1582,7 +1512,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '5th Bhava — Progeny, Intelligence, Purva Punya & Speculation',
       domainTe: 'సంతాన సౌఖ్యం, కుశాగ్ర బుద్ధి, పూర్వజన్మ పుణ్యఫలం మరియు సృజనాత్మకత',
       shastraSutraTe: 'బృహత్ పరాశర హోరా శాస్త్రం (పంచమ భావం): "సుతేశే బలసంయుక్తే గురుణా వీక్షితే యుతే, కుశాగ్రబుద్ధిః సత్పుత్రో మంత్రసిద్ధిపరాయణః"',
-      kendraTrikonaBonus: 'పంచమ త్రికోణ బలం వల్ల దైవానుగ్రహం, ఉన్నత మేధాశక్తి మరియు సంతానం ద్వారా కీర్తి కలుగుతాయి.',
     },
     {
       num: 6,
@@ -1590,7 +1519,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '6th Bhava — Competitive Victory, Health & Overcoming Obstacles',
       domainTe: 'శత్రుజయం, పోటీ పరీక్షలలో గెలుపు, ఋణ విముక్తి మరియు కష్టపడి పనిచేసే తత్వం',
       shastraSutraTe: 'ఫలదీపిక (షష్ఠ భావ నియమం): "షష్ఠే పాపగ్రహే స్వస్థే శత్రునాశో మహద్యశః, ఆరోగ్యమృణనిర్ముక్తిః స్పర్ధాజయమవాప్నుయాత్"',
-      kendraTrikonaBonus: 'ఉపచయ స్థాన ప్రభావం వల్ల వయస్సు పెరిగే కొద్దీ ఆటంకాలు తొలగి ఆర్థిక-వృత్తి స్థిరత్వం చేకూరుతుంది.',
     },
     {
       num: 7,
@@ -1598,7 +1526,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '7th Bhava — Marriage, Spouse, Partnerships & Public Standing',
       domainTe: 'వివాహ సౌఖ్యం, జీవిత భాగస్వామి గుణగణాలు, వ్యాపార వృద్ధి మరియు సామాజిక సంబంధాలు',
       shastraSutraTe: 'భావార్థ రత్నాకరం (సప్తమ భావ ప్రమాణం): "దారేశే శుభసంయుక్తే నవాంశే బలశాలిని, ఉత్తమస్త్రీ/భర్తృలాభశ్చ వివాహాత్ భాగ్యవర్ధనమ్"',
-      kendraTrikonaBonus: 'సప్తమ కేంద్ర బలం వల్ల వివాహానంతరం అదృష్టం కలిసివచ్చి ఆర్థిక-కుటుంబ ఉన్నతి కలుగుతుంది.',
     },
     {
       num: 8,
@@ -1606,7 +1533,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '8th Bhava — Longevity, Research, Transformation & Legacy',
       domainTe: 'ఆయుర్దాయం, పూర్వీకుల ఆస్తులు, లోతైన పరిశోధనా శక్తి మరియు ఆపదల నుండి రక్షణ',
       shastraSutraTe: 'బృహజ్జాతకం (ఆయుర్దాయ ప్రమాణం): "అష్టమేశే స్వక్షేత్రే వా శనిజీవసమన్వితే, దీర్ఘాయుర్గూఢవిద్యాజ్ఞో నిధిలాభమవాప్నుయాత్"',
-      kendraTrikonaBonus: 'గూఢ శాస్త్రాలు, సాంకేతిక పరిశోధన మరియు క్లిష్ట పరిస్థితులను అధిగమించే మానసిక స్థైర్యం ఉంటాయి.',
     },
     {
       num: 9,
@@ -1614,7 +1540,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '9th Bhava — Fortune, Dharma, Father & Higher Wisdom',
       domainTe: 'భాగ్యోదయం, ధర్మచింతన, పితృ వర్గ ఆశీస్సులు, పుణ్యక్షేత్ర సందర్శన మరియు విదేశీ యోగం',
       shastraSutraTe: 'బృహత్ పరాశర హోరా శాస్త్రం (భాగ్య భావం): "భాగ్యేశే బలసంపన్నే లగ్నకర్మాన్వితే శుభే, ధర్మనిష్ఠో మహాభాగ్యో రాజపూజ్యో భవేన్నరః"',
-      kendraTrikonaBonus: 'నవమ కోణ స్థానం పరమ శుభప్రదం కావడంతో ధర్మబద్ధమైన జీవనం, దైవబలం మరియు శాశ్వత కీర్తి లభిస్తాయి.',
     },
     {
       num: 10,
@@ -1622,15 +1547,13 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '10th Bhava — Career, Profession, Authority & Karma',
       domainTe: 'ఉద్యోగ-వ్యాపార ఉన్నతి, రాజసన్మానం, అధికార పదవులు మరియు కర్మ కుశలత',
       shastraSutraTe: 'ఫలదీపిక (కర్మ భావ అధ్యాయం): "దశమేశే బలోపేతే కేంద్రకోణగతే శుభే, సత్కర్మరతో మానీ రాజ్యలాభమవాప్నుయాత్"',
-      kendraTrikonaBonus: 'దశమ కేంద్ర బలం వల్ల వృత్తి రంగంలో నాయకత్వ స్థాయి, ఉన్నతాధికారుల మన్ననలు మరియు ఆర్థిక గౌరవం సిద్ధిస్తాయి.',
     },
     {
       num: 11,
       titleTe: '11. లాభ & ఆదాయ భావం (సర్వతోముఖ లాభాలు, అభీష్ట సిద్ధి & పెద్దల ఆదరణ)',
       titleEn: '11th Bhava — Gains, Income & Fulfillment of Aspirations',
       domainTe: 'బహుముఖ ఆదాయ మార్గాలు, కోరికల నెరవేర్పు, జ్యేష్ఠ సోదరులు మరియు మిత్రుల సహకారం',
-      shastraSutraTe: 'ఉత్తర కాలామృతం (లాభ భావ శ్లోకం): "లాభేశే కేంద్రకోణస్థే సర్వే గ్రహాశ్చ లాభగాః, సర్వాభీష్టప్రసిద్ధిశ్చ నిత్యం ధనసమৃদ্ধిమాన్"',
-      kendraTrikonaBonus: 'ఏకాదశ లాభ స్థానం వల్ల చేపట్టిన పనులలో ఆర్థిక లాభం మరియు పెట్టుబడుల ద్వారా స్థిరమైన వృద్ధి కలుగుతాయి.',
+      shastraSutraTe: 'ఉత్తర కాలామృతం (లాభ భావ శ్లోకం): "లాభేశే కేంద్రకోణస్థే సర్వే గ్రహాశ్చ లాభగాః, సర్వాభీష్టప్రసిద్ధిశ్చ నిత్యం ధనసమృద్ధిమాన్"',
     },
     {
       num: 12,
@@ -1638,7 +1561,6 @@ export function generateTeluguSampoornaJathakam(
       titleEn: '12th Bhava — Auspicious Expenditure, Foreign Lands & Liberation',
       domainTe: 'శుభకార్యములకు ధనవ్యయం, విదేశీ ప్రయాణాలు/నివాసం, దానధర్మాలు మరియు మోక్ష చింతన',
       shastraSutraTe: 'జాతక పారిజాతం (వ్యయ భావ ప్రమాణం): "వ్యయేశే శుభసంయుక్తే ధర్మకార్యరతో నరః, విదేశయానసంపత్తిః సద్గతిం చాధిగచ్ఛతి"',
-      kendraTrikonaBonus: 'ధర్మకార్యాలకు, విద్యకు, ఆస్తుల కొనుగోలుకు సద్వినియోగమయ్యే శుభ వ్యయం కలుగుతుంది.',
     },
   ];
 
@@ -1679,24 +1601,75 @@ export function generateTeluguSampoornaJathakam(
       }
     }
 
+    // ── భావ నిర్ణయం — ఇక్కడ ఏ వాక్యమూ స్థిరం కాదు; ఇంటి నివాసులు, వారి స్వభావం,
+    //    అధిపతి స్థానం/స్థితి, సర్వాష్టకవర్గ బిందువుల నుంచే వస్తుంది.
+    const occIds = occupants.map((o) => o.id);
+    const aspIds = aspectingShortTe
+      .map((short) => nineIds.find((id) => stripParens(TELUGU_PLANETS[id]?.nameTe ?? id) === short))
+      .filter((x): x is string => Boolean(x));
+    const subhaCount = (ids: string[]) => ids.filter((id) => grahaNature(id) === 'subha').length;
+    const occSubha = subhaCount(occIds);
+    const aspSubha = subhaCount(aspIds);
+
+    const flavourTe = (total: number, subha: number) =>
+      total === 0 ? 'none' : subha === total ? 'subha' : subha === 0 ? 'papa' : 'mixed';
+
+    const occFlavour = flavourTe(occIds.length, occSubha);
+    const aspFlavour = flavourTe(aspIds.length, aspSubha);
+
+    const domainClause = (kind: 'subha' | 'papa' | 'mixed' | 'none') =>
+      kind === 'subha'
+        ? `${bDef.domainTe} విషయాలలో సానుకూల ఫలితాలు, స్థిరత్వం`
+        : kind === 'papa'
+          ? `${bDef.domainTe} విషయాలలో ఆలస్యం, ఒత్తిడి, పోటీ — క్రమమైన ప్రయత్నంతో ఫలితం సిద్ధిస్తుంది`
+          : `${bDef.domainTe} విషయాలలో ఫలితాలు మిశ్రమం — మంచి-చెడు రెండూ కలిసి వస్తాయి`;
+
+    const occClause =
+      occIds.length > 0
+        ? `ఈ ఇంట ${occupantsShortTe
+            .map((n, i) => `${n} (${grahaNature(occIds[i]) === 'subha' ? 'శుభుడు' : 'పాపుడు'})`)
+            .join(', ')} ఉన్నారు — ${domainClause(occFlavour)}.`
+        : aspIds.length > 0
+          ? `ఇంట ఎవరూ లేరు; ${aspectingShortTe
+              .map((n, i) => `${n} (${grahaNature(aspIds[i]) === 'subha' ? 'శుభుడు' : 'పాపుడు'})`)
+              .join(', ')} దృష్టి ఉంది — ${domainClause(aspFlavour)}.`
+          : `ఇంట ఎవరూ లేరు, ఎవరి దృష్టి లేదు — ఫలితం పూర్తిగా అధిపతి ${lordTeName} స్థితిపై ఆధారపడుతుంది.`;
+
+    const lordHouseClause = (() => {
+      const h = lordPlacedHouse;
+      if ([1, 4, 7, 10].includes(h)) return `అధిపతి ${h}వ కేంద్రంలో — భావ విషయాలు స్థిరంగా నిలిచి క్రమంగా వృద్ధి చెందుతాయి.`;
+      if ([5, 9].includes(h)) return `అధిపతి ${h}వ త్రికోణంలో — శుభాధిక్యం, పూర్వజన్మ పుణ్యబలం కలిసి వస్తుంది.`;
+      if ([6, 8, 12].includes(h)) return `అధిపతి ${h}వ ${h === 6 ? 'షష్ఠ' : h === 8 ? 'అష్టమ' : 'ద్వాదశ'} స్థానంలో — భావ విషయాలలో ఒడిదుడుకులు; పరిహారం అవసరం.`;
+      return `అధిపతి ${h}వ ఉపచయ స్థానంలో — వయస్సుతో క్రమంగా వృద్ధి చెందుతుంది.`;
+    })();
+
+    const dignityClause = (() => {
+      const d = lordPlanet?.dignity ?? 'Neutral';
+      if (['Exalted', 'Moolatrikona', 'Own Sign'].includes(d)) return ' అధిపతికి స్వక్షేత్ర/ఉచ్ఛ బలం ఉంది.';
+      if (d === 'Debilitated') return ' అధిపతి నీచ స్థితిలో ఉన్నాడు — ఫలాలు ఆలస్యంగా, శ్రమతో వస్తాయి.';
+      return '';
+    })();
+
+    const savOfHouse = chart.ashtakavarga.sarvashtakavarga[(lagnaSignIdx + bDef.num - 1) % 12];
+    const savClause = `ఈ భావానికి సర్వాష్టకవర్గం ${savOfHouse} బిందువులు${
+      savOfHouse >= 33 ? ' (సగటు 28 కంటే చాలా ఎక్కువ — బలమైన భావం)' : savOfHouse >= 28 ? ' (సగటు స్థాయి)' : ' (సగటు 28 కంటే తక్కువ — నిర్బంధం)'
+    }.`;
+
+    // భావం "బలం" అని చెప్పే ముందు నాలుగు నిబంధనలు: అధిపతి శుభ స్థానంలో,
+    // నివాసులు పాపులు కాకుండా, దృష్టి పాపులది కాకుండా, సర్వాష్టకవర్గం సగటు పైన.
     const isStrong =
-      [1, 4, 5, 7, 9, 10, 11].includes(lordPlacedHouse) ||
-      ['Exalted', 'Moolatrikona', 'Own Sign'].includes(lordPlanet?.dignity ?? 'Neutral');
+      [1, 4, 5, 7, 9, 10, 11].includes(lordPlacedHouse) &&
+      (occIds.length === 0 || occFlavour === 'subha') &&
+      (aspIds.length === 0 || aspFlavour === 'subha') &&
+      savOfHouse >= 28;
 
     const strengthTe: DwadashaBhavaPredictionTe['strengthTe'] = isStrong
       ? 'ఉత్తమ బలం (Strong)'
-      : [6, 8, 12].includes(lordPlacedHouse)
+      : [6, 8, 12].includes(lordPlacedHouse) || savOfHouse < 25
         ? 'శాంతి అవసరము (Needs Remedy)'
         : 'మధ్యమ బలం (Moderate)';
 
-    const occClause =
-      occupantsShortTe.length > 0
-        ? `ఈ ఇంట ${occupantsShortTe.join(', ')} సంచారం వల్ల ${bDef.domainTe} విషయాలలో చురుకైన పురోగతి ఉంటుంది.`
-        : aspectingShortTe.length > 0
-          ? `ఈ ఇంటిపై ${aspectingShortTe.join(', ')} దృష్టి ఉండటం వల్ల ${bDef.domainTe} విషయాలలో శుభ ఫలితాలు అందుతాయి.`
-          : `భావాధిపతి ${lordTeName} బలం వల్ల ${bDef.domainTe} విషయాలు స్థిరంగా వృద్ధి చెందుతాయి.`;
-
-    const predictionTe = `${rasiPureTe} అధిపతి ${lordTeName} ${lordPlacedHouse}వ ఇంట (${lordD1PureTe}లో, నవాంశలో ${lordD9PureTe}) ఉన్నాడు. ${occClause} ${bDef.kendraTrikonaBonus}`;
+    const predictionTe = `${rasiPureTe} అధిపతి ${lordTeName} ${lordPlacedHouse}వ ఇంట (${lordD1PureTe}లో, నవాంశలో ${lordD9PureTe}) ఉన్నాడు. ${occClause} ${lordHouseClause}${dignityClause} ${savClause}`;
 
     return {
       bhavaNumber: bDef.num,
@@ -1747,19 +1720,19 @@ export function generateTeluguSampoornaJathakam(
           ? `ఈ జాతకంలో ${chart.vedicYogas.map((y) => y.name).join(', ')} వంటి విశేష యోగాలు క్రియాశీలకంగా ఉన్నాయి.`
           : 'కేంద్ర-త్రికోణాధిపతుల దశా కాలాలలో ఉన్నత పురోగతి నిశ్చయం.'
       }`,
-      keyVerdictTe: `లగ్నాధిపతి ${lagnaLordPlanet.house}వ భావ స్థితి & ${lagnaShastraRaw.yogakarakaTe.split('(')[0].trim()} యోగబలం`,
+      keyVerdictTe: `లగ్నాధిపతి ${lagnaLordPlanet.house}వ భావ స్థితి & యోగకారకత్వం: ${ykShortTe}${functional.yogakarakas.length === 0 ? ` (అత్యుత్తమ శుభుడు ${bestBeneficTe})` : ''}`,
     },
     {
       id: 'brihat-jataka-chandra',
       granthaNameTe: '2. బృహజ్జాతకం (Brihat Jataka)',
       authorTe: 'వరాహమిహిరాచార్యులు (Acharya Varahamihira)',
       chapterRefTe: 'చంద్ర రాశ్యాధ్యాయం & నక్షత్ర ఫలాధ్యాయం (అధ్యాయం 16 & 18)',
-      sanskritSlokaTe: 'చంద్రే బలాढ్యే సుఖవాన్ మనస్వీ విద్యావినীতో ధనవాన్ నరః స్యాత్ | స్వక్షేత్రమిత్రోచ్చగతే విశేషాత్ ||',
+      sanskritSlokaTe: 'చంద్రే బలాढ్యే సుఖవాన్ మనస్వీ విద్యావినీతో ధనవాన్ నరః స్యాత్ | స్వక్షేత్రమిత్రోచ్చగతే విశేషాత్ ||',
       topicTitleTe: `జన్మ రాశి (${janmaRasiObj.nameTe}) & ${nakTeInfo.nameTe} నక్షత్ర మనోబల విశ్లేషణ`,
       deepAnalysisTe: `వరాహమిహిరుని 'బృహజ్జాతకం' ప్రకారం మనఃకారకుడైన చంద్రుడు మీ కుండలిలో ${janmaRasiObj.nameTe}లో (${moon.house}వ భావంలో), ${nakTeInfo.nameTe} నక్షత్రం ${pada}వ పాదంలో ఉన్నాడు. ${
         chart.panchanga.tithi.paksha.startsWith('Shukla')
           ? 'మీరు శుక్ల పక్షంలో జన్మించడం చేత చంద్రునికి పక్షబలం (Chesta Bala) పుష్కలంగా ఉంది.'
-          : 'కృష్ణ పక్ష చంద్రుడు లోతైన ఆలోచన, అంతర్দৃষ্টি మరియు పరిశీలనా శక్తిని ప్రసాదిస్తాడు.'
+          : 'కృష్ణ పక్ష చంద్రుడు లోతైన ఆలోచన, అంతర్దృష్టి మరియు పరిశీలనా శక్తిని ప్రసాదిస్తాడు.'
       } మీ జన్మ గణం ${nakTeInfo.ganaTe}, నాడి ${nakTeInfo.nadiTe}. దీనివల్ల మీరు సత్యనిష్ఠ, ఆత్మీయత మరియు పట్టుదలతో లక్ష్యాలను సాధించే స్వభావం కలిగి ఉంటారు.`,
       keyVerdictTe: `${janmaRasiObj.nameTe} — ${nakTeInfo.nameTe} (${pada}వ పాదం · "${namaAksharamTe}")`,
     },
@@ -1804,8 +1777,12 @@ export function generateTeluguSampoornaJathakam(
       chapterRefTe: 'ద్వాదశ లగ్న యోగకారక & మారక నిరూపణ (అధ్యాయం 1–12)',
       sanskritSlokaTe: 'కేంద్రకోణాధిపావన్యౌ సంబంధం యది గచ్ఛతః | యోగకారకతాం యాతౌ భుక్తికాలే శుభప్రదౌ ||',
       topicTitleTe: `${lagnaRasiObj.nameTe}నకు యోగకారక, శుభ & బాధక గ్రహ రహస్య నిర్ణయం`,
-      deepAnalysisTe: `'భావార్థ రత్నాకరం' ప్రకారం ప్రతి లగ్నానికి కొన్ని గ్రహాలు మాత్రమే సహజ రాజయోగకారకులుగా పనిచేస్తాయి. మీ ${lagnaRasiObj.nameTe}నకు ${lagnaShastraRaw.yogakarakaTe} ప్రధాన యోగకారకులు కాగా, ${lagnaShastraRaw.shubhaTe} శుభ గ్రహాలు. అదే విధంగా ${lagnaShastraRaw.badhakaHouse}వ భావం (${badhakaRasiTe}) బాధక స్థానం అవుతుంది. యోగకారక గ్రహాల మహాదశ లేదా అంతర్దశ వచ్చినప్పుడు ఎటువంటి ఆటంకాలు లేకుండా ఆస్తులు, పదవులు మరియు కుటుంబ శుభకార్యాలు నెరవేరుతాయి.`,
-      keyVerdictTe: `యోగకారకుడు: ${lagnaShastraRaw.yogakarakaTe.split('(')[0].trim()}`,
+      deepAnalysisTe: `'భావార్థ రత్నాకరం' ప్రకారం కేంద్ర (1/4/7/10) మరియు త్రికోణ (5/9) అధిపత్య సంబంధం ఉన్న గ్రహమే క్రియాత్మక యోగకారకుడు. ${lagnaRasiObj.nameTe} లగ్నానికి ${
+        functional.yogakarakas.length
+          ? `యోగకారకుడు ${ykShortTe}`
+          : `ఏకగ్ర యోగకారకుడు లేడు; అత్యుత్తమ క్రియాత్మక శుభుడు ${bestBeneficTe}`
+      }, శుభ గ్రహాలు ${shubhaShortTe}. బాధక స్థానం ${badhakaShortTe}. యోగకారకుడు/అత్యుత్తమ శుభుడు బలంగా ఉన్న మహాదశ–అంతర్దశలలో ఆస్తి, పదవి, కుటుంబ శుభకార్యాలు సులభంగా నెరవేరుతాయి.`,
+      keyVerdictTe: `యోగకారకుడు: ${ykShortTe}${functional.yogakarakas.length === 0 ? ` · శ్రేష్ఠ శుభుడు ${bestBeneficTe}` : ''}`,
     },
     {
       id: 'uttara-kalamrita-vipareeta',
@@ -1969,7 +1946,7 @@ export function generateTeluguSampoornaJathakam(
       titleTe: 'విదేశీ ప్రయాణాలు, దైవబలం & సమాజ కీర్తి',
       subtitleEn: 'Foreign Opportunities, Spiritual Siddhi, Karakamsa & D20 Vimsamsa (9th, 12th Houses)',
       keyHousesTe: `9వ భాగ్య (${TELUGU_RASIS[ninthSignIdx].nameTe.split(' ')[0]}), 12వ విదేశీ భావం & కారకాంశం (${arudhaPadas[2].rasiNameTe.split(' ')[0]})`,
-      karakaPlanetsTe: `భాగ్యాధిపతి ${stripParens(bhagyaLordMeta.nameTe)}, రాహువు (${rahu.house}వ భావం) & ఆత్మకారకుడు ${stripParens(jaiminiKarakas[0].planetNameTe)}`,
+      karakaPlanetsTe: `భాగ్యాధిపతి ${stripParens(bhagyaLordMeta.nameTe)} (${ninthLordPlanet.house}వ భావం), రాహువు (${rahu.house}వ భావం) & ఆత్మకారకుడు ${stripParens(jaiminiKarakas[0].planetNameTe)}`,
       scorePercent: 89,
       verdictBadgeTe: 'భాగ్యోదయం & దూరప్రాంత యోగం',
       analysisParagraphsTe: [
@@ -1994,21 +1971,28 @@ export function generateTeluguSampoornaJathakam(
     const startAge = Math.max(0, startYr - birthYear);
     const endAge = Math.max(startAge + 1, endYr - birthYear);
 
-    const isKendraTrikona = [1, 4, 5, 7, 9, 10, 11].includes(dPlanet.house);
-    const isStrongDig = ['Exalted', 'Moolatrikona', 'Own Sign'].includes(dPlanet.dignity);
-
-    const ratingTe: MahadashaRoadmapItemTe['ratingTe'] =
-      isKendraTrikona && isStrongDig
-        ? 'రాజయోగ కాలం'
-        : isKendraTrikona || isStrongDig
-          ? 'శుభ వృద్ధి కాలం'
-          : 'మిశ్రమ / జాగ్రత్త కాలం';
-
-    const predictionTe = `${dNamePure} ${dPlanet.house}వ ఇంట (${dRasiTe} రాశి, ${dNakTe.nameTe} నక్షత్రం) ఉన్నాడు. ${startAge}–${endAge} సం.ల వయస్సు మధ్య ${
-      isKendraTrikona
-        ? `విద్య, ఉద్యోగ, ధన, గృహ-వాహన మరియు కుటుంబ శుభకార్యాలలో విశేష పురోగతి లభిస్తుంది.`
-        : `పట్టుదల మరియు ${stripParens(dMeta.devataTe)} ఆరాధన ద్వారా ఆటంకాలు తొలగి స్థిరమైన విజయం చేకూరుతుంది.`
-    }`;
+    // ఫలం = వయస్సు + దశానాథుని స్థానం/అధిపత్యం/బలం నుంచి (మహాదశా ఫల ఇంజిన్).
+    // పసిపాపకు ఉద్యోగం, వివాహం చెప్పే టెంప్లేట్ ఇక లేదు.
+    const isNode = d.lord === 'Rahu' || d.lord === 'Ketu';
+    const dispositor = isNode ? ZODIAC_SIGNS[dPlanet.d1Sign].vedicRuler : d.lord;
+    const sbRow = chart.shadbala.find((r) => r.planet === dispositor);
+    const phala = mahadashaPhala({
+      lordId: d.lord,
+      lordNameTe: dNamePure,
+      house: dPlanet.house,
+      dignityTe: stripParens(DIGNITY_TE_MAP[dPlanet.dignity] ?? dPlanet.dignity),
+      shadbalaRupas: sbRow?.totalRupas ?? 0,
+      requiredRupas: sbRow?.requiredRupas ?? 0,
+      nakshatraTe: dNakTe.nameTe,
+      startAge,
+      endAge,
+      lagnaSign: chart.ascendant.signIndex,
+      isRetrograde: dPlanet.isRetrograde,
+      isNode,
+      dispositorTe: isNode ? (TELUGU_RASIS[dPlanet.d1Sign]?.nameTe.split(' ')[0] ?? '') : undefined,
+    });
+    const ratingTe: MahadashaRoadmapItemTe['ratingTe'] = phala.ratingTe as MahadashaRoadmapItemTe['ratingTe'];
+    const predictionTe = phala.predictionTe;
 
     const antardashasTe = d.antardashas.map((a) => ({
       bhuktiLordTe: TELUGU_PLANETS[a.lord]?.nameTe.split(' ')[0] ?? a.lord,
@@ -2273,7 +2257,36 @@ export function generateTeluguSampoornaJathakam(
     ashtakavargaTableTe,
     tarabalaChakraTe,
     granthaPramanaResearch,
-    jeevitaPradhanaRangalu,
+    jeevitaPradhanaRangalu: jeevitaPradhanaRangalu.map((pillar) => {
+      // స్కోరు/బ్యాడ్జ్/అనుకూల దశలు — చేతితో రాసిన స్థిరాంకాలు కాదు; కుండలి నుంచే.
+      const spec = PILLAR_SPECS[pillar.id];
+      if (!spec) return pillar;
+      const computed = computePillarScore(chart, spec);
+      const cautionTe =
+        computed.band === 'misra'
+          ? 'ఈ రంగంలో ప్రయత్నం + సమయం రెండూ అవసరం; ఫలితం క్రమంగా, కొంత ఆలస్యంతో వస్తుంది.'
+          : computed.band === 'shraddha'
+            ? 'ఈ రంగం బలహీనంగా ఉంది — శ్రద్ధ, క్రమశిక్షణ మరియు పరిహారం అవసరం. ఇక్కడ హామీ ఇవ్వడం తగదు.'
+            : computed.band === 'durbala'
+              ? 'ఈ రంగం దుర్బలం — ఊహించి చెప్పడం తగదు; పరిహారాలు మరియు నిపుణుల సలహా ముఖ్యం.'
+              : '';
+      // వివరణ పేరాలు — పరిశ్రమల జాబితాలు/వయస్సు బ్యాండ్లు/భాగస్వామి విశేషణాలు పోయాయి;
+      // ఇప్పుడు ప్రతి వాక్యమూ 5వ/10వ/7వ అధిపతి స్థానం, రాశి దృష్టి, SAV, వర్గ లగ్నం, షడ్బల క్రమం నుంచి.
+      const narrative = buildPillarNarrative(chart, pillar.id);
+      return {
+        ...pillar,
+        scorePercent: computed.score,
+        verdictBadgeTe: `${computed.bandTe} · ${computed.score}/100`,
+        analysisParagraphsTe: [
+          computed.leadTe,
+          ...narrative.paragraphsTe,
+          ...(cautionTe ? [cautionTe] : []),
+          narrative.silenceTe,
+          `గణన: ${computed.derivationTe}.`,
+        ],
+        favorablePeriodsTe: computed.favorableTe,
+      };
+    }),
     dwadashaBhavaPhalitalu,
     sampoornaDashaKalachakram,
     doshaParikshana,

@@ -174,7 +174,7 @@ const HOUSE_NAMES_TE: string[] = [
 /**
  * Computes exact KP Star Lord and Sub-Lord (249 subdivisions) for any sidereal longitude (0-360)
  */
-function computeKpStarAndSubLord(siderealLon: number): {
+export function computeKpStarAndSubLord(siderealLon: number): {
   nakIndex: number;
   nakNameTe: string;
   starLordId: string;
@@ -700,7 +700,7 @@ export function generateKundaliSookshmaNadiReport(
         ? 'చర లగ్నం (Movable Ascendant — 11వ భావం బాధక స్థానం)'
         : ascMod === 1
           ? 'స్థిర లగ్నం (Fixed Ascendant — 9వ భావం బాధక స్థానం)'
-          : 'ద్విস্বభావ లగ్నం (Dual Ascendant — 7వ భావం బాధక స్థానం)',
+          : 'ద్విస్వభావ లగ్నం (Dual Ascendant — 7వ భావం బాధక స్థానం)',
     badhakaHouse,
     badhakaRasiTe: TELUGU_RASIS[badhakaSignIdx].nameTe.split(' ')[0],
     badhakeshPlanetTe: badhakeshTe,

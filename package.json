@@ -9,7 +9,17 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "verify:panchanga": "tsx scripts/verify-panchanga.ts",
+    "verify:calendar": "tsx scripts/verify-calendar.ts",
+    "verify:calendar-lunar": "tsx scripts/verify-calendar-lunar.ts",
+    "verify:rise": "tsx scripts/verify-rise.ts",
+    "verify:festivals": "tsx scripts/verify-festivals.ts",
+    "verify:jathaka": "tsx scripts/verify-jathaka.ts",
+    "verify:shadbala": "tsx scripts/verify-shadbala.ts",
+    "verify:sampradaya": "tsx scripts/verify-sampradaya.ts",
+    "verify:astro": "tsx scripts/verify-astro.ts",
+    "verify": "npm run verify:astro && npm run verify:panchanga && npm run verify:calendar-lunar && npm run verify:rise && npm run verify:festivals && npm run verify:jathaka && npm run verify:shadbala && npm run verify:sampradaya"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

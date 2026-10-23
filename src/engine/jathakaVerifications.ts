@@ -288,7 +288,7 @@ export function generateVerificationAndAnalysisReport(
       isShifted,
       shiftEffectTe: isShifted
         ? `${pNameTe} రాశి చక్రంలో ${p.house}వ భావంలో ఉన్నప్పటికీ, శ్రీపతి భావ చలిత గణన ప్రకారం ${chalitaHouse}వ భావ సంధిలోకి మారినందున దశా-భుక్తి కాలంలో ${p.house}వ భావంతో పాటు ${chalitaHouse}వ భావ ఫలితాలను కూడా బలంగా ఇస్తాడు.`
-        : `${pNameTe} రాశి చక్రం మరియు భావ చలిత చక్రం రెంటిలోనూ స్థిరంగా ${p.house}వ భావంలోనే ఉన్నాడు (100% ఏకমুখ బలం).`,
+        : `${pNameTe} రాశి చక్రం మరియు భావ చలిత చక్రం రెంటిలోనూ స్థిరంగా ${p.house}వ భావంలోనే ఉన్నాడు (100% ఏకముఖ బలం).`,
     };
   });
 

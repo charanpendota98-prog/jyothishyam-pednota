@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { GRANTHA_PAGES } from '../engine/granthaPageMap.ts';
 
 export interface PdfExportProgress {
   isExporting: boolean;
@@ -284,10 +285,49 @@ export async function exportClassicalJathakaToPdf(
         undefined,
         'FAST'
       );
+
+      // పుట సంఖ్య — ప్రతి PDF పుట కింద (విషయ సూచికలో చూపిన నంబర్లతో సరిపోతుంది)
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(150, 140, 120);
+      pdf.text(
+        `Sri Sampoorna Jathaka Maha Grantha  ·  page ${i + 1} / ${totalPages}`,
+        a4WidthMm / 2,
+        a4HeightMm - 2.2,
+        { align: 'center' }
+      );
     } finally {
       pageEl.style.width = prevWidth;
       pageEl.style.maxWidth = prevMaxWidth;
     }
+  }
+
+  // ── PDF బుక్‌మార్క్‌లు (outline) ──────────────────────────────────────
+  // గ్రంథ పుట చిట్టా (granthaPageMap) నుంచే — విషయ సూచికలోని నంబర్లే ఇక్కడా.
+  // jsPDF బుక్‌మార్క్ శీర్షికలను UTF-16 గా ఎన్‌కోడ్ చేయదు; అందుకే ASCII ఆంగ్ల
+  // శీర్షికలు వాడుతున్నాము (తెలుగు శీర్షిక అక్షరాలు పాడైపోతాయి).
+  try {
+    const outlinePages = pages.map((_, i) => GRANTHA_PAGES[i]);
+    const parentByPart = new Map<string, ReturnType<typeof pdf.outline.add>>();
+    let partIdx = 0;
+    for (let i = 0; i < totalPages; i++) {
+      const meta = outlinePages[i];
+      const title = meta
+        ? `${meta.num}. ${meta.titleEn.replace(/^\d+\.\s*/, '')}`
+        : `Page ${i + 1}`;
+      const safeTitle = title.replace(/[^\x20-\x7E]/g, '').trim() || `Page ${i + 1}`;
+      const partKey = meta?.partTe ?? '';
+      let parent = parentByPart.get(partKey);
+      if (meta && !parent) {
+        partIdx += 1;
+        const partName = meta.partEn || `Part ${partIdx}`;
+        parent = pdf.outline.add(null, partName, { pageNumber: i + 1 });
+        parentByPart.set(partKey, parent);
+      }
+      pdf.outline.add(parent ?? null, safeTitle, { pageNumber: i + 1 });
+    }
+  } catch {
+    /* బుక్‌మార్క్‌లు విఫలమైనా PDF డౌన్‌లోడ్ ఆగకూడదు */
   }
 
   const safeName = personName

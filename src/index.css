@@ -2,21 +2,27 @@
 
 @layer base {
   :root {
-    --bg-canvas: #090C18;
-    --bg-surface: #0F1326;
-    --bg-elevated: #141932;
-    --border-hairline: rgba(255, 255, 255, 0.08);
-    --border-gold: rgba(201, 169, 110, 0.32);
-    --fg-primary: #EDE8E0;
-    --fg-muted: rgba(237, 232, 224, 0.62);
-    --fg-dim: rgba(237, 232, 224, 0.38);
-    --accent-gold: #C9A96E;
-    --accent-amethyst: #9B8FD4;
-    --accent-teal: #5BBFB5;
-    --accent-rose: #D47B7B;
+    /* ── Obsidian & antique-gold observatory palette ─────────────── */
+    --bg-canvas: #05060E;
+    --bg-surface: #0A0D1A;
+    --bg-elevated: #101524;
+    --bg-raised: #161C31;
+    --border-hairline: rgba(255, 255, 255, 0.075);
+    --border-gold: rgba(217, 185, 123, 0.34);
+    --fg-primary: #F4F0E8;
+    --fg-muted: rgba(244, 240, 232, 0.64);
+    --fg-dim: rgba(244, 240, 232, 0.38);
+    --accent-gold: #D9B97B;
+    --accent-gold-bright: #F1DCAE;
+    --accent-gold-deep: #B08E4F;
+    --accent-amethyst: #A79BE0;
+    --accent-teal: #66CBBF;
+    --accent-rose: #DB8484;
     --font-display: 'Noto Serif Telugu', 'Cormorant Garamond', Georgia, serif;
     --font-sans: 'Noto Sans Telugu', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 18px 44px -24px rgba(0, 0, 0, 0.9);
+    --shadow-gold: 0 0 0 1px rgba(217, 185, 123, 0.28), 0 12px 34px -14px rgba(217, 185, 123, 0.35);
   }
 
   body {
@@ -25,18 +31,339 @@
     font-family: var(--font-sans);
     font-size: 15px;
     line-height: 1.65;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.006em;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
+    letter-spacing: -0.01em;
   }
 
   .font-mono-tabular {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
+
+  *:focus-visible {
+    outline: 2px solid rgba(217, 185, 123, 0.65);
+    outline-offset: 2px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Global re-theme of the legacy hard-coded utility colours.
+   `[class~="..."]` matches the *exact* utility token only, so tinted
+   variants such as bg-[#C9A96E]/15 keep their transparency.
+   ══════════════════════════════════════════════════════════════════ */
+[class~="bg-[#090C18]"] { background-color: #05060E; }
+
+/* Softer, more contemporary corner radii across every legacy card */
+[class~="rounded-xl"] { border-radius: 14px; }
+[class~="rounded-2xl"] { border-radius: 20px; }
+[class~="rounded-lg"] { border-radius: 11px; }
+[class~="bg-[#090C18]/95"] { background-color: rgba(5, 6, 14, 0.94); }
+[class~="bg-[#090C18]/80"] { background-color: rgba(5, 6, 14, 0.8); }
+[class~="bg-[#0F1326]"] {
+  background-color: #0A0D1A;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.008) 46%, rgba(0, 0, 0, 0.18) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 18px 44px -32px rgba(0, 0, 0, 0.95);
+}
+[class~="bg-[#0F1326]/90"] { background-color: rgba(10, 13, 26, 0.9); }
+[class~="bg-[#141932]"] {
+  background-color: #101524;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.012) 60%, rgba(0, 0, 0, 0.16) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+[class~="bg-[#1E2548]"] { background-color: #1A2138; }
+[class~="text-[#EDE8E0]"] { color: #F4F0E8; }
+[class~="text-[#C9A96E]"] { color: #E4C68C; }
+[class~="bg-[#C9A96E]"] { background-color: #D9B97B; }
+[class~="border-[#C9A96E]"] { border-color: rgba(217, 185, 123, 0.9); }
+[class~="text-[#5BBFB5]"] { color: #6FD2C7; }
+[class~="text-[#9B8FD4]"] { color: #AC9FE8; }
+
+/* ── App canvas: deep space with layered nebula light ───────────── */
+.app-canvas {
+  position: relative;
+  isolation: isolate;
+  background-color: #05060E;
+  background-image:
+    radial-gradient(1150px 680px at 8% -8%, rgba(217, 185, 123, 0.13), transparent 62%),
+    radial-gradient(900px 620px at 92% 4%, rgba(126, 112, 210, 0.13), transparent 60%),
+    radial-gradient(760px 520px at 52% 108%, rgba(72, 168, 158, 0.10), transparent 62%),
+    linear-gradient(180deg, #070812 0%, #05060E 42%, #04050B 100%);
+}
+
+.app-canvas::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.42) 0, transparent 100%),
+    radial-gradient(1px 1px at 38% 7%, rgba(255, 255, 255, 0.30) 0, transparent 100%),
+    radial-gradient(1.4px 1.4px at 71% 26%, rgba(241, 220, 174, 0.45) 0, transparent 100%),
+    radial-gradient(1px 1px at 24% 62%, rgba(255, 255, 255, 0.24) 0, transparent 100%),
+    radial-gradient(1.6px 1.6px at 88% 44%, rgba(217, 185, 123, 0.35) 0, transparent 100%),
+    radial-gradient(1px 1px at 57% 83%, rgba(255, 255, 255, 0.22) 0, transparent 100%),
+    radial-gradient(1.4px 1.4px at 31% 41%, rgba(172, 159, 232, 0.32) 0, transparent 100%);
+}
+
+.app-canvas::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% -10%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* ── Shell: header, sigil, nav, KPI band ────────────────────────── */
+.shell-header {
+  background:
+    linear-gradient(180deg, rgba(12, 15, 28, 0.92) 0%, rgba(7, 9, 18, 0.88) 100%);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 18px 40px -30px rgba(0, 0, 0, 0.95);
+}
+
+.shell-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(217, 185, 123, 0.55), rgba(126, 112, 210, 0.35), transparent);
+}
+
+.brand-sigil {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(241, 220, 174, 0.28), transparent 62%),
+    linear-gradient(150deg, #1A2138 0%, #0B0F1E 100%);
+  border: 1px solid rgba(217, 185, 123, 0.42);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 10px 24px -12px rgba(217, 185, 123, 0.55);
+  color: #F1DCAE;
+}
+
+.brand-wordmark {
+  background: linear-gradient(96deg, #F6E7C4 0%, #E4C68C 42%, #C9A96E 78%, #F1DCAE 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(217, 185, 123, 0.85);
+}
+
+.nav-track {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.nav-fade {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+  scrollbar-width: none;
+}
+.nav-fade::-webkit-scrollbar { display: none; }
+
+.nav-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(244, 240, 232, 0.66);
+  white-space: nowrap;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.nav-pill:hover {
+  color: #F4F0E8;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.nav-pill[data-active='true'] {
+  color: #1A1408;
+  font-weight: 700;
+  background: linear-gradient(180deg, #F1DCAE 0%, #D9B97B 52%, #C4A468 100%);
+  box-shadow: 0 0 0 1px rgba(241, 220, 174, 0.5), 0 8px 22px -12px rgba(217, 185, 123, 0.8);
+}
+
+.kpi-band {
+  background: linear-gradient(180deg, rgba(10, 13, 26, 0.86), rgba(6, 8, 16, 0.86));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.kpi-chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  min-width: 0;
+}
+
+.kpi-chip .kpi-label {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(244, 240, 232, 0.42);
+}
+
+.kpi-chip .kpi-value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #F4F0E8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-chip .kpi-value.gold { color: #E4C68C; }
+.kpi-chip .kpi-value.teal { color: #6FD2C7; }
+.kpi-chip .kpi-value.violet { color: #AC9FE8; }
+
+.gold-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1A1408;
+  background: linear-gradient(180deg, #F1DCAE 0%, #D9B97B 55%, #C6A76C 100%);
+  box-shadow: 0 0 0 1px rgba(241, 220, 174, 0.4), 0 10px 24px -14px rgba(217, 185, 123, 0.9);
+  transition: transform 140ms ease, filter 140ms ease;
+  white-space: nowrap;
+}
+.gold-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(244, 240, 232, 0.82);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  white-space: nowrap;
+}
+.ghost-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(217, 185, 123, 0.45);
+  color: #F4F0E8;
+}
+
+.seg {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.seg > button {
+  padding: 4px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(244, 240, 232, 0.6);
+  transition: all 140ms ease;
+  white-space: nowrap;
+}
+.seg > button:hover { color: #F4F0E8; }
+.seg > button[data-active='true'] {
+  background: linear-gradient(180deg, rgba(241, 220, 174, 0.95), rgba(217, 185, 123, 0.9));
+  color: #1A1408;
+  box-shadow: 0 4px 12px -6px rgba(217, 185, 123, 0.8);
+}
+
+/* ── Elevated cards used across the deep views ──────────────────── */
+.astro-card {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.012) 42%, rgba(0, 0, 0, 0.12) 100%);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+.astro-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(217, 185, 123, 0.10), transparent 38%, transparent 62%, rgba(126, 112, 210, 0.08));
+  opacity: 0.9;
+}
+
+.section-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(217, 185, 123, 0.72);
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise { animation: rise-in 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+@keyframes slow-spin { to { transform: rotate(360deg); } }
+.sigil-spin { animation: slow-spin 48s linear infinite; transform-origin: 50% 50%; }
+
+@keyframes aura-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+.aura-pulse { animation: aura-pulse 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise, .sigil-spin, .aura-pulse { animation: none !important; }
 }
 
 .cosmic-starfield {
@@ -181,6 +508,42 @@
     color: #1A120B !important;
   }
 
+  /* Analytical tabs (panchanga, gochara, grantha mandala) print on paper:
+     dark cards become ivory, body text becomes ink, accents stay coloured. */
+  .grantha-print-area [class*="bg-[#0F1326]"],
+  .grantha-print-area [class*="bg-[#141932]"],
+  .grantha-print-area [class*="bg-[#0B0F1E]"],
+  .grantha-print-area [class*="bg-[#12162B]"],
+  .grantha-print-area [class*="bg-white/"],
+  .grantha-print-area [class*="from-[#12162B]"] {
+    background: #FFFDF9 !important;
+    background-image: none !important;
+    border-color: #C8B27A !important;
+    box-shadow: none !important;
+  }
+
+  .grantha-print-area [class*="text-[#EDE8E0]"]:not([class*="text-[#EDE8E0]/"]) {
+    color: #1A1412 !important;
+  }
+
+  .grantha-print-area [class*="text-[#EDE8E0]/"] {
+    color: #5C4A38 !important;
+  }
+
+  .grantha-print-area [class*="text-[#C9A96E]"] {
+    color: #8B1E1E !important;
+  }
+
+  .grantha-print-area svg text {
+    fill: #1A1412 !important;
+  }
+
+  .grantha-print-area table,
+  .grantha-print-area tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
   .print-page-break {
     page-break-before: always !important;
     break-before: page !important;
@@ -192,3 +555,71 @@
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Premium reading refinements (screen only)
+ * ------------------------------------------------------------------ */
+::selection {
+  background: rgba(201, 169, 110, 0.28);
+  color: #fffdf7;
+}
+
+.font-display {
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  letter-spacing: -0.005em;
+}
+
+/* Slim, dark scrollbars for long tables and grantha lists */
+.grantha-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 169, 110, 0.45) transparent;
+}
+.grantha-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.grantha-scroll::-webkit-scrollbar-thumb {
+  background: rgba(201, 169, 110, 0.35);
+  border-radius: 999px;
+}
+.grantha-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── జాతక మహాగ్రంథ పఠన శైలి (Jathakam book reading shell) ───────────── */
+.jathakam-book {
+  /* reading rhythm: chapters breathe, tables stay tight */
+  --book-line: rgba(255, 255, 255, 0.07);
+}
+.jathakam-book > * + * {
+  margin-top: 1.75rem;
+}
+.jathakam-book h2 {
+  scroll-margin-top: 96px;
+  letter-spacing: -0.01em;
+}
+.jathakam-book h3 {
+  scroll-margin-top: 96px;
+}
+.jathakam-book p,
+.jathakam-book li {
+  text-wrap: pretty;
+}
+.jathakam-book table {
+  border-collapse: collapse;
+}
+.jathakam-book table th {
+  letter-spacing: 0.02em;
+}
+/* Subtle chapter separators so the chapters don't blur into one wall */
+.jathakam-book > div > div + div {
+  border-top: 1px solid transparent;
+}
+.jathakam-book .print-page-break {
+  scroll-margin-top: 96px;
+}
+/* Print: the shell chrome disappears, the book flows as a document */
+@media print {
+  .jathakam-book {
+    zoom: 1 !important;
+  }
+}

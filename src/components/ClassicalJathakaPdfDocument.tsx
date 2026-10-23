@@ -1,13 +1,32 @@
 import React from 'react';
+import { ACCURACY } from '../engine/accuracySummary.ts';
 import type { CompleteChartResult } from '../engine/ephemeris.ts';
 import type { CompleteTeluguJathakamReport } from '../engine/teluguJathakam.ts';
 import { TELUGU_PLANETS, TELUGU_RASIS } from '../engine/teluguJathakam.ts';
+import { GRANTHAS } from '../engine/classicalSources.ts';
 import type { CompleteVerificationAndAnalysisReport } from '../engine/jathakaVerifications.ts';
 import type { AstroVisionMasterReport } from '../engine/astroVisionAndTransitEngine.ts';
 import type { SiddhantaAdvancedAppendicesReport } from '../engine/siddhantaAdvancedAppendices.ts';
 import type { UpayaPariharaReport } from '../engine/upayaPariharaEngine.ts';
 import type { SampoornaLifeChronicleReport } from '../engine/sampoornaLifeChronicleEngine.ts';
+import { computeSampradayaSamanyaya } from '../engine/sampradayaSamanyayaEngine.ts';
 import { generateTajikaVarshaphalaReport } from '../engine/tajikaVarshaphalaEngine.ts';
+import {
+  GRANTHA_PAGE_COUNT,
+  GRANTHA_PAGES,
+  granthaAnchor,
+  granthaPartsTe,
+} from '../engine/granthaPageMap.ts';
+import { buildGranthaProvenance } from '../engine/granthaProvenanceEngine.ts';
+import { computeYogaVichara } from '../engine/yogaVicharaEngine.ts';
+import { computeAshtakavargaPhala } from '../engine/ashtakavargaPhalaEngine.ts';
+import { computeAvakahada, MAITRI_TE } from '../engine/avakahadaEngine.ts';
+import { generateKundaliSookshmaNadiReport } from '../engine/kundaliSookshmaNadiEngine.ts';
+import { computeJeevitaVistara } from '../engine/jeevitaVistaraEngine.ts';
+import { computeAntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
+import type { AntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
+import { computeGrahaSahayaka, AREAS } from '../engine/grahaSahayakaEngine.ts';
+import { computeBhavaGrahaVistara } from '../engine/bhavaGrahaVistaraEngine.ts';
 
 interface ClassicalJathakaPdfDocumentProps {
   chart: CompleteChartResult;
@@ -256,6 +275,66 @@ const ClassicalBhavaChalitaBox: React.FC<{
   );
 };
 
+/** పుస్తక పుటల సంఖ్య — ఒకే మూలం (PDF హెడర్, UI టెక్స్ట్ రెండూ ఇదే చదువుతాయి) */
+export const JATHAKAM_PDF_PAGES = GRANTHA_PAGE_COUNT;
+
+
+/** 81 భుక్తి ఫలాలు — మూడు పుటలుగా (మహాదశ 3 చొప్పున). */
+const BhuktiPhalaPage: React.FC<{
+  adBook: AntardashaPhalaBook;
+  part: number;
+  id: string;
+  header: React.ReactNode;
+}> = ({ adBook, part, id, header }) => (
+  <section id={id} className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+    {header}
+    <div className="mb-1.5 text-[9px] text-[#5C3A21] leading-snug">
+      {adBook.methodNoteTe} <span className="text-[#7A1818]">{adBook.sourceNoteTe}</span>
+    </div>
+
+    {adBook.sections.slice(part * 3, part * 3 + 3).map((sec) => (
+      <div key={sec.lord} className="mb-2 border border-[#8B6914]">
+        <div className="bg-[#F3E8CE] px-2 py-1 flex flex-wrap items-baseline justify-between gap-1">
+          <span className="text-[10px] font-bold text-[#7A1818]">
+            {sec.lordTe} మహాదశ — {sec.house}వ భావం · సగటు బలం {sec.scoreAvg}%
+          </span>
+          <span className="text-[8.5px] font-mono-tabular text-[#5C3A21]">{sec.startLocal} → {sec.endLocal}</span>
+        </div>
+        <div className="px-2 py-1 text-[8.6px] leading-snug text-justify border-b border-[#8B6914]/40">{sec.summaryTe}</div>
+        <table className="w-full border-collapse text-[8.1px] leading-tight">
+          <thead>
+            <tr className="bg-[#F9F4E8] text-[#5C3A21]">
+              <th className="py-0.5 px-1 text-left w-[11%]">భుక్తి</th>
+              <th className="py-0.5 px-1 text-left w-[13%]">కాలం</th>
+              <th className="py-0.5 px-1 text-left w-[52%]">ఫలం</th>
+              <th className="py-0.5 px-1 text-left w-[24%]">జాగ్రత్త · పరిహారం</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/25">
+            {sec.rows.map((r, i) => (
+              <tr key={`${r.bhuktiLord}-${i}`} className={r.isRunning ? 'bg-[#FDF0D5]' : i % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#FAF6EC]'}>
+                <td className="py-[2px] px-1 align-top">
+                  <div className="font-semibold text-[#7A1818]">{r.bhuktiLordTe.split(' ')[0]}{r.isRunning ? ' ★' : ''}</div>
+                  <div className="text-[7.1px]">{r.relationTe} · {r.dignityTe.split('(')[0]}</div>
+                </td>
+                <td className="py-[2px] px-1 align-top font-mono-tabular text-[7.4px]">{r.startLocal}<br />{r.endLocal}</td>
+                <td className="py-[2px] px-1 align-top">
+                  <strong>{r.headlineTe}</strong> {r.phalaTe}
+                </td>
+                <td className="py-[2px] px-1 align-top text-[7.6px]">
+                  <div className="text-[#7A1818]">{r.cautionTe}</div>
+                  <div className="text-[#144D3E]">{r.remedyTe}</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ))}
+    <div className="text-[8px] text-[#5C3A21] text-right">★ = ప్రస్తుతం నడుస్తున్న భుక్తి · మొత్తం 81 భుక్తులు · {adBook.currentPathTe}</div>
+  </section>
+);
+
 export const ClassicalJathakaPdfDocument: React.FC<
   ClassicalJathakaPdfDocumentProps
 > = ({
@@ -267,12 +346,21 @@ export const ClassicalJathakaPdfDocument: React.FC<
   upayaReport,
   lifeChronicle,
 }) => {
-  const TOTAL_PAGES = 13;
+  const TOTAL_PAGES = JATHAKAM_PDF_PAGES;
   const currentYear = new Date().getFullYear();
   const varshaphalaReport = React.useMemo(
     () => generateTajikaVarshaphalaReport(chart, currentYear),
     [chart, currentYear]
   );
+  const samanyaya = React.useMemo(() => computeSampradayaSamanyaya(chart), [chart]);
+  const yogaVichara = React.useMemo(() => computeYogaVichara(chart), [chart]);
+  const avPhala = React.useMemo(() => computeAshtakavargaPhala(chart), [chart]);
+  const avakahada = React.useMemo(() => computeAvakahada(chart), [chart]);
+  const sookshma = React.useMemo(() => generateKundaliSookshmaNadiReport(chart), [chart]);
+  const vistara = React.useMemo(() => computeJeevitaVistara(chart), [chart]);
+  const adBook = React.useMemo(() => computeAntardashaPhalaBook(chart), [chart]);
+  const sahayaka = React.useMemo(() => computeGrahaSahayaka(chart), [chart]);
+  const vistaraDeep = React.useMemo(() => computeBhavaGrahaVistara(chart), [chart]);
   const mandiObj = advancedAppendices.upagrahas.find((u) => u.id === 'Mandi');
   const gulikaObj = advancedAppendices.upagrahas.find((u) => u.id === 'Gulika');
 
@@ -294,13 +382,15 @@ export const ClassicalJathakaPdfDocument: React.FC<
   );
 
   const saptaIds = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
+  // ప్రమాణ పట్టిక — ప్రతి వాక్యానికి ఆధారం (ఇంజిన్ నుంచే, చేతితో కాదు)
+  const provenance = buildGranthaProvenance(chart);
 
   return (
     <div className="classical-grantha-root space-y-8 text-[#181412] font-serif">
       {/* ===================================================================== */}
       {/* PAGE 1: MUKHAPATRAM, SWASTISRI PROCLAMATION, PANCHANGA, D1 & D9, SPHUTAS */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl print-avoid-break">
+      <section id="grantha-p1" className="classical-grantha-page bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl print-avoid-break">
         <PageHeaderStrip
           pageNum={1}
           pageTitleTe="ముఖపత్రం, పంచాంగం, రాశి-నవాంశ చక్రాలు & నిరయన గ్రహ స్ఫుటములు"
@@ -315,7 +405,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
             &ldquo;ఆదిత్యాయ చ సోమాయ మంగళాయ బుధాయ చ | గురు శుక్ర శనిభ్యశ్చ రాహవే కేతవే నమః ||&rdquo;
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#7A1818] mt-1 tracking-tight">
-            శ్రీ సంపూర్ణ దృగ్గణిత జాతక మహాగ్రంథం (12-పుటల Astro-Vision & సిద్ధాంత ప్రమాణం)
+            శ్రీ సంపూర్ణ దృగ్గణిత జాతక మహాగ్రంథం ({JATHAKAM_PDF_PAGES}-పుటల Astro-Vision & సిద్ధాంత ప్రమాణం)
           </h1>
           <div className="text-[10.5px] text-[#4A3B2C] font-semibold mt-0.5">
             చిత్రపక్ష (లహిరి) అయనాంశం: {chart.ayanamsaFormatted} · కలియుగ శాలివాహన శక దృగ్గణిత పద్ధతి · జూలియన్ దినం: {chart.julianDay.toFixed(4)}
@@ -535,14 +625,74 @@ export const ClassicalJathakaPdfDocument: React.FC<
             ))}
           </tbody>
         </table>
+
+        {/* రాహు పాత సంప్రదాయం — మధ్యమ (పంచాంగం) మరియు సత్య (ఆస్కులేటింగ్) రెండూ */}
+        <div className="mt-2 border-t border-[#8B6914]/40 pt-1.5 text-[9.5px] leading-snug text-[#5C3A21]">
+          <strong className="text-[#7A1818]">రాహు పాత సంప్రదాయం:</strong>{' '}
+          ఈ గ్రంథం మధ్యమ రాహును (తెలుగు పంచాంగ పత్రికలు, Astro-Vision ముద్రిత జాతకాల ప్రమాణం) వాడుతుంది —
+          మధ్యమ రాహు{' '}
+          <span className="font-semibold">
+            {TELUGU_RASIS[Math.floor(chart.nodeSphuta.meanSiderealLon / 30)]?.nameTe.split(' ')[0]}{' '}
+            {(chart.nodeSphuta.meanSiderealLon % 30).toFixed(2)}°
+          </span>
+          , సత్య రాహు{' '}
+          <span className="font-semibold">
+            {TELUGU_RASIS[Math.floor(chart.nodeSphuta.trueSiderealLon / 30)]?.nameTe.split(' ')[0]}{' '}
+            {(chart.nodeSphuta.trueSiderealLon % 30).toFixed(2)}°
+          </span>{' '}
+          (భేదం {chart.nodeSphuta.differenceDeg.toFixed(2)}°). కేతువు ఎల్లప్పుడూ రాహువుకు సరిగ్గా 180° ఎదురుగా.
+        </div>
       </section>
 
       {/* ===================================================================== */}
+      {/* ===================================================================== */}
+      {/* PAGE 2: విషయ సూచిక — గ్రంథ పుట చిట్టా (granthaPageMap) నుంచే          */}
+      {/* ===================================================================== */}
+      <section id="grantha-p2" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={2} pageTitleTe="విషయ సూచిక (Table of Contents)" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-3 text-[10px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">ఈ గ్రంథాన్ని ఎలా చదవాలి: </strong>
+          మొదటి పుటలో మూల కుండలి (D1 · D9 · స్ఫుటాలు · పంచాంగం). తర్వాత భావ చలితం, వర్గాలు, బలం (షడ్బలం ·
+          అష్టకవర్గం), కాల చక్రం (81 భుక్తులు), గ్రహ ఫలాలు, భావ ఫలాలు, పరిహారాలు, వర్షఫలం, చివరగా
+          సప్త-సంప్రదాయ సమన్వయం మరియు <strong>ప్రమాణ పట్టిక</strong> (ఏ వాక్యం ఎక్కడినుంచి వచ్చిందో).
+          ఏ అంశాన్ని ఎక్కడ వెతకాలో క్రింది సూచిక చెబుతుంది.
+        </div>
+
+        <div className="space-y-2.5">
+          {granthaPartsTe().map((part) => (
+            <div key={part.partTe}>
+              <div className="text-[9.5px] font-bold text-[#7A1818] tracking-wide border-b border-[#8B6914]/60 pb-0.5 mb-1">
+                {part.partTe}
+              </div>
+              <ol className="space-y-[3px]">
+                {part.pages.map((pg) => (
+                  <li key={pg.id} className="flex items-baseline gap-1 text-[10.5px] leading-snug">
+                    <a href={`#${pg.id}`} className="text-[#181412] hover:text-[#7A1818]">
+                      {pg.titleTe}
+                    </a>
+                    <span className="flex-1 border-b border-dotted border-[#8B6914]/60" />
+                    <span className="font-mono font-bold text-[#7A1818] w-6 text-right">{pg.num}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 border-t border-[#8B6914] pt-1.5 text-[8.5px] text-[#5C3A21] leading-relaxed">
+          <strong className="text-[#7A1818]">బుక్‌మార్క్‌లు: </strong>
+          PDF సంచికలో ఎడమ వైపు <em>outline</em> (బుక్‌మార్క్) జాబితా ఇదే క్రమంలో, ఇదే పుట నంబర్లతో ఉంటుంది.
+          విషయ సూచిక, బుక్‌మార్క్‌లు, ప్రతి పుట శీర్షికపై ఉన్న “పుట n / {TOTAL_PAGES}” — మూడూ ఒకే మూలం
+          (<em>src/engine/granthaPageMap.ts</em>) నుంచి వస్తాయి; ఒక పుట కలిపినా తీసినా ఇవి తమంతట తాము సరిపోతాయి.
+        </div>
+      </section>
+
       {/* PAGE 2: SRIPATI BHAVA CHALITA TABLE & KUNDALI, ALL 11 UPAGRAHAS & PANCHADHA MAITRI */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p3" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={2}
+          pageNum={3}
           pageTitleTe="శ్రీపతి భావ చలిత పట్టిక, భావ చలిత కుండలి, 11 ఉపగ్రహ స్ఫుటములు & పంచధా మైత్రి"
         />
 
@@ -706,9 +856,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 3: 6 DIVISIONAL VARGA KUNDALIS (D2, D3, D4, D7, D10, D12) & VAISHESHIKAMSA */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p4" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={3}
+          pageNum={4}
           pageTitleTe="షోడశవర్గ చక్ర మాలిక (D2, D3, D4, D7, D10, D12), షోడశవర్గ పట్టిక & వైశేషికాంశ బలం"
         />
 
@@ -853,9 +1003,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 4: SHADBALA, ISHTA/KASHTA PHALA, 12-HOUSE BHAVA BALA & AVASTHAS */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p5" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={4}
+          pageNum={5}
           pageTitleTe="షడ్బల పిండం, ఇష్ట-కష్ట ఫలములు, ద్వాదశ భావ బలం & త్రివిధ గ్రహావస్థలు"
         />
 
@@ -1017,9 +1167,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 5: BHINNASHTAKAVARGA 7×12 MATRIX, SHODHYA PINDA & SUDARSHANA CHAKRA */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p6" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={5}
+          pageNum={6}
           pageTitleTe="భిన్నాష్టకవర్గ, సర్వాష్టకవర్గ, శోధ్య పిండ సాధన & సుదర్శన చక్ర సమన్వయం"
         />
 
@@ -1145,9 +1295,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 6: JAIMINI KARAKAS, JAIMINI CHARA DASHA, 22ND DREKKANA, PAPA SAMYAM & SADE SATI */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p7" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={6}
+          pageNum={7}
           pageTitleTe="జైమిని కారకులు, జైమిని చర రాశి దశా కాలచక్రం, పాప సామ్యం & ఏలినాటి శని"
         />
 
@@ -1324,9 +1474,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 7: COMPLETE 9 MAHADASHA × 9 BHUKTI (81 ANTARDASHAS) EXACT DATES MATRIX */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p8" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={7}
+          pageNum={8}
           pageTitleTe="వింశోత్తరి 120-సంవత్సరాల 9 మహాదశలు × 9 భుక్తులు (81 అంతర్దశల తేదీల సంపూర్ణ పట్టిక)"
         />
 
@@ -1401,9 +1551,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 8: HOROSCOPE EXECUTIVE IDENTITY & NAVAGRAHA INDIVIDUAL LIFE PREDICTIONS (PART 1: SUN TO JUPITER) */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p9" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={8}
+          pageNum={9}
           pageTitleTe="జాతకుని సమగ్ర జీవిత స్వరూపం & నవగ్రహ వ్యక్తిగత జీవిత ఫలితములు (భాగం-1)"
         />
 
@@ -1474,9 +1624,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 9: NAVAGRAHA PREDICTIONS (PART 2: VENUS TO KETU) + MARRIAGE & CAREER BLUEPRINTS */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p10" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={9}
+          pageNum={10}
           pageTitleTe="నవగ్రహ వ్యక్తిగత ఫలితములు (భాగం-2), వివాహ భాగస్వామి & ఉద్యోగ-వ్యాపార బ్లూప్రింట్"
         />
 
@@ -1586,9 +1736,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 10: BIRTH-TO-100 YEARS 7 LIFE EPOCHS CHRONICLE & 9 MAHADASHA PHALALU */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p11" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={10}
+          pageNum={11}
           pageTitleTe="బాల్యం నుండి శతాయుష్షు వరకు 7 జీవిత పర్వాల విశ్లేషణ & మహాదశా ఫలితాలు"
         />
 
@@ -1666,9 +1816,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 11: DWADASHA BHAVA PHALITALU (ALL 12 HOUSES) & ALL 12 GRANTHA CITATIONS */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p12" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={11}
+          pageNum={12}
           pageTitleTe="ద్వాదశ భావ సంపూర్ణ ఫలితములు (1–12 భావాలు) & 12 ప్రాచీన గ్రంథాల ప్రమాణ విశ్లేషణ"
         />
 
@@ -1731,11 +1881,222 @@ export const ClassicalJathakaPdfDocument: React.FC<
       </section>
 
       {/* ===================================================================== */}
+      {/* PAGE: DWADASHA BHAVA DEEP I — భావాలు 1–6                                */}
+      {/* ===================================================================== */}
+      <section id="grantha-p13" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={13} pageTitleTe="ద్వాదశ భావ సూక్ష్మ విచారం I — భావాలు 1–6 (ఆధారం · అధిపతి · నివాసులు · దృష్టి · బలం · కాలం)" />
+        <div className="mb-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9px] leading-snug">
+          <strong className="text-[#7A1818]">సమగ్ర సమన్వయం: </strong>{vistaraDeep.synthesisTe}
+          <div className="text-[8px] text-[#5C3A21] mt-0.5">{vistaraDeep.methodNoteTe}</div>
+        </div>
+        <div className="space-y-2">
+          {vistaraDeep.bhavas.slice(0, 6).map((bh) => (
+            <div key={bh.house} className="border border-[#8B6914]">
+              <div className="flex flex-wrap items-baseline justify-between gap-1 bg-[#F3E8CE] px-2 py-1">
+                <span className="text-[10px] font-bold text-[#7A1818]">{bh.house}. {bh.titleTe}</span>
+                <span className="text-[8.4px]">
+                  {bh.rasiTe} · SAV <strong>{bh.sav}</strong> ({bh.savBandTe}) · అధిపతి {bh.lordTe} {bh.lordHouse}వ భావంలో · <strong className="text-[#144D3E]">{bh.scorePct}%</strong>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-2 py-1 text-[8.2px] leading-snug">
+                {bh.sections.map((sec) => (
+                  <div key={sec.headingTe}>
+                    <span className="font-bold text-[#5C3A21]">{sec.headingTe}: </span>
+                    {sec.bodyTe}
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-[#8B6914]/40 px-2 py-1 text-[8.4px] leading-snug">
+                <div><strong className="text-[#7A1818]">తీర్పు: </strong>{bh.verdictTe}</div>
+                <div><strong className="text-[#144D3E]">పరిహారం: </strong>{bh.remedyTe}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE: DWADASHA BHAVA DEEP II — భావాలు 7–12                              */}
+      {/* ===================================================================== */}
+      <section id="grantha-p14" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={14} pageTitleTe="ద్వాదశ భావ సూక్ష్మ విచారం II — భావాలు 7–12 (ఆధారం · అధిపతి · నివాసులు · దృష్టి · బలం · కాలం)" />
+        <div className="mb-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9px] leading-snug">
+          <strong className="text-[#7A1818]">బలమైన భావం: </strong>{vistaraDeep.strongBhavaTe} · <strong className="text-[#7A1818]">శ్రద్ధార్హ భావం: </strong>{vistaraDeep.weakBhavaTe}
+        </div>
+        <div className="space-y-2">
+          {vistaraDeep.bhavas.slice(6, 12).map((bh) => (
+            <div key={bh.house} className="border border-[#8B6914]">
+              <div className="flex flex-wrap items-baseline justify-between gap-1 bg-[#F3E8CE] px-2 py-1">
+                <span className="text-[10px] font-bold text-[#7A1818]">{bh.house}. {bh.titleTe}</span>
+                <span className="text-[8.4px]">
+                  {bh.rasiTe} · SAV <strong>{bh.sav}</strong> ({bh.savBandTe}) · అధిపతి {bh.lordTe} {bh.lordHouse}వ భావంలో · <strong className="text-[#144D3E]">{bh.scorePct}%</strong>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-2 py-1 text-[8.2px] leading-snug">
+                {bh.sections.map((sec) => (
+                  <div key={sec.headingTe}>
+                    <span className="font-bold text-[#5C3A21]">{sec.headingTe}: </span>
+                    {sec.bodyTe}
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-[#8B6914]/40 px-2 py-1 text-[8.4px] leading-snug">
+                <div><strong className="text-[#7A1818]">తీర్పు: </strong>{bh.verdictTe}</div>
+                <div><strong className="text-[#144D3E]">పరిహారం: </strong>{bh.remedyTe}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE: NAVAGRAHA DEEP I — సూర్యుడు · చంద్రుడు · కుజుడు                    */}
+      {/* ===================================================================== */}
+      <section id="grantha-p15" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={15} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం I — సూర్యుడు · చంద్రుడు · కుజుడు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
+        <div className="mb-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9px]">
+          <strong className="text-[#7A1818]">బలమైన గ్రహం: </strong>{vistaraDeep.strongestGrahaTe} · <strong className="text-[#7A1818]">బలహీన గ్రహం: </strong>{vistaraDeep.weakestGrahaTe}
+        </div>
+        <div className="space-y-2">
+          {vistaraDeep.grahas.slice(0, 3).map((g) => (
+            <div key={g.id} className="border border-[#8B6914]">
+              <div className="flex flex-wrap items-baseline justify-between gap-1 bg-[#F3E8CE] px-2 py-1">
+                <span className="text-[10px] font-bold text-[#7A1818]">{g.nameTe} — {g.rasiTe} {g.degreeTe} · {g.house}వ భావం</span>
+                <span className="text-[8.4px]">{g.nakshatraTe} · {g.dignityTe} · {g.motionTe} · {g.shadbalaRank > 0 ? `షడ్బల ${g.shadbalaVirupas.toFixed(1)} v. (ర్యాంక్ ${g.shadbalaRank}/7)` : 'ఛాయా గ్రహం — షడ్బలం వర్తించదు'} · <strong className="text-[#144D3E]">{g.scorePct}%</strong></span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-2 py-1 text-[8.2px] leading-snug">
+                {g.sections.map((sec) => (
+                  <div key={sec.headingTe}>
+                    <span className="font-bold text-[#5C3A21]">{sec.headingTe}: </span>
+                    {sec.bodyTe}
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-[#8B6914]/40 px-2 py-1 text-[8.4px] leading-snug">
+                <div><strong className="text-[#7A1818]">తీర్పు: </strong>{g.verdictTe} <span className="text-[#5C3A21]">| జాగ్రత్త: {g.cautionTe}</span></div>
+                <div><strong className="text-[#144D3E]">పరిహారం: </strong>{g.remedyTe}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE: NAVAGRAHA DEEP II — బుధుడు · గురువు · శుక్రుడు                    */}
+      {/* ===================================================================== */}
+      <section id="grantha-p16" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={16} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం II — బుధుడు · గురువు · శుక్రుడు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
+        <div className="space-y-2">
+          {vistaraDeep.grahas.slice(3, 6).map((g) => (
+            <div key={g.id} className="border border-[#8B6914]">
+              <div className="flex flex-wrap items-baseline justify-between gap-1 bg-[#F3E8CE] px-2 py-1">
+                <span className="text-[10px] font-bold text-[#7A1818]">{g.nameTe} — {g.rasiTe} {g.degreeTe} · {g.house}వ భావం</span>
+                <span className="text-[8.4px]">{g.nakshatraTe} · {g.dignityTe} · {g.motionTe} · {g.shadbalaRank > 0 ? `షడ్బల ${g.shadbalaVirupas.toFixed(1)} v. (ర్యాంక్ ${g.shadbalaRank}/7)` : 'ఛాయా గ్రహం — షడ్బలం వర్తించదు'} · <strong className="text-[#144D3E]">{g.scorePct}%</strong></span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-2 py-1 text-[8.2px] leading-snug">
+                {g.sections.map((sec) => (
+                  <div key={sec.headingTe}>
+                    <span className="font-bold text-[#5C3A21]">{sec.headingTe}: </span>
+                    {sec.bodyTe}
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-[#8B6914]/40 px-2 py-1 text-[8.4px] leading-snug">
+                <div><strong className="text-[#7A1818]">తీర్పు: </strong>{g.verdictTe} <span className="text-[#5C3A21]">| జాగ్రత్త: {g.cautionTe}</span></div>
+                <div><strong className="text-[#144D3E]">పరిహారం: </strong>{g.remedyTe}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE: NAVAGRAHA DEEP III — శని · రాహువు · కేతువు                        */}
+      {/* ===================================================================== */}
+      <section id="grantha-p17" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={17} pageTitleTe="నవగ్రహ సూక్ష్మ విచారం III — శని · రాహువు · కేతువు (స్థానం · కర్మ · బలం · సంబంధం · ఫలం · కాలం)" />
+        <div className="space-y-2">
+          {vistaraDeep.grahas.slice(6, 9).map((g) => (
+            <div key={g.id} className="border border-[#8B6914]">
+              <div className="flex flex-wrap items-baseline justify-between gap-1 bg-[#F3E8CE] px-2 py-1">
+                <span className="text-[10px] font-bold text-[#7A1818]">{g.nameTe} — {g.rasiTe} {g.degreeTe} · {g.house}వ భావం</span>
+                <span className="text-[8.4px]">{g.nakshatraTe} · {g.dignityTe} · {g.motionTe} · {g.shadbalaRank > 0 ? `షడ్బల ${g.shadbalaVirupas.toFixed(1)} v. (ర్యాంక్ ${g.shadbalaRank}/7)` : 'ఛాయా గ్రహం — షడ్బలం వర్తించదు'} · <strong className="text-[#144D3E]">{g.scorePct}%</strong></span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-2 py-1 text-[8.2px] leading-snug">
+                {g.sections.map((sec) => (
+                  <div key={sec.headingTe}>
+                    <span className="font-bold text-[#5C3A21]">{sec.headingTe}: </span>
+                    {sec.bodyTe}
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-[#8B6914]/40 px-2 py-1 text-[8.4px] leading-snug">
+                <div><strong className="text-[#7A1818]">తీర్పు: </strong>{g.verdictTe} <span className="text-[#5C3A21]">| జాగ్రత్త: {g.cautionTe}</span></div>
+                <div><strong className="text-[#144D3E]">పరిహారం: </strong>{g.remedyTe}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE: DOSHA DEEP — దోష పరిశీలన                                        */}
+      {/* ===================================================================== */}
+      <section id="grantha-p18" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={18} pageTitleTe="దోష సూక్ష్మ పరిశీలన — ఏర్పడ్డాయా · భంగం ఉందా · ప్రభావం · పరిహారం · కాలం" />
+
+        <div className="mb-2 grid grid-cols-3 gap-1.5 text-[9px]">
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">పరిశీలించిన దోషాలు <strong className="text-[#7A1818]">{vistaraDeep.doshas.length}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">ఏర్పడినవి <strong className="text-[#7A1818]">{vistaraDeep.doshas.filter((d) => d.present).length}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">తీవ్రమైనవి <strong className="text-[#7A1818]">{vistaraDeep.doshas.filter((d) => d.severityTe === 'తీవ్రం').length}</strong></div>
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[8.2px] leading-tight">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-0.5 px-1 text-left w-[13%]">దోషం</th>
+              <th className="py-0.5 px-1 text-left w-[7%]">స్థితి</th>
+              <th className="py-0.5 px-1 text-left w-[22%]">ఆధారం (ఈ కుండలిలో)</th>
+              <th className="py-0.5 px-1 text-left w-[16%]">భంగం / ఉపశమనం</th>
+              <th className="py-0.5 px-1 text-left w-[18%]">ప్రభావం</th>
+              <th className="py-0.5 px-1 text-left w-[16%]">పరిహారం</th>
+              <th className="py-0.5 px-1 text-left w-[8%]">కాలం</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {vistaraDeep.doshas.map((d, idx) => (
+              <tr key={d.id} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-[3px] px-1 align-top">
+                  <div className="font-bold text-[#7A1818]">{d.nameTe}</div>
+                  <div className="text-[7.2px] text-[#6E5528]">{d.sourceTe}</div>
+                </td>
+                <td className="py-[3px] px-1 align-top">
+                  <div className={d.present ? 'font-bold text-[#7A1818]' : 'text-[#144D3E]'}>{d.present ? `ఉంది · ${d.severityTe}` : 'లేదు'}</div>
+                </td>
+                <td className="py-[3px] px-1 align-top">{d.evidenceTe}</td>
+                <td className="py-[3px] px-1 align-top">{d.bhangaTe}</td>
+                <td className="py-[3px] px-1 align-top">{d.effectTe}</td>
+                <td className="py-[3px] px-1 align-top text-[#144D3E]">{d.remedyTe}</td>
+                <td className="py-[3px] px-1 align-top text-[7.4px]">{d.timingTe || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[8.8px] leading-relaxed">
+          <strong className="text-[#7A1818]">చదవడం ఎలా: </strong>
+          ఇక్కడ ఏ దోషమూ "ఉంది/లేదు" అని మాత్రమే చెప్పబడలేదు — ఆ దోషం ఏ గ్రహ స్థితి నుంచి వచ్చింది (సంఖ్యలతో),
+          భంగం (ఉపశమనం) ఉందా, ఏ దశలో స్పష్టమవుతుంది, ఏ పరిహారం సరిపోతుంది — అన్నీ ఒకే వరుసలో ఉన్నాయి.
+          దోషం అనేది శాపం కాదు; గ్రహ స్థితి యొక్క ఒత్తిడి. పరిహారం + క్రమశిక్షణతో అది ఫలాన్ని ఇవ్వదు.
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
       {/* PAGE 12: 6 LIFE PILLARS (FULL), DOSHA PARIKSHANA, ALL 9 PLANET REMEDIES & COLOPHON */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p19" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={12}
+          pageNum={19}
           pageTitleTe="జీవిత 6 ప్రధాన రంగాలు, సంపూర్ణ దోష పరీక్ష, వేదోక్త ఉపాయ-పరిహార మంజరి & స్వస్తి వాక్యం"
         />
 
@@ -1845,9 +2206,9 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 13: TAJIKA VARSHAPHALA & 12-MONTH FORECAST CALENDAR              */}
       {/* ===================================================================== */}
-      <section className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+      <section id="grantha-p20" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
         <PageHeaderStrip
-          pageNum={13}
+          pageNum={20}
           pageTitleTe={`తాజిక నీలకంఠీ వర్షఫలం (${varshaphalaReport.targetYear}–${varshaphalaReport.targetYear + 1}) & 12-నెలల దినచర్య ఫలితాలు`}
         />
 
@@ -1975,6 +2336,551 @@ export const ClassicalJathakaPdfDocument: React.FC<
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE 14: SAPTA — సప్త-సంప్రదాయ సమన్వయం (multi-school convergence)        */}
+      {/* ===================================================================== */}
+      <section id="grantha-p21" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={21} pageTitleTe="పండిత విచారణ — సప్త-సంప్రదాయ సమన్వయం (Multi-School Convergence)" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-2 text-[10.5px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">పద్ధతి: </strong>
+          ఒకే భావాన్ని ఏడు స్వతంత్ర సంప్రదాయాలు విడివిడిగా లెక్కించాయి — పారాశరీ (భావేశ స్థానం · క్షేత్రం · నివాసులు),
+          అష్టకవర్గ (సర్వాష్టకవర్గ బిందువులు, సగటు 28.08), జైమిని (చర కారకులు AK…DK · రాశి దృష్టి), వింశోత్తరి
+          (మహాదశా/భుక్తి అధిపతుల భావ సంబంధం), కేపీ (కస్ప్ సబ్-లార్డ్, 249 ఉప-విభాగం), చరదశ (నడుస్తున్న జైమిని రాశి దశ · రాశి దృష్టి),
+          తాజిక (ఈ సంవత్సరపు వర్ష లగ్నం · ముంథ · వర్షేశుడు). ప్రతి స్కోరు −2 … +2.
+          ఒక్క పద్ధతి తీర్పు కాదు — సగటు <em>మరియు</em> వ్యాప్తి రెండూ చూడాలి. లగ్నం {samanyaya.lagnaRasiTe} · జన్మ నక్షత్రం {samanyaya.lagnaMasaTe}.
+        </div>
+
+        <div className="grid grid-cols-4 gap-1 mb-2 text-[9px]">
+          {samanyaya.karakas.map((k) => (
+            <div key={k.code} className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">
+              <span className="font-bold text-[#7A1818]">{k.code}</span> · {k.labelTe}
+              <div className="text-[#5C3A21]">{k.planetTe} ({k.degreeInSign.toFixed(2)}°)</div>
+            </div>
+          ))}
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[9.5px]">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-1 px-1.5 text-left font-bold w-[17%]">భావం (జీవనాంగం)</th>
+              <th className="py-1 px-1 text-center font-bold">పారా</th>
+              <th className="py-1 px-1 text-center font-bold">అష్ట</th>
+              <th className="py-1 px-1 text-center font-bold">జైమి</th>
+              <th className="py-1 px-1 text-center font-bold">వింశో</th>
+              <th className="py-1 px-1 text-center font-bold">కేపీ</th>
+              <th className="py-1 px-1 text-center font-bold">చరదశ</th>
+              <th className="py-1 px-1 text-center font-bold">తాజిక</th>
+              <th className="py-1 px-1 text-center font-bold">సగటు</th>
+              <th className="py-1 px-1 text-center font-bold">వ్యా.</th>
+              <th className="py-1 px-1 text-left font-bold">ప్రధాన తీర్పు / కాలం</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {samanyaya.domains.map((d, idx) => {
+              const tone = d.consensusScore >= 0.6 ? '#1F6B5E' : d.consensusScore <= -0.6 ? '#9C3B12' : '#7A5A12';
+              const cell = (v: number) => (
+                <td
+                  className="py-0.5 px-1 text-center font-mono"
+                  style={{ color: v >= 1 ? '#1F6B5E' : v <= -1 ? '#9C3B12' : '#5C3A21' }}
+                >
+                  {v > 0 ? '+' : ''}{v.toFixed(1)}
+                </td>
+              );
+              const vs = d.verdicts;
+              return (
+                <tr key={d.house} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                  <td className="py-0.5 px-1.5 leading-tight">
+                    <span className="font-bold text-[#7A1818]">{d.house}.</span> {d.domainTe}
+                  </td>
+                  {cell(vs[0].score)}
+                  {cell(vs[1].score)}
+                  {cell(vs[2].score)}
+                  {cell(vs[3].score)}
+                  {cell(vs[4].score)}
+                  {cell(vs[5]?.score ?? 0)}
+                  {cell(vs[6]?.score ?? 0)}
+                  <td className="py-0.5 px-1 text-center font-bold font-mono" style={{ color: tone }}>
+                    {d.consensusScore > 0 ? '+' : ''}{d.consensusScore.toFixed(2)}
+                  </td>
+                  <td className="py-0.5 px-1 text-center font-mono text-[#5C3A21]">{d.spread.toFixed(1)}</td>
+                  <td className="py-0.5 px-1.5 leading-tight text-[8.5px]">
+                    {d.phalaTe}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-[9px] leading-relaxed">
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
+            <div className="font-bold text-[#7A1818] mb-0.5">సమగ్ర స్థితి</div>
+            {samanyaya.samasyayaTe}
+          </div>
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
+            <div className="font-bold text-[#7A1818] mb-0.5">పద్ధతుల భారం</div>
+            {samanyaya.prabhutvaTe}
+            <div className="mt-1 text-[8.5px] text-[#5C3A21]">
+              గమనిక: 6/8/12 భావాల్లో ఎక్కువ స్కోరు అంటే ఆ భావ విషయాలు (రోగం/ఋణం/ఆటంకాలు) సక్రియం — “శుభం” అని అర్థం కాదు.
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 border-t border-[#8B6914] pt-1.5 text-[8.5px] text-[#5C3A21] leading-relaxed">
+          ప్రమాణం: ప్రతి తీర్పు వెనుక లెక్క ఉంది (గణన వివరాలు ఇంటరాక్టివ్ గ్రంథంలో); ప్రతి తీర్పుకు గ్రంథ నియమం ఉంది.
+          యాంత్రిక గేట్ <em>npm run verify:sampradaya</em> — 3 జాతకాలు · 1531 తనిఖీలు (స్కోరు పరిధి, ఆధారం, సగటు/వ్యాప్తి గణితం,
+          కారకుల అనన్యత, చరదశ/తాజిక ఆధారాలు, దశా కిటికీ తేదీలు). జాతకం చెప్పలేని అంశాలు (పేరు, హోదా, ఆయుర్దాయ సంఖ్య, వ్యాధి నిర్ధారణ) ఇక్కడ కల్పించబడవు.
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE 16: YOGA VICHARA — ప్రతి యోగానికి ఆధారం, బలం, ఫలం               */}
+      {/* ===================================================================== */}
+      <section id="grantha-p22" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={22} pageTitleTe="యోగ విచారం — ప్రతి యోగానికి ఆధారం · బలం · ఫలం · జాగ్రత్త" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-2 text-[9.5px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">సారాంశం: </strong>{yogaVichara.summaryTe}{' '}
+          <strong className="text-[#7A1818]">తీర్పు: </strong>{yogaVichara.verdictTe}
+        </div>
+
+        <div className="grid grid-cols-4 gap-1.5 mb-2 text-[9px]">
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">ఏర్పడిన యోగాలు <strong className="text-[#7A1818]">{yogaVichara.activeCount}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">రాజ యోగాలు <strong className="text-[#7A1818]">{yogaVichara.rajaYogaCount}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">ధన యోగాలు <strong className="text-[#7A1818]">{yogaVichara.dhanaYogaCount}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">పరిశీలించిన సూత్రాలు <strong className="text-[#7A1818]">{yogaVichara.findings.length}</strong></div>
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-0.5 px-1 text-left w-[17%]">యోగం</th>
+              <th className="py-0.5 px-1 text-left w-[13%]">స్థితి · బలం</th>
+              <th className="py-0.5 px-1 text-left w-[27%]">ఆధారం (ఈ కుండలిలో)</th>
+              <th className="py-0.5 px-1 text-left w-[43%]">ఫలం · జాగ్రత్త</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {yogaVichara.findings.map((y, idx) => (
+              <tr key={y.id} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-[3px] px-1 align-top">
+                  <div className="font-bold text-[#7A1818]">{y.nameTe}</div>
+                  <div className="text-[7.4px] text-[#6E5528]">{y.tier}</div>
+                </td>
+                <td className="py-[3px] px-1 align-top">
+                  <div className={y.present ? 'font-bold text-[#144D3E]' : 'text-[#8A7A66]'}>
+                    {y.present ? `ఏర్పడింది · ${y.strengthPct}%` : 'ఏర్పడలేదు'}
+                  </div>
+                  <div className="text-[7.4px]">{y.present ? y.strengthTe : '—'}</div>
+                </td>
+                <td className="py-[3px] px-1 align-top">{y.evidenceTe}</td>
+                <td className="py-[3px] px-1 align-top">
+                  <div>{y.phalamTe}</div>
+                  {y.cautionTe && <div className="text-[#7A1818] mt-0.5">జాగ్రత్త: {y.cautionTe}</div>}
+                  <div className="text-[7.2px] text-[#6E5528] mt-0.5">{y.sutraTe}</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-2 border border-[#8B6914] bg-[#FBF6E9] p-2">
+          <div className="text-[9.5px] font-bold text-[#7A1818] mb-1">దశాధిపతుల యోగ సంబంధం — ఏ దశలో ఏ యోగం ఫలిస్తుంది</div>
+          <div className="grid grid-cols-3 gap-1 text-[8.4px]">
+            {yogaVichara.dashaLordYogas.map((d) => (
+              <div key={d.planetTe} className="border border-[#8B6914]/40 bg-[#FFFEFA] px-1.5 py-1">
+                <strong className="text-[#7A1818]">{d.planetTe}</strong>
+                <div>{d.yogasTe.length ? d.yogasTe.join(' · ') : 'ప్రత్యేక యోగం లేదు'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE 17: ASHTAKAVARGA BHAVA PHALA & AVAKAHADA                        */}
+      {/* ===================================================================== */}
+      <section id="grantha-p23" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={23} pageTitleTe="అష్టకవర్గ భావ ఫలాలు & అవకహడా చక్రం — బిందువుల నుంచే తీర్పు" />
+
+        <div className="grid grid-cols-5 gap-1.5 mb-2 text-[9px]">
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">మొత్తం బిందువులు <strong className="text-[#7A1818]">{avPhala.totalBindus}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">సగటు <strong className="text-[#7A1818]">{avPhala.averageBindus.toFixed(2)}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">కేంద్ర సగటు <strong>{avPhala.kendraAvg.toFixed(1)}</strong> · త్రికోణ <strong>{avPhala.trikonaAvg.toFixed(1)}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">దుస్థాన సగటు <strong>{avPhala.dusthanaAvg.toFixed(1)}</strong> · ఉపచయ <strong>{avPhala.upachayaAvg.toFixed(1)}</strong></div>
+          <div className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">బలవత్ {avPhala.bandCounts.strong} · మధ్యమ {avPhala.bandCounts.moderate} · శ్రద్ధార్హ {avPhala.bandCounts.weak}</div>
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-0.5 px-1 text-left w-[14%]">భావం · రాశి</th>
+              <th className="py-0.5 px-1 text-center w-[6%]">బిందువులు</th>
+              <th className="py-0.5 px-1 text-left w-[12%]">బ్యాండ్</th>
+              <th className="py-0.5 px-1 text-left w-[18%]">భావాధిపతి స్థితి</th>
+              <th className="py-0.5 px-1 text-left w-[28%]">ఫలం</th>
+              <th className="py-0.5 px-1 text-left w-[22%]">పరిహారం</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {avPhala.rows.map((r, idx) => (
+              <tr key={r.house} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-[3px] px-1 align-top">
+                  <div className="font-bold text-[#7A1818]">{r.house}. {r.houseNameTe}</div>
+                  <div className="text-[7.4px]">{r.signTe} · {r.houseThemeTe}</div>
+                </td>
+                <td className="py-[3px] px-1 align-top text-center font-bold text-[#144D3E]">{r.bindus}</td>
+                <td className="py-[3px] px-1 align-top">
+                  <div className="font-semibold">{r.bandLabelTe}</div>
+                  <div className="text-[7.2px]">{r.bandRangeTe}</div>
+                </td>
+                <td className="py-[3px] px-1 align-top">
+                  <div>{r.lordTe}</div>
+                  <div className="text-[7.4px]">{r.lordPlacementTe} · రాశి బిందువులు {r.lordRasiBindus}</div>
+                </td>
+                <td className="py-[3px] px-1 align-top">{r.phalaTe}</td>
+                <td className="py-[3px] px-1 align-top text-[#144D3E]">{r.pariharaTe}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-1.5 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9px] leading-relaxed">
+          <div><strong className="text-[#7A1818]">బలమైన భావాలు: </strong>{avPhala.strongHousesTe}</div>
+          <div><strong className="text-[#7A1818]">శ్రద్ధార్హ భావాలు: </strong>{avPhala.weakHousesTe}</div>
+          <div><strong className="text-[#7A1818]">లగ్న–సప్తమ నిష్పత్తి: </strong>{avPhala.lagnaSeventhNoteTe}</div>
+          <div><strong className="text-[#7A1818]">రాశి క్రమం: </strong>{avPhala.rasiRankingTe}</div>
+        </div>
+
+        <div className="mt-2">
+          <h3 className="text-[10px] font-bold text-[#7A1818] mb-1">అవకహడా చక్రం — నామ, రాశి, నక్షత్ర ప్రమాణాలు</h3>
+          <div className="grid grid-cols-3 gap-1 text-[8.4px]">
+            {avakahada.rows.map((r) => (
+              <div key={r.key} className="border border-[#8B6914]/40 bg-[#FFFEFA] px-1.5 py-[3px]">
+                <span className="text-[#6E5528]">{r.labelTe}: </span>
+                <strong className="text-[#7A1818]">{r.valueTe}</strong>
+                {r.noteTe && <span className="text-[7.4px]"> — {r.noteTe}</span>}
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 border border-[#8B6914] bg-[#FBF6E9] px-1.5 py-1 text-[8.6px] leading-relaxed">
+            <strong className="text-[#7A1818]">ఘట చక్రం: </strong>{avakahada.ghata.janmaRasiTe} · {avakahada.ghata.tithiGroupTe} — {avakahada.ghata.meaningTe}
+            <div className="mt-0.5"><strong className="text-[#7A1818]">పంచధా మైత్రి: </strong>{avakahada.summaryTe}</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE 18: SOOKSHMA NADI — KP SUB LORDS, PARIVARTANA, BADHAKA             */}
+      {/* ===================================================================== */}
+      <section id="grantha-p24" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={24} pageTitleTe="సూక్ష్మ నాడీ విచారం — కేపీ సబ్-లార్డ్ · పరివర్తన · బాధక-మారక" />
+
+        <h3 className="text-[10px] font-bold text-[#7A1818] mb-1">కేపీ (కృష్ణమూర్తి) స్టార్-లార్డ్ · సబ్-లార్డ్ పట్టిక — 249 ఉప-విభాగ క్రమం</h3>
+        <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-0.5 px-1 text-left w-[16%]">అంశం</th>
+              <th className="py-0.5 px-1 text-left w-[12%]">రాశి · అంశ</th>
+              <th className="py-0.5 px-1 text-left w-[16%]">నక్షత్రం · తారాధిపతి</th>
+              <th className="py-0.5 px-1 text-left w-[10%]">సబ్-లార్డ్</th>
+              <th className="py-0.5 px-1 text-left w-[10%]">సూచిత భావాలు</th>
+              <th className="py-0.5 px-1 text-left w-[36%]">కేపీ తీర్పు</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {sookshma.kpSubLordTable.map((k, idx) => (
+              <tr key={`${k.entityTitleTe}-${idx}`} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-[3px] px-1 align-top font-bold text-[#7A1818]">{k.entityTitleTe}</td>
+                <td className="py-[3px] px-1 align-top">{k.rasiNameTe} · {k.degreeFormatted}</td>
+                <td className="py-[3px] px-1 align-top">{k.nakshatraNameTe} · {k.starLordTe}</td>
+                <td className="py-[3px] px-1 align-top font-semibold text-[#144D3E]">{k.subLordTe}</td>
+                <td className="py-[3px] px-1 align-top">{k.signifiedHouses.join(', ')}</td>
+                <td className="py-[3px] px-1 align-top">{k.kpVerdictTe}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-2 grid grid-cols-1 gap-1.5">
+          <div>
+            <h3 className="text-[10px] font-bold text-[#7A1818] mb-1">కేపీ జీవన ఘటనల తీర్పు — కస్ప్ సబ్-లార్డ్ ఆధారంగా</h3>
+            <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
+              <thead>
+                <tr className="bg-[#7A1818] text-white">
+                  <th className="py-0.5 px-1 text-left w-[14%]">రంగం</th>
+                  <th className="py-0.5 px-1 text-left w-[8%]">కస్ప్</th>
+                  <th className="py-0.5 px-1 text-left w-[12%]">కస్ప్ సబ్-లార్డ్</th>
+                  <th className="py-0.5 px-1 text-left w-[14%]">అనుకూల భావాలు</th>
+                  <th className="py-0.5 px-1 text-left w-[52%]">తీర్పు</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#8B6914]/40">
+                {sookshma.kpLifeEventVerdicts.map((k, idx) => (
+                  <tr key={`${k.domainTe}-${idx}`} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                    <td className="py-[3px] px-1 align-top font-semibold text-[#7A1818]">{k.domainTe}</td>
+                    <td className="py-[3px] px-1 align-top">{k.primaryCusp}</td>
+                    <td className="py-[3px] px-1 align-top">{k.cuspSubLordTe}</td>
+                    <td className="py-[3px] px-1 align-top">{k.favorableHouses}</td>
+                    <td className="py-[3px] px-1 align-top">{k.verdictTe}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {sookshma.parivartanaYogas.length > 0 && (
+            <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 text-[8.8px]">
+              <div className="font-bold text-[#7A1818] mb-0.5">పరివర్తన యోగాలు (ఇరువురి గ్రహాలు ఇచ్చిపుచ్చుకున్న స్థానాలు) — {sookshma.parivartanaYogas.length}</div>
+              {sookshma.parivartanaYogas.map((p, idx) => (
+                <div key={idx} className="mb-0.5">
+                  <strong>{p.typeTe}</strong> · {p.planet1Te} ({p.house1}) ↔ {p.planet2Te} ({p.house2}) — {p.effectTe}{' '}
+                  <span className="text-[#5C3A21]">{p.descriptionTe}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 text-[8.8px] leading-relaxed">
+            <div className="font-bold text-[#7A1818] mb-0.5">బాధక · మారక విచారం</div>
+            <div>లగ్న స్వభావం: {sookshma.badhakaMarakaDiagnostic.lagnaModalityTe} · బాధక భావం {sookshma.badhakaMarakaDiagnostic.badhakaHouse} ({sookshma.badhakaMarakaDiagnostic.badhakaRasiTe}) · బాధకేశుడు {sookshma.badhakaMarakaDiagnostic.badhakeshPlanetTe} — {sookshma.badhakaMarakaDiagnostic.badhakeshPlacedHouse}వ భావంలో.</div>
+            <div>{sookshma.badhakaMarakaDiagnostic.badhakaImpactTe}</div>
+            <div className="text-[#144D3E]">పరిహారం: {sookshma.badhakaMarakaDiagnostic.badhakaRemedyTe}</div>
+            <div>మారక భావాలు {sookshma.badhakaMarakaDiagnostic.marakaHouses.join(', ')} · అధిపతులు {sookshma.badhakaMarakaDiagnostic.marakaLordsTe.join(', ')}</div>
+            <div className="text-[#7A1818]">{sookshma.badhakaMarakaDiagnostic.marakaCautionTe}</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE 19: JEEVITA VISTARA — DOMAIN-WISE DEEP READING                     */}
+      {/* ===================================================================== */}
+      <section id="grantha-p25" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={25} pageTitleTe="జీవిత విస్తర — ప్రతి జీవన రంగం లోతైన విచారం (శాస్త్రం · విశ్లేషణ · కాలం · పరిహారం)" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 mb-2 text-[9.5px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">సమగ్ర తీర్పు: </strong>{vistara.overallTe}
+          <div className="mt-0.5"><strong className="text-[#144D3E]">అత్యుత్తమ రంగం: </strong>{vistara.bestDomainTe}</div>
+          <div><strong className="text-[#7A1818]">శ్రద్ధ అవసరమైన రంగం: </strong>{vistara.watchDomainTe}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-[8.2px] leading-tight">
+          {vistara.domains.map((d) => (
+            <div key={d.id} className="border border-[#8B6914] bg-[#FFFEFA] p-1.5">
+              <div className="flex items-baseline justify-between border-b border-[#8B6914]/40 pb-0.5 mb-0.5">
+                <span className="font-bold text-[#7A1818] text-[9px]">{d.number}. {d.titleTe}</span>
+                <span className="font-bold text-[#144D3E]">{d.scorePct}% · {d.verdictTe}</span>
+              </div>
+              <div className="text-[7.6px] text-[#6E5528] mb-0.5">{d.subtitleTe} · భావాలు {d.housesTe}</div>
+              <div className="mb-0.5"><strong>శాస్త్రం: </strong>{d.foundationTe}</div>
+              {d.analysis.slice(0, 2).map((a, i) => (
+                <div key={i} className="mb-0.5">
+                  <strong className="text-[#5C3A21]">{a.headingTe}: </strong>{a.bodyTe}
+                </div>
+              ))}
+              {d.strengthsTe.length > 0 && (
+                <div className="text-[#144D3E]">బలం: {d.strengthsTe.slice(0, 2).join(' · ')}</div>
+              )}
+              {d.cautionsTe.length > 0 && (
+                <div className="text-[#7A1818]">జాగ్రత్త: {d.cautionsTe.slice(0, 2).join(' · ')}</div>
+              )}
+              {d.timing.length > 0 && (
+                <div className="text-[7.6px]">
+                  <strong>కాలం: </strong>
+                  {d.timing.slice(0, 2).map((t) => `${t.periodTe} (${t.yearsTe})${t.isRunning ? ' ★' : ''}`).join(' · ')}
+                </div>
+              )}
+              <div className="text-[#5C3A21]">పరిహారం: {d.remedyTe}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <BhuktiPhalaPage part={0} adBook={adBook} id="grantha-p26"
+        header={<PageHeaderStrip pageNum={26} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (1/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
+      <BhuktiPhalaPage part={1} adBook={adBook} id="grantha-p27"
+        header={<PageHeaderStrip pageNum={27} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (2/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
+      <BhuktiPhalaPage part={2} adBook={adBook} id="grantha-p28"
+        header={<PageHeaderStrip pageNum={28} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (3/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
+
+      {/* ===================================================================== */}
+      {/* PAGE 23: GRAHA SAHAYAKA — ఏ గ్రహం ఏ రంగానికి సహాయం                     */}
+      {/* ===================================================================== */}
+      <section id="grantha-p29" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={29} pageTitleTe="గ్రహ సహాయకులు — ఏ గ్రహం ఏ జీవన రంగానికి తోడ్పడుతుంది" />
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-0.5 px-1 text-left w-[12%]">గ్రహం</th>
+              <th className="py-0.5 px-1 text-left w-[8%]">భావం · స్థితి</th>
+              {AREAS.map((a) => (
+                <th key={a.id} className="py-0.5 px-1 text-center w-[7%]">{a.labelTe}</th>
+              ))}
+              <th className="py-0.5 px-1 text-left w-[16%]">బలమైన రంగం</th>
+              <th className="py-0.5 px-1 text-left w-[14%]">బలహీన రంగం</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {sahayaka.rows.map((r, idx) => (
+              <tr key={r.id} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-[3px] px-1 align-top font-bold text-[#7A1818]">{r.nameTe}</td>
+                <td className="py-[3px] px-1 align-top">{r.house} · {r.dignityTe.split('(')[0]}</td>
+                {AREAS.map((a) => {
+                  const v = r.scores[a.id] ?? 0;
+                  return (
+                    <td key={a.id} className={`py-[3px] px-1 text-center ${v >= 70 ? 'text-[#144D3E] font-bold' : v < 45 ? 'text-[#7A1818]' : ''}`}>{v}</td>
+                  );
+                })}
+                <td className="py-[3px] px-1 align-top">{r.bestAreaTe}</td>
+                <td className="py-[3px] px-1 align-top">{r.weakAreaTe}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-[8.6px]">
+          {AREAS.map((a) => (
+            <div key={a.id} className="border border-[#8B6914]/50 bg-[#FBF6E9] px-1.5 py-1">
+              <strong className="text-[#7A1818]">{a.labelTe}</strong> — సగటు {(sahayaka.averages[a.id] ?? 0).toFixed(1)}
+              <div className="text-[7.6px]">ప్రధాన భావాలు {a.primaryHouses.join('/')} · కారకుడు {a.karakaTe}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-1.5 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[8.8px] leading-relaxed">
+          <div><strong className="text-[#7A1818]">రంగాల క్రమం: </strong>{sahayaka.areaRankingTe}</div>
+          <div><strong className="text-[#7A1818]">గ్రహాల క్రమం: </strong>{sahayaka.planetRankingTe}</div>
+          <div><strong className="text-[#7A1818]">సమన్వయం: </strong>{sahayaka.synthesisTe}</div>
+          <div className="text-[7.6px] text-[#5C3A21] mt-0.5">{sahayaka.methodNoteTe} {sahayaka.scaleNoteTe}</div>
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE 24: GRANTHA MANDALA — SOURCE APPENDIX                             */}
+      {/* ===================================================================== */}
+      <section id="grantha-p30" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={30} pageTitleTe="గ్రంథ మండలం — మూల ఆధార గ్రంథములు & సిద్ధాంత ప్రమాణం" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-3 text-[11px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">గ్రంథ ప్రమాణ వాక్యం: </strong>
+          ఈ గ్రంథంలోని ప్రతి గణన — గ్రహ స్ఫుటాలు, భావ చలితం, దశలు, అష్టకవర్గం, గోచారం, ముహూర్తం, వాస్తు దిక్కులు —
+          క్రింది మూల గ్రంథాలపై ఆధారపడి ఉంది. అధ్యాయ సంఖ్యలు ప్రామాణిక ముద్రణలలో ఒకే విధంగా ఉన్నచోట మాత్రమే ఇవ్వబడ్డాయి;
+          మూల సంస్కృత గ్రంథాలు పబ్లిక్ డొమైన్.
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[10px]">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-1 px-2 text-left font-bold w-[26%]">గ్రంథం</th>
+              <th className="py-1 px-2 text-left font-bold w-[20%]">రచయిత / కాలం</th>
+              <th className="py-1 px-2 text-left font-bold w-[30%]">ఈ గ్రంథంలో వాడిన సిద్ధాంతం</th>
+              <th className="py-1 px-2 text-left font-bold w-[24%]">అధ్యాయ / భాగం</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {GRANTHAS.map((g, idx) => (
+              <tr key={g.id} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-1 px-2 border-r border-[#8B6914]/40">
+                  <div className="font-bold text-[#7A1818]">{g.nameTe}</div>
+                  <div className="text-[8.5px] text-[#5C3A21]">{g.nameSanskrit} · {g.nameEn}</div>
+                </td>
+                <td className="py-1 px-2 border-r border-[#8B6914]/40">
+                  {g.authorTe}
+                  <div className="text-[8.5px] text-[#5C3A21]">{g.periodTe}</div>
+                </td>
+                <td className="py-1 px-2 border-r border-[#8B6914]/40 leading-tight">
+                  {g.doctrineTe.slice(0, 2).join(' · ')}
+                </td>
+                <td className="py-1 px-2 leading-tight text-[9px]">
+                  {g.chaptersTe.length > 0 ? g.chaptersTe.join(' · ') : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 text-[10px] leading-relaxed">
+            <div className="font-bold text-[#7A1818] mb-1">గణిత ప్రమాణం (Numerical Standard)</div>
+            గ్రహ స్ఫుటాలు: VSOP87 (గ్రహాలు) + ELP-2000 (చంద్రుడు) — astronomy-engine. స్విస్ ఎఫెమెరిస్
+            2.10.03 (FLG_SWIEPH, SIDM_LAHIRI, TRUE_NODE) గోల్డెన్ ఫిక్చర్‌తో {ACCURACY.epochs} జనన క్షణాల్లో
+            పోల్చగా గరిష్ఠ భేదం {ACCURACY.maxDegText} (≈{ACCURACY.maxArcsecText} ఆర్క్-సెకన్లు); 7 అయనాంశ విధానాలు సహితం. అయనాంశం: లహిరి (చిత్రపక్ష) —
+            {chart.ayanamsaFormatted}. సూర్యోదయం/అస్తమయం వక్రీభవన సహిత దృగ్గణిత పద్ధతి.
+            పంచాంగ అంగాలు 365 రోజుల స్విస్-ఎఫిమెరిస్ ఫిక్చర్‌తో ధృవీకరించబడ్డాయి (తిథి/నక్షత్ర/యోగ
+            365/365, సూర్యోదయం ±1 నిమిషం).
+          </div>
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 text-[10px] leading-relaxed">
+            <div className="font-bold text-[#7A1818] mb-1">సంప్రదాయ ప్రమాణం (Traditional Standard)</div>
+            అమాంత మాస పద్ధతి (తెలుగు సంప్రదాయం), క్షయ తిథి నియమం, అధిక మాస నిర్ణయం, ఇష్టఘడియలు, ధనుర్మాస
+            వైకుంఠ ఏకాదశి నిర్ణయం — తెలంగాణ & ఆంధ్రప్రదేశ్ పంచాంగ సంప్రదాయం ప్రకారం. నిజ ఉత్తరం సూర్య-నీడ
+            (శంకు) పద్ధతిలో — దిక్సూచి అయస్కాంత దిక్పాతాన్ని సరిచేసి.
+          </div>
+        </div>
+
+        <div className="mt-3 border-t-2 border-[#7A1818] pt-2 text-center text-[9.5px] text-[#5C3A21]">
+          ఓం తత్ సత్ · శుభమస్తు · సర్వే జనాః సుఖినో భవంతు ·{' '}
+          <span className="font-bold text-[#7A1818]">
+            గ్రంథ పుట్టిక సమాప్తం — {TOTAL_PAGES} పుటలు
+          </span>
+        </div>
+      </section>
+      {/* ===================================================================== */}
+      {/* PAGE 25: ప్రమాణ పట్టిక — ప్రతి వాక్యానికి ఆధారం (Provenance Audit)      */}
+      {/* ===================================================================== */}
+      <section id="grantha-p31" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={31} pageTitleTe="ప్రమాణ పట్టిక — ప్రతి వాక్యానికి ఆధారం (Provenance Audit)" />
+
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-2 text-[9.5px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">ఈ పుట ఎందుకు: </strong>
+          ఈ గ్రంథంలోని ప్రతి అంకె ఎక్కడినుంచి, ఏ సూత్రంతో, ఏ గ్రంథ ప్రమాణంతో వచ్చిందో ఇక్కడ ఒకే చోట చూపబడింది.
+          విలువలు ఏవీ ఇక్కడ చేతితో నమోదు చేయబడలేదు — ఇంజిన్ నుంచి నేరుగా తీసుకోబడ్డాయి.
+          <span className="text-[#5C3A21]"> {provenance.summaryTe}</span>
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[7.6px] leading-tight">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-0.5 px-1 text-left font-bold w-[15%]">అంశం</th>
+              <th className="py-0.5 px-1 text-left font-bold w-[20%]">ఈ జాతకంలో విలువ</th>
+              <th className="py-0.5 px-1 text-left font-bold w-[30%]">సూత్రం (ప్రవేశించిన సంఖ్యలతో)</th>
+              <th className="py-0.5 px-1 text-left font-bold w-[15%]">గ్రంథ ప్రమాణం</th>
+              <th className="py-0.5 px-1 text-left font-bold w-[20%]">కోడ్ · గేట్</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {provenance.rows.map((row, idx) => (
+              <tr key={row.id} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-[3px] px-1 align-top font-semibold text-[#7A1818]">{row.subjectTe}</td>
+                <td className="py-[3px] px-1 align-top text-[#181412]">{row.valueTe}</td>
+                <td className="py-[3px] px-1 align-top text-[#4A3B2C]">{row.derivationTe}</td>
+                <td className="py-[3px] px-1 align-top text-[#144D3E]">{row.sourceTe}</td>
+                <td className="py-[3px] px-1 align-top text-[#5C3A21]">
+                  <div className="font-mono text-[6.8px]">{row.fnTe}</div>
+                  <div className="text-[6.8px] text-[#8B6914]">{row.gateTe}</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-[8px] leading-relaxed">
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
+            <div className="font-bold text-[#7A1818] mb-0.5">యాంత్రిక ధృవీకరణ</div>
+            {provenance.gateCohortTe}
+          </div>
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
+            <div className="font-bold text-[#7A1818] mb-0.5">జాతకం చెప్పలేనివి (కల్పించబడవు)</div>
+            <ul className="list-disc pl-3 space-y-[2px] text-[#4A3B2C]">
+              {provenance.unverifiableTe.map((u, i) => (
+                <li key={i}>{u}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
     </div>
