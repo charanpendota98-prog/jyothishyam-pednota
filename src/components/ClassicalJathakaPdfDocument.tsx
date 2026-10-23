@@ -27,6 +27,12 @@ import { computeAntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.
 import type { AntardashaPhalaBook } from '../engine/antardashaPhalaBookEngine.ts';
 import { computeGrahaSahayaka, AREAS } from '../engine/grahaSahayakaEngine.ts';
 import { computeBhavaGrahaVistara } from '../engine/bhavaGrahaVistaraEngine.ts';
+import { computeGocharaReport } from '../engine/gocharaVedhaEngine.ts';
+import {
+  buildGranthaPrayoga,
+  granthaPrayogaSummaryTe,
+  granthaSampradayaNoteTe,
+} from '../engine/granthaPrayogaEngine.ts';
 
 interface ClassicalJathakaPdfDocumentProps {
   chart: CompleteChartResult;
@@ -50,7 +56,7 @@ type ClassicalVargaKey =
 
 /**
  * Pure Classical South Indian 4x4 Box Kundali Table (Maroon & Black Ink on Ivory/White Paper)
- * Exactly matches Astro-Vision LifeSign & Traditional Telugu Peetham Horoscope Charts
+ * Layout follows the traditional Telugu peetham printed-jathakam format
  */
 const ClassicalSouthIndianChakraBox: React.FC<{
   chart: CompleteChartResult;
@@ -361,6 +367,15 @@ export const ClassicalJathakaPdfDocument: React.FC<
   const adBook = React.useMemo(() => computeAntardashaPhalaBook(chart), [chart]);
   const sahayaka = React.useMemo(() => computeGrahaSahayaka(chart), [chart]);
   const vistaraDeep = React.useMemo(() => computeBhavaGrahaVistara(chart), [chart]);
+  const granthaPrayoga = React.useMemo(() => buildGranthaPrayoga(chart), [chart]);
+  const granthaSampradayaNote = React.useMemo(() => granthaSampradayaNoteTe(chart), [chart]);
+  const gochara = React.useMemo(() => {
+    const moon = chart.planets.find((p) => p.id === 'Moon');
+    return computeGocharaReport(moon?.signIndex ?? 0, Math.floor((moon?.siderealLon ?? 0) / (360 / 27)), {
+      tzOffsetHours: chart.input.tzOffsetHours ?? 5.5,
+      siderealMode: (chart.input.ayanamsa as never) ?? 'lahiri',
+    });
+  }, [chart]);
   const mandiObj = advancedAppendices.upagrahas.find((u) => u.id === 'Mandi');
   const gulikaObj = advancedAppendices.upagrahas.find((u) => u.id === 'Gulika');
 
@@ -370,7 +385,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
   }) => (
     <div className="flex flex-wrap items-center justify-between border-b-2 border-[#7A1818] pb-1.5 mb-3 text-[10.5px] text-[#4A3B2C] gap-2">
       <div className="font-bold text-[#7A1818]">
-        శ్రీ సంపూర్ణ దృగ్గణిత తెలుగు జాతక మహాగ్రంథం (Astro-Vision & సిద్ధాంత ప్రమాణం) — {pageTitleTe}
+        శ్రీ సంపూర్ణ దృగ్గణిత తెలుగు జాతక మహాగ్రంథం (దృక్ సిద్ధాంత ప్రమాణం) — {pageTitleTe}
       </div>
       <div className="font-semibold">
         జాతకులు: <strong className="text-[#181412]">{chart.input.name}</strong> ({chart.input.date} · {chart.input.time}) |{' '}
@@ -405,7 +420,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
             &ldquo;ఆదిత్యాయ చ సోమాయ మంగళాయ బుధాయ చ | గురు శుక్ర శనిభ్యశ్చ రాహవే కేతవే నమః ||&rdquo;
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#7A1818] mt-1 tracking-tight">
-            శ్రీ సంపూర్ణ దృగ్గణిత జాతక మహాగ్రంథం ({JATHAKAM_PDF_PAGES}-పుటల Astro-Vision & సిద్ధాంత ప్రమాణం)
+            శ్రీ సంపూర్ణ దృగ్గణిత జాతక మహాగ్రంథం ({JATHAKAM_PDF_PAGES} పుటలు · దృక్ సిద్ధాంత ప్రమాణం)
           </h1>
           <div className="text-[10.5px] text-[#4A3B2C] font-semibold mt-0.5">
             చిత్రపక్ష (లహిరి) అయనాంశం: {chart.ayanamsaFormatted} · కలియుగ శాలివాహన శక దృగ్గణిత పద్ధతి · జూలియన్ దినం: {chart.julianDay.toFixed(4)}
@@ -629,7 +644,7 @@ export const ClassicalJathakaPdfDocument: React.FC<
         {/* రాహు పాత సంప్రదాయం — మధ్యమ (పంచాంగం) మరియు సత్య (ఆస్కులేటింగ్) రెండూ */}
         <div className="mt-2 border-t border-[#8B6914]/40 pt-1.5 text-[9.5px] leading-snug text-[#5C3A21]">
           <strong className="text-[#7A1818]">రాహు పాత సంప్రదాయం:</strong>{' '}
-          ఈ గ్రంథం మధ్యమ రాహును (తెలుగు పంచాంగ పత్రికలు, Astro-Vision ముద్రిత జాతకాల ప్రమాణం) వాడుతుంది —
+          ఈ గ్రంథం మధ్యమ రాహును (తెలుగు పంచాంగ పత్రికల ముద్రిత జాతక ప్రమాణం) వాడుతుంది —
           మధ్యమ రాహు{' '}
           <span className="font-semibold">
             {TELUGU_RASIS[Math.floor(chart.nodeSphuta.meanSiderealLon / 30)]?.nameTe.split(' ')[0]}{' '}
@@ -2708,10 +2723,105 @@ export const ClassicalJathakaPdfDocument: React.FC<
         header={<PageHeaderStrip pageNum={28} pageTitleTe="వింశోత్తరి భుక్తి ఫలాలు (3/3) — 81 అంతర్దశలకు విడివిడి ఫలితం" />} />
 
       {/* ===================================================================== */}
-      {/* PAGE 23: GRAHA SAHAYAKA — ఏ గ్రహం ఏ రంగానికి సహాయం                     */}
+      {/* PAGE: GOCHARA — నడుస్తున్న గోచారం · సాడే సాతి · వేధ                    */}
       {/* ===================================================================== */}
       <section id="grantha-p29" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={29} pageTitleTe="గ్రహ సహాయకులు — ఏ గ్రహం ఏ జీవన రంగానికి తోడ్పడుతుంది" />
+        <PageHeaderStrip pageNum={29} pageTitleTe={`గోచార ఫలం — ${gochara.asOfISO} నాటి గ్రహ సంచారం (జన్మ రాశి ${gochara.janmaRasiTe} నుంచి) · సాడే సాతి · వేధ`} />
+
+        <div className="mb-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9.5px] leading-snug text-justify">
+          <strong className="text-[#7A1818]">గోచార నియమం: </strong>
+          గోచారం జన్మ రాశి (చంద్ర రాశి) నుంచి లెక్కిస్తారు — లగ్నం నుంచి కాదు.
+          జన్మ రాశి <strong>{gochara.janmaRasiTe}</strong>, జన్మ నక్షత్రం <strong>{gochara.janmaNakshatraTe}</strong>.
+          <div className="mt-0.5">{gochara.summaryTe}</div>
+        </div>
+
+        <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
+          <thead>
+            <tr className="bg-[#7A1818] text-white">
+              <th className="py-0.5 px-1 text-left w-[10%]">గ్రహం</th>
+              <th className="py-0.5 px-1 text-left w-[13%]">గోచార స్థానం</th>
+              <th className="py-0.5 px-1 text-left w-[6%]">భావం</th>
+              <th className="py-0.5 px-1 text-left w-[8%]">ఫలం</th>
+              <th className="py-0.5 px-1 text-left w-[15%]">వేధ (నిరోధం)</th>
+              <th className="py-0.5 px-1 text-left w-[24%]">వివరణ</th>
+              <th className="py-0.5 px-1 text-left w-[11%]">తదుపరి రాశి</th>
+              <th className="py-0.5 px-1 text-right w-[6%]">రోజులు</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#8B6914]/40">
+            {gochara.grahas.map((g, idx) => (
+              <tr key={g.id} className={idx % 2 === 0 ? 'bg-[#FFFEFA]' : 'bg-[#F9F4E8]'}>
+                <td className="py-[3px] px-1 align-top font-bold text-[#7A1818]">
+                  {g.nameTe}{g.isRetrograde ? ' (వ)' : ''}
+                </td>
+                <td className="py-[3px] px-1 align-top">
+                  {g.signTe} {g.degreeInSign.toFixed(2)}°<div className="text-[7.2px]">{g.nakshatraTe}-{g.pada}</div>
+                </td>
+                <td className="py-[3px] px-1 align-top text-center font-semibold">{g.houseFromMoon}</td>
+                <td className="py-[3px] px-1 align-top">
+                  <span className={g.verdict === 'good' ? 'text-[#144D3E] font-bold' : g.verdict === 'bad' ? 'text-[#7A1818] font-bold' : 'text-[#8A6A20] font-bold'}>
+                    {g.verdictTe}
+                  </span>
+                </td>
+                <td className="py-[3px] px-1 align-top">
+                  {g.vedhaBy && g.vedhaHouse ? `${g.vedhaBy} — ${g.vedhaHouse}వ భావం నుంచి` : 'వేధ లేదు'}
+                </td>
+                <td className="py-[3px] px-1 align-top">{g.effectTe}</td>
+                <td className="py-[3px] px-1 align-top">{g.nextIngressSignTe}<div className="text-[7.2px]">{g.nextIngressISO}</div></td>
+                <td className="py-[3px] px-1 align-top text-right font-mono-tabular">{g.daysToIngress}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-2 grid grid-cols-2 gap-2 text-[8.6px] leading-snug">
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
+            <div className="font-bold text-[#7A1818] mb-0.5">సాడే సాతి (గోచార శని)</div>
+            <div className={gochara.sadeSati.active ? 'font-bold text-[#7A1818]' : 'font-bold text-[#144D3E]'}>
+              {gochara.sadeSati.active ? `నడుస్తోంది — ${gochara.sadeSati.phaseTe}` : 'ఇప్పుడు లేదు'}
+            </div>
+            {gochara.sadeSati.active && (
+              <div className="mt-0.5">
+                కాలం: <strong>{gochara.sadeSati.startISO?.slice(0, 10)} → {gochara.sadeSati.endISO?.slice(0, 10)}</strong>
+              </div>
+            )}
+            <div className="mt-0.5 text-[#5C3A21]">{gochara.sadeSati.noteTe}</div>
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              <div className={`border px-1 py-0.5 ${gochara.ashtamaShani ? 'border-[#7A1818] font-bold text-[#7A1818]' : 'border-[#8B6914]/40'}`}>
+                అష్టమ శని: {gochara.ashtamaShani ? 'ఉంది' : 'లేదు'}
+              </div>
+              <div className={`border px-1 py-0.5 ${gochara.kantakaShani ? 'border-[#7A1818] font-bold text-[#7A1818]' : 'border-[#8B6914]/40'}`}>
+                కంటక శని: {gochara.kantakaShani ? 'ఉంది' : 'లేదు'}
+              </div>
+            </div>
+          </div>
+
+          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
+            <div className="font-bold text-[#7A1818] mb-0.5">రాబోయే రాశి మార్పులు (సంచార క్రమం)</div>
+            <ol className="list-decimal ml-4 space-y-0.5">
+              {gochara.upcomingIngresses.slice(0, 7).map((u, i) => (
+                <li key={`${u.grahaId}-${i}`}>
+                  <strong>{u.grahaTe}</strong> → {u.signTe} · {u.dateISO} ({u.daysAway} రోజులు)
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+
+        <div className="mt-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[8.6px] leading-relaxed">
+          <strong className="text-[#7A1818]">చదవడం ఎలా: </strong>
+          ఇది ఈ రోజు నాటి గోచారం — జన్మ కుండలి శాశ్వతం, గోచారం ప్రతి రోజూ మారుతుంది.
+          పై పట్టికలో “భావం” అనేది జన్మ రాశి నుంచి లెక్కించిన స్థానం; వేధ ఉన్న శుభ గోచారం ఫలించదు (ఫలదీపిక 26),
+          సూర్యుడు–శని మినహాయింపు. సాడే సాతి 7½ సంవత్సరాల శని సంచారం — ఇది శిక్షణా కాలం, శాపం కాదు:
+          ఇక్కడ శ్రమ పడ్డది తర్వాత స్థిరంగా నిలుస్తుంది.
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* PAGE 23: GRAHA SAHAYAKA — ఏ గ్రహం ఏ రంగానికి సహాయం                     */}
+      {/* ===================================================================== */}
+      <section id="grantha-p30" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={30} pageTitleTe="గ్రహ సహాయకులు — ఏ గ్రహం ఏ జీవన రంగానికి తోడ్పడుతుంది" />
 
         <table className="w-full border-collapse border border-[#8B6914] text-[8.4px] leading-tight">
           <thead>
@@ -2763,23 +2873,24 @@ export const ClassicalJathakaPdfDocument: React.FC<
       {/* ===================================================================== */}
       {/* PAGE 24: GRANTHA MANDALA — SOURCE APPENDIX                             */}
       {/* ===================================================================== */}
-      <section id="grantha-p30" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={30} pageTitleTe="గ్రంథ మండలం — మూల ఆధార గ్రంథములు & సిద్ధాంత ప్రమాణం" />
+      <section id="grantha-p31" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={31} pageTitleTe="గ్రంథ మండలం — మూల ఆధార గ్రంథములు & సిద్ధాంత ప్రమాణం" />
 
         <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-3 text-[11px] leading-relaxed text-justify">
           <strong className="text-[#7A1818]">గ్రంథ ప్రమాణ వాక్యం: </strong>
-          ఈ గ్రంథంలోని ప్రతి గణన — గ్రహ స్ఫుటాలు, భావ చలితం, దశలు, అష్టకవర్గం, గోచారం, ముహూర్తం, వాస్తు దిక్కులు —
-          క్రింది మూల గ్రంథాలపై ఆధారపడి ఉంది. అధ్యాయ సంఖ్యలు ప్రామాణిక ముద్రణలలో ఒకే విధంగా ఉన్నచోట మాత్రమే ఇవ్వబడ్డాయి;
-          మూల సంస్కృత గ్రంథాలు పబ్లిక్ డొమైన్.
+          గ్రహ స్ఫుటాలు, భావ చలితం, దశలు, అష్టకవర్గం, గోచారం, ముహూర్తం, వాస్తు దిక్కులు — ప్రతి గణన ఏ మూల గ్రంథం
+          నుంచి వచ్చిందో, ఆ గ్రంథం ఈ కుండలిలో ఏమి ఇచ్చిందో పక్క వరుసలో ఉంది.
+          <strong> {granthaPrayogaSummaryTe(granthaPrayoga)}.</strong>
         </div>
 
         <table className="w-full border-collapse border border-[#8B6914] text-[10px]">
           <thead>
             <tr className="bg-[#7A1818] text-white">
-              <th className="py-1 px-2 text-left font-bold w-[26%]">గ్రంథం</th>
-              <th className="py-1 px-2 text-left font-bold w-[20%]">రచయిత / కాలం</th>
-              <th className="py-1 px-2 text-left font-bold w-[30%]">ఈ గ్రంథంలో వాడిన సిద్ధాంతం</th>
-              <th className="py-1 px-2 text-left font-bold w-[24%]">అధ్యాయ / భాగం</th>
+              <th className="py-1 px-2 text-left font-bold w-[18%]">గ్రంథం</th>
+              <th className="py-1 px-2 text-left font-bold w-[13%]">రచయిత / కాలం</th>
+              <th className="py-1 px-2 text-left font-bold w-[24%]">ఈ గ్రంథంలో వాడిన సిద్ధాంతం</th>
+              <th className="py-1 px-2 text-left font-bold w-[25%]">ఈ జాతకంలో దాని ఫలితం (గణన)</th>
+              <th className="py-1 px-2 text-left font-bold w-[20%]">అధ్యాయ / భాగం</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#8B6914]/40">
@@ -2796,6 +2907,15 @@ export const ClassicalJathakaPdfDocument: React.FC<
                 <td className="py-1 px-2 border-r border-[#8B6914]/40 leading-tight">
                   {g.doctrineTe.slice(0, 2).join(' · ')}
                 </td>
+                <td
+                  className={`py-1 px-2 border-r border-[#8B6914]/40 leading-tight ${
+                    granthaPrayoga.find((x) => x.granthaId === g.id)?.applicable === false
+                      ? 'text-[#8A6A20] italic'
+                      : 'text-[#1A120B]'
+                  }`}
+                >
+                  {granthaPrayoga.find((x) => x.granthaId === g.id)?.phalaTe ?? '—'}
+                </td>
                 <td className="py-1 px-2 leading-tight text-[9px]">
                   {g.chaptersTe.length > 0 ? g.chaptersTe.join(' · ') : '—'}
                 </td>
@@ -2803,6 +2923,11 @@ export const ClassicalJathakaPdfDocument: React.FC<
             ))}
           </tbody>
         </table>
+        <div className="mt-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[9px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">సప్త-సంప్రదాయ పోలిక: </strong>
+          {granthaSampradayaNote}
+        </div>
+
 
         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
           <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 text-[10px] leading-relaxed">
@@ -2830,26 +2955,24 @@ export const ClassicalJathakaPdfDocument: React.FC<
         </div>
       </section>
       {/* ===================================================================== */}
-      {/* PAGE 25: ప్రమాణ పట్టిక — ప్రతి వాక్యానికి ఆధారం (Provenance Audit)      */}
+      {/* PAGE: గణన పద్ధతి — సూత్రం & గ్రంథ ప్రమాణం (Method Appendix)               */}
       {/* ===================================================================== */}
-      <section id="grantha-p31" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
-        <PageHeaderStrip pageNum={31} pageTitleTe="ప్రమాణ పట్టిక — ప్రతి వాక్యానికి ఆధారం (Provenance Audit)" />
+      <section id="grantha-p32" className="classical-grantha-page print-page-break bg-[#FFFEFA] border-[3px] border-double border-[#7A1818] p-5 sm:p-7 shadow-xl">
+        <PageHeaderStrip pageNum={32} pageTitleTe="గణన పద్ధతి — ప్రతి అంకె వెనుక సూత్రం & గ్రంథ ప్రమాణం" />
 
-        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2.5 mb-2 text-[9.5px] leading-relaxed text-justify">
-          <strong className="text-[#7A1818]">ఈ పుట ఎందుకు: </strong>
-          ఈ గ్రంథంలోని ప్రతి అంకె ఎక్కడినుంచి, ఏ సూత్రంతో, ఏ గ్రంథ ప్రమాణంతో వచ్చిందో ఇక్కడ ఒకే చోట చూపబడింది.
-          విలువలు ఏవీ ఇక్కడ చేతితో నమోదు చేయబడలేదు — ఇంజిన్ నుంచి నేరుగా తీసుకోబడ్డాయి.
-          <span className="text-[#5C3A21]"> {provenance.summaryTe}</span>
+        <div className="border border-[#8B6914] bg-[#FBF6E9] p-2 mb-2 text-[9px] leading-relaxed text-justify">
+          <strong className="text-[#7A1818]">పద్ధతి: </strong>
+          ప్రతి అంకె ఏ సూత్రంతో, ఏ గ్రంథ ప్రమాణంతో వచ్చిందో ఇక్కడ చూపబడింది — సూత్రంలో ప్రవేశించిన సంఖ్యలతో సహా,
+          కాబట్టి ఎవరైనా స్వతంత్రంగా తిరిగి లెక్కించి సరిచూసుకోవచ్చు. {granthaPrayogaSummaryTe(granthaPrayoga)}.
         </div>
 
-        <table className="w-full border-collapse border border-[#8B6914] text-[7.6px] leading-tight">
+        <table className="w-full border-collapse border border-[#8B6914] text-[7.4px] leading-tight">
           <thead>
             <tr className="bg-[#7A1818] text-white">
-              <th className="py-0.5 px-1 text-left font-bold w-[15%]">అంశం</th>
-              <th className="py-0.5 px-1 text-left font-bold w-[20%]">ఈ జాతకంలో విలువ</th>
-              <th className="py-0.5 px-1 text-left font-bold w-[30%]">సూత్రం (ప్రవేశించిన సంఖ్యలతో)</th>
-              <th className="py-0.5 px-1 text-left font-bold w-[15%]">గ్రంథ ప్రమాణం</th>
-              <th className="py-0.5 px-1 text-left font-bold w-[20%]">కోడ్ · గేట్</th>
+              <th className="py-0.5 px-1 text-left font-bold w-[16%]">అంశం</th>
+              <th className="py-0.5 px-1 text-left font-bold w-[21%]">ఈ జాతకంలో విలువ</th>
+              <th className="py-0.5 px-1 text-left font-bold w-[47%]">సూత్రం (ప్రవేశించిన సంఖ్యలతో)</th>
+              <th className="py-0.5 px-1 text-left font-bold w-[16%]">గ్రంథ ప్రమాణం</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#8B6914]/40">
@@ -2859,28 +2982,18 @@ export const ClassicalJathakaPdfDocument: React.FC<
                 <td className="py-[3px] px-1 align-top text-[#181412]">{row.valueTe}</td>
                 <td className="py-[3px] px-1 align-top text-[#4A3B2C]">{row.derivationTe}</td>
                 <td className="py-[3px] px-1 align-top text-[#144D3E]">{row.sourceTe}</td>
-                <td className="py-[3px] px-1 align-top text-[#5C3A21]">
-                  <div className="font-mono text-[6.8px]">{row.fnTe}</div>
-                  <div className="text-[6.8px] text-[#8B6914]">{row.gateTe}</div>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-[8px] leading-relaxed">
-          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
-            <div className="font-bold text-[#7A1818] mb-0.5">యాంత్రిక ధృవీకరణ</div>
-            {provenance.gateCohortTe}
-          </div>
-          <div className="border border-[#8B6914] bg-[#FBF6E9] p-2">
-            <div className="font-bold text-[#7A1818] mb-0.5">జాతకం చెప్పలేనివి (కల్పించబడవు)</div>
-            <ul className="list-disc pl-3 space-y-[2px] text-[#4A3B2C]">
-              {provenance.unverifiableTe.map((u, i) => (
-                <li key={i}>{u}</li>
-              ))}
-            </ul>
-          </div>
+        <div className="mt-2 border border-[#8B6914] bg-[#FBF6E9] p-2 text-[8.2px] leading-relaxed">
+          <div className="font-bold text-[#7A1818] mb-0.5">ఈ జాతకం చెప్పలేని అంశాలు (ఊహించబడవు)</div>
+          <ul className="list-disc pl-3 space-y-[2px] text-[#4A3B2C]">
+            {provenance.unverifiableTe.map((u, i) => (
+              <li key={i}>{u}</li>
+            ))}
+          </ul>
         </div>
       </section>
     </div>

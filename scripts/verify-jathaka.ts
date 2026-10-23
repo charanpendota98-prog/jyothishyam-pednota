@@ -58,6 +58,7 @@ import {
 import { GRANTHA_PAGES, granthaPartsTe } from '../src/engine/granthaPageMap.ts';
 import { JATHAKA_GATES } from '../src/generated/verificationStats.ts';
 import { buildGranthaProvenance } from '../src/engine/granthaProvenanceEngine.ts';
+import { computeGocharaReport } from '../src/engine/gocharaVedhaEngine.ts';
 import { generateTeluguSampoornaJathakam } from '../src/engine/teluguJathakam';
 import { auditJathakaClaims } from '../src/engine/jathakaClaimAudit';
 import { generateUpayaPariharaReport } from '../src/engine/upayaPariharaEngine';
@@ -1420,16 +1421,45 @@ check(
       prov.rows.find((r) => r.id === 'shadbala')?.derivationTe.slice(0, 80) ?? '—'
     );
     check(
-      'ప్రమాణ పట్టిక పుట PDF లో ఉంది — “జాతకం చెప్పలేనివి” పరిమితులతో',
-      BOOK_HTML.includes('జాతకం చెప్పలేనివి (కల్పించబడవు)') &&
-        BOOK_HTML.includes('ప్రమాణ పట్టిక') &&
+      'గణన పద్ధతి పుట PDF లో ఉంది — ప్రతి అంకెకూ సూత్రం + “ఈ జాతకం చెప్పలేని అంశాలు”',
+      BOOK_HTML.includes('ఈ జాతకం చెప్పలేని అంశాలు (ఊహించబడవు)') &&
+        BOOK_HTML.includes('గణన పద్ధతి') &&
         prov.unverifiableTe.length >= 4,
       `${prov.unverifiableTe.length} పరిమితులు`
+    );
+    check(
+      'గణన పద్ధతి పుట — ముద్రణలో కోడ్ ఫంక్షన్/గేట్ పేర్లు కనిపించవు (అంతర్గత పరిభాష బయటకు రాదు)',
+      !/verify:[a-z-]+/.test(BOOK_HTML.replace(/\s+/g, ' ')) ||
+        !BOOK_HTML.includes('యాంత్రిక ధృవీకరణ'),
+      'కోడ్ పేర్లు పుస్తకంలో లేవు'
     );
     check(
       'ప్రమాణ పట్టికలోని గేట్ సంఖ్య నిజమైన జాతక గేట్లతో సరిపోతుంది (డ్రిఫ్ట్ లేదు)',
       prov.gateCohortTe.includes(`verify:jathaka ${JATHAKA_GATES}`),
       prov.gateCohortTe.slice(0, 120)
+    );
+    check(
+      'ప్రమాణ పట్టిక — నవగ్రహాలకే పరిమితం (బాహ్య గ్రహాలు యురేనస్/నెప్చూన్/ప్లూటో చేరవు)',
+      !prov.rows.some((r) => /undefined/.test(r.subjectTe)) &&
+        prov.rows.filter((r) => r.id.startsWith('graha-')).length === 9,
+      `${prov.rows.filter((r) => r.id.startsWith('graha-')).length} గ్రహ వరుసలు`
+    );
+    check(
+      'ప్రమాణ పట్టిక — వరుసల సంఖ్య = సమూహాల మొత్తం (సారాంశం లెక్కతో సరిపోతుంది)',
+      prov.summaryTe.includes(`${prov.rows.length} ప్రధాన`) &&
+        prov.summaryTe.includes(`${prov.rows.length} కణాలుగా`),
+      prov.summaryTe.slice(0, 90)
+    );
+    check(
+      'ప్రమాణ పట్టిక — యాంత్రిక గేట్ల మొత్తం 8 గేట్ల మొత్తానికి సరిపోతుంది (షడ్బల సహితం)',
+      (() => {
+        const pairs = [...prov.gateCohortTe.matchAll(/verify:[a-z-]+ ([\d,]+)/g)].map((m) =>
+          Number(m[1].replace(/,/g, ''))
+        );
+        const total = Number((prov.gateCohortTe.match(/మొత్తం ([\d,]+) యాంత్రిక/) ?? [])[1]?.replace(/,/g, '') ?? -1);
+        return pairs.length === 8 && pairs.reduce((a, b) => a + b, 0) === total && prov.gateCohortTe.includes('0 విఫలం');
+      })(),
+      prov.gateCohortTe.slice(-130)
     );
     check(
       'బుక్‌మార్క్ ఎగుమతి — outline గ్రంథ పుట చిట్టా నుంచే (granthaPageMap)',
@@ -1441,11 +1471,91 @@ check(
     );
   }
 }
-check(
-  'పుస్తకంలో ఖాళీ గణన లేదు (NaN / undefined ఏ ఫలితంలోనూ లేవు)',
-  !/NaN/.test(BOOK_HTML) && !/>undefined</.test(BOOK_HTML),
-  `${(BOOK_HTML.match(/NaN/g) ?? []).length} NaN · ${(BOOK_HTML.match(/>undefined</g) ?? []).length} undefined`
-);
+// ---- గోచార అధ్యాయం: గ్రంథంలో ఉందా, లెక్క సరైనదా ----
+{
+  const moon = KUNDALI.planets.find((p) => p.id === 'Moon')!;
+  const goch = computeGocharaReport(moon.signIndex, Math.floor(moon.siderealLon / (360 / 27)), {
+    tzOffsetHours: KUNDALI.input.tzOffsetHours,
+    siderealMode: (KUNDALI.input.ayanamsa as never) ?? 'lahiri',
+  });
+  check(
+    'గోచార పుట — జన్మ రాశి నుంచే లెక్క (లగ్నం నుంచి కాదు), 9 గ్రహాలు',
+    goch.grahas.length === 9 &&
+      goch.grahas.every((g) => g.houseFromMoon === ((g.signIndex - moon.signIndex + 12) % 12) + 1),
+    `${goch.grahas.length} గ్రహాలు · జన్మ రాశి ${goch.janmaRasiTe}`
+  );
+  check(
+    'గోచార పుట — గ్రంథంలో ముద్రితం (పట్టిక + సాడే సాతి + రాబోయే రాశి మార్పులు)',
+    BOOK_HTML.includes('గోచార ఫలం') &&
+      BOOK_HTML.includes('సాడే సాతి (గోచార శని)') &&
+      BOOK_HTML.includes('రాబోయే రాశి మార్పులు') &&
+      BOOK_HTML.includes('వేధ'),
+    'గోచార పుట ఉంది'
+  );
+  check(
+    'గోచార పుట — అష్టమ/కంటక శని స్థితి కుండలి నుంచే (బూటకం కాదు)',
+    goch.ashtamaShani === (((((8 - 1 + 12) % 12) + moon.signIndex) % 12) ===
+      (goch.grahas.find((g) => g.id === 'Saturn')?.signIndex ?? -1)),
+    `అష్టమ శని ${goch.ashtamaShani} · కంటక శని ${goch.kantakaShani}`
+  );
+}
+
+// ---- ముద్రిత గ్రంథంలో పాత సంఖ్యలు/బ్రాండ్లు మిగలకూడదు ----
+{
+  const pdfSrc = readFileSync('src/components/ClassicalJathakaPdfDocument.tsx', 'utf8');
+  const shellSrc = readFileSync('src/components/SampoornaJathakamView.tsx', 'utf8');
+  check(
+    'ముద్రిత పుస్తకంలో పాత సంఖ్యలు మిగలలేదు (13/12/17/30 పుటలు అని చెప్పే శీర్షికలు లేవు)',
+    !/\b13-పేజీల|13-Page|\b12-పేజీల|17-పేజీల/.test(pdfSrc + shellSrc),
+    'పాత పుట సంఖ్యలు లేవు'
+  );
+  check(
+    'విషయ సూచికలో ఒకే పేరుతో రెండు భాగాలు లేవు (ప్రతి భాగం శీర్షిక అనన్యం)',
+    (() => {
+      const parts = granthaPartsTe().map((g) => g.partTe);
+      return new Set(parts).size === parts.length;
+    })(),
+    granthaPartsTe().map((g) => g.partTe).join(' · ')
+  );
+}
+
+// ---- A4 ముద్రణ ప్రమాణం: పుట పరిమాణం, పుట విరామం, పట్టిక హెడ్డర్ ----
+{
+  const css = readFileSync('src/index.css', 'utf8');
+  const hasA4 = /@page\s*\{[^}]*size:\s*A4 portrait/s.test(css);
+  const perPage = /\.print-page-break\s*\{[^}]*page-break-before:\s*always/s.test(css);
+  const pageBox = /\.classical-grantha-page\s*\{[^}]*width:\s*194mm/s.test(css);
+  const headerGroup = /\.classical-grantha-page thead\s*\{[^}]*table-header-group/s.test(css);
+  check(
+    'A4 ముద్రణ — @page A4, ప్రతి అధ్యాయం కొత్త ఆకు, పుట వెడల్పు 194mm (A4 − 2×8mm), పట్టిక హెడ్డర్ పునరావృతం',
+    hasA4 && perPage && pageBox && headerGroup,
+    `A4 ${hasA4} · విరామం ${perPage} · 194mm ${pageBox} · thead ${headerGroup}`
+  );
+  check(
+    'A4 ముద్రణ — ఒక వరుస/కార్డు రెండు ఆకుల మధ్య చిరగకూడదు (break-inside: avoid)',
+    /\.classical-grantha-page tr,[\s\S]{0,300}break-inside:\s*avoid/.test(css),
+    'tr/li/figure break-inside avoid'
+  );
+}
+
+// ---- ముద్రిత పాఠ్యంలో ఎక్కడా undefined / NaN / null లేకూడదు ----
+// (గతంలో "undefined స్ఫుటం" అని 4 వరుసలు ముద్రణ అయ్యాయి — `>undefined<`
+//  అనే సంకుచిత నమూనా దాన్ని పట్టలేదు. ఇప్పుడు ట్యాగ్‌లు తీసేసి, కేవలం
+//  కనిపించే పాఠ్యాన్ని మాత్రమే పరిశీలిస్తున్నాము.)
+{
+  const visibleText = BOOK_HTML.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ');
+  const bad = [...visibleText.matchAll(/undefined|NaN|\bnull\b/g)].map((m) => m[0]);
+  check(
+    'ముద్రిత పాఠ్యంలో ఎక్కడా undefined / NaN / null లేదు (కనిపించే వాక్యంలో)',
+    bad.length === 0,
+    bad.length ? `కనిపించినవి: ${bad.slice(0, 5).join(', ')} (${bad.length})` : 'శుద్ధం'
+  );
+  check(
+    'పుస్తకంలో ఖాళీ గణన లేదు (NaN ఏ ఫలితంలోనూ లేదు)',
+    !/NaN/.test(BOOK_HTML),
+    `${(BOOK_HTML.match(/NaN/g) ?? []).length} NaN`
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 //  జీవిత స్తంభాలు (6) — స్కోరు/బ్యాడ్జ్/అనుకూల దశలు కుండలి నుంచే (కల్పితం కాదు)

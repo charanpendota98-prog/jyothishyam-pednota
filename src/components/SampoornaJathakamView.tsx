@@ -200,7 +200,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
   const handleConfirmPdfExport = async (selectedPages: number[]) => {
     setIsPrintSettingsOpen(false);
     if (pdfProgress?.isExporting) return;
-    // Switch to the Astro-Vision Classical Book view so selected pages are rendered in DOM
+    // Switch to the Classical Book view so selected pages are rendered in DOM
     setIsPrintBookMode(true);
 
     // Wait a short moment for DOM layout to settle
@@ -327,17 +327,17 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
       )}
 
       {/* ==================================================================================== */}
-      {/* AUTHENTIC 12-PAGE ASTRO-VISION / PEETHAM PRINT & PDF DOCUMENT                        */}
+      {/* AUTHENTIC A4 PRINT & PDF DOCUMENT ({JATHAKAM_PDF_PAGES} pages)                        */}
       {/* Shown automatically during PDF download, print, OR when Print Book Preview is active */}
       {/* ==================================================================================== */}
       <div className={isPrintBookMode ? 'block classical-pdf-only' : 'hidden classical-pdf-only'}>
         <div className="no-print mb-4 bg-[#141932] border-2 border-[#C9A96E] rounded-lg p-4 flex flex-wrap items-center justify-between gap-3 shadow-xl">
           <div>
             <div className="text-xs sm:text-sm font-bold text-[#C9A96E] uppercase tracking-wider">
-              సాంప్రదాయ {JATHAKAM_PDF_PAGES}-పుటల రాజముద్రణ సంపూర్ణ జాతక మహాగ్రంథం (Astro-Vision LifeSign {JATHAKAM_PDF_PAGES}-Page Full Horoscope Book)
+              సాంప్రదాయ {JATHAKAM_PDF_PAGES}-పుటల రాజముద్రణ సంపూర్ణ జాతక మహాగ్రంథం (Complete {JATHAKAM_PDF_PAGES}-Page A4 Horoscope Book)
             </div>
             <p className="text-xs text-[#EDE8E0]/85 mt-0.5">
-              ఇది అచ్చమైన Astro-Vision సాఫ్ట్‌వేర్ & తెలుగు జ్యోతిష్య పీఠం ప్రమాణాలతో {JATHAKAM_PDF_PAGES} పేజీల A4 సంపూర్ణ జీవిత జాతక పుస్తకంగా రూపొందించబడింది. క్రింది బటన్ నొక్కగానే నేరుగా {JATHAKAM_PDF_PAGES}-పేజీల .PDF ఫైల్ డౌన్‌లోడ్ అవుతుంది.
+              ఇది దృక్ సిద్ధాంత గణన, తెలుగు పంచాంగ సంప్రదాయం ప్రకారం {JATHAKAM_PDF_PAGES} పుటల A4 సంపూర్ణ జీవిత జాతక పత్రికగా రూపొందించబడింది. క్రింది బటన్ నొక్కగానే నేరుగా {JATHAKAM_PDF_PAGES}-పుటల .PDF ఫైల్ డౌన్‌లోడ్ అవుతుంది.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -440,7 +440,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
               ) : (
                 <Download className="w-4 h-4 shrink-0" />
               )}
-              పూర్తి జాతకం PDF డౌన్‌లోడ్ (13-Page Astro-Vision PDF Download)
+              పూర్తి జాతకం PDF డౌన్‌లోడ్ ({JATHAKAM_PDF_PAGES}-పుటల A4 పత్రిక)
             </button>
 
             <button
@@ -465,7 +465,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold border transition-all cursor-pointer bg-[#090C18] text-[#5BBFB5] border-[#5BBFB5]/50 hover:bg-[#141932]"
             >
               <FileText className="w-4 h-4 shrink-0" />
-              సాంప్రదాయ 13-పేజీల Astro-Vision జాతక పుస్తక వ్యూ (Open Classical Book View)
+              సాంప్రదాయ {JATHAKAM_PDF_PAGES}-పుటల జాతక పత్రిక వ్యూ (Open Classical Book View)
             </button>
           </div>
         </div>
@@ -1211,7 +1211,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
           <div className="bg-[#0F1326] border border-[#C9A96E]/45 rounded-xl p-4 sm:p-6 md:p-8 space-y-5">
             <div className="border-b border-white/10 pb-3">
               <div className="text-xs uppercase tracking-widest text-[#C9A96E] font-semibold">
-                నవగ్రహ వ్యక్తిగత సంపూర్ణ జీవిత ఫలితములు (Astro-Vision 9 Planets Deep Life Predictions)
+                నవగ్రహ వ్యక్తిగత సంపూర్ణ జీవిత ఫలితములు (9 Planets Deep Life Readings)
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-[#EDE8E0] mt-1">
                 ఈ జాతకంలో ప్రతి గ్రహం యొక్క భావాధిపత్యం, నక్షత్ర/సబ్-లార్డ్ స్థితి, వర్గ బలం & జీవిత ఫలితం
@@ -1867,7 +1867,7 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
                 </p>
               </div>
               <span className="px-2.5 py-1 rounded bg-[#C9A96E]/15 text-[#C9A96E] border border-[#C9A96E]/35 text-xs font-bold">
-                Astro-Vision Sphuta Standard
+                దృక్ స్ఫుట ప్రమాణం (Drik Sphuta Standard)
               </span>
             </div>
 
@@ -1925,11 +1925,11 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
 
           {/* 6. ASTRO-VISION FAVORABLE POINTS (అదృష్ట సూచికల పట్టిక) & PAPA SAMYAM (పాప సామ్య పట్టిక) SIDE-BY-SIDE */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print-avoid-break">
-            {/* Left: Astro-Vision Favorable Points & Numerology Table */}
+            {/* Left: Favorable Points & Numerology Table */}
             <div className="bg-[#0F1326] border border-[#C9A96E]/40 rounded-lg p-5 sm:p-6 space-y-4">
               <div className="border-b border-white/10 pb-3">
                 <h3 className="text-lg font-bold text-[#C9A96E]">
-                  అదృష్ట సూచికల పట్టిక & సంఖ్యాశాస్త్రం (Astro-Vision Favorable Points & Numerology)
+                  అదృష్ట సూచికల పట్టిక & సంఖ్యాశాస్త్రం (Favorable Points & Numerology)
                 </h3>
                 <p className="text-xs text-[#EDE8E0]/65 mt-0.5">
                   జన్మ తేదీ సంఖ్యాశాస్త్రం, లగ్న-పంచమ-భాగ్యాధిపతుల ఆధారంగా అదృష్ట రత్న, సంఖ్య, వారం & రంగుల నిర్ణయం:
@@ -2020,11 +2020,11 @@ export const SampoornaJathakamView: React.FC<SampoornaJathakamProps> = ({
               </p>
             </div>
 
-            {/* Right: Astro-Vision Papa Samyam (Dosha Samya Point Table) */}
+            {/* Right: Papa Samya (Dosha Samya Point Table) */}
             <div className="bg-[#0F1326] border border-[#C9A96E]/40 rounded-lg p-5 sm:p-6 space-y-4">
               <div className="border-b border-white/10 pb-3">
                 <h3 className="text-lg font-bold text-[#C9A96E]">
-                  పాప సామ్య పట్టిక — కుజ & పాపగ్రహ దోష పాయింట్లు (Astro-Vision Papa Samyam Table)
+                  పాప సామ్య పట్టిక — కుజ & పాపగ్రహ దోష పాయింట్లు (Papa Samya Points)
                 </h3>
                 <p className="text-xs text-[#EDE8E0]/65 mt-0.5">
                   వివాహ పొంతన కోసం లగ్నం, చంద్రుడు మరియు శుక్రుని నుండి 1, 2, 4, 7, 8, 12 స్థానములలో పాపగ్రహ పాయింట్ల గణన:

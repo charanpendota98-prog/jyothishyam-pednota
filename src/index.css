@@ -457,6 +457,17 @@
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
+/* తెరపై కూడా పుస్తక పుట A4 ఆకు లాగా కనిపించాలి — అమ్మే పత్రిక అనిపించాలి. */
+@media screen and (min-width: 1024px) {
+  .classical-grantha-page {
+    width: 210mm;
+    max-width: 210mm;
+    min-height: 297mm;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
 /* Professional Multi-Page Print / Save-as-PDF Stylesheet */
 @media print {
   @page {
@@ -547,6 +558,67 @@
   .print-page-break {
     page-break-before: always !important;
     break-before: page !important;
+  }
+
+  /* ── A4 గ్రంథ పుట — ప్రతి అధ్యాయం ఒకే A4 ఆకుపై ──────────────────────── */
+  /* ఇది అమ్మే పత్రిక కాబట్టి పుట పరిమాణం ఖచ్చితంగా A4 (210×297mm) ఉండాలి.
+     8mm అంచులు వదిలి, లోపలి పాడింగ్ తగ్గించి, ఫాంట్ సైజు కుదించి —
+     పొడవైన పట్టికలు కూడా ఒకే ఆకుపై ఇమిడేలా చేస్తున్నాము. */
+  .classical-grantha-page {
+    width: 194mm !important;
+    max-width: 194mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 3.5mm 4.5mm !important;
+    border-width: 1.2pt !important;
+    box-shadow: none !important;
+    font-size: 7.9pt !important;
+    line-height: 1.26 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .classical-grantha-page table {
+    font-size: 6.7pt !important;
+    line-height: 1.18 !important;
+  }
+
+  .classical-grantha-page th,
+  .classical-grantha-page td {
+    padding: 0.6mm 0.9mm !important;
+  }
+
+  /* పట్టిక హెడ్డర్ ప్రతి పుటపై పునరావృతం అవ్వాలి */
+  .classical-grantha-page thead {
+    display: table-header-group;
+  }
+
+  /* ఒక వరుస/కార్డు రెండు పుటల మధ్య చిరిగిపోకూడదు */
+  .classical-grantha-page tr,
+  .classical-grantha-page li,
+  .classical-grantha-page figure {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .classical-grantha-page h1,
+  .classical-grantha-page h2,
+  .classical-grantha-page h3 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* ముద్రణలో రంగులు ముదురుగా మారకుండా — ఇంక్ ఆదా + స్పష్టత */
+  .classical-grantha-page,
+  .classical-grantha-page * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* నీలం-నలుపు ముద్రణ (B/W)లో కూడా చదవగలిగేలా: లింక్ అండర్‌లైన్ తీసేయాలి */
+  .classical-grantha-page a {
+    color: inherit !important;
+    text-decoration: none !important;
   }
 
   .print-avoid-break {

@@ -24,6 +24,9 @@ import { calculateJaiminiCharaDasha } from './jaiminiCharaDashaEngine.ts';
 import { generateTajikaVarshaphalaReport } from './tajikaVarshaphalaEngine.ts';
 import { JATHAKA_GATES } from '../generated/verificationStats.ts';
 
+/** verify:shadbala తనిఖీల సంఖ్య (మాన్యువల్ — స్క్రిప్ట్ మారితే ఇక్కడా మార్చాలి; గేట్ తనిఖీ చేస్తుంది). */
+export const SHADBALA_GATES = 301;
+
 export interface ProvenanceRow {
   id: string;
   /** ఏ అంశం */
@@ -115,7 +118,11 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
   });
 
   // ── 3. తొమ్మిది గ్రహాలు ──────────────────────────────────────────────────
-  for (const p of chart.planets) {
+  // జాతక గ్రంథం నవగ్రహాలకే పరిమితం. బాహ్య గ్రహాలు (యురేనస్/నెప్చూన్/ప్లూటో)
+  // ఇక్కడ చేర్చకూడదు — సంప్రదాయ పత్రికలో అవి లేవు; చేర్చితే పేరు లేక
+  // "undefined స్ఫుటం" అని ముద్రణ అవుతుంది (ఇది నిజంగా జరిగింది).
+  const NAVAGRAHA = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+  for (const p of chart.planets.filter((q) => NAVAGRAHA.includes(q.id))) {
     const isNode = p.id === 'Rahu' || p.id === 'Ketu';
     rows.push({
       id: `graha-${p.id}`,
@@ -347,6 +354,7 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
     rise: 4745,
     festivals: 31,
     jathaka: JATHAKA_GATES,
+    shadbala: SHADBALA_GATES,
     sampradaya: 1531,
   } as const;
   const gateTotal = Object.values(GATE_COUNTS).reduce((a, b) => a + b, 0);
@@ -354,7 +362,8 @@ export function buildGranthaProvenance(chart: CompleteChartResult): GranthaProve
     `verify:astro ${GATE_COUNTS.astro} · verify:panchanga ${GATE_COUNTS.panchanga} · ` +
     `verify:calendar-lunar ${GATE_COUNTS.lunar} · verify:rise ${GATE_COUNTS.rise} · ` +
     `verify:festivals ${GATE_COUNTS.festivals} · verify:jathaka ${GATE_COUNTS.jathaka} · ` +
-    `verify:sampradaya ${GATE_COUNTS.sampradaya} — మొత్తం ${gateTotal.toLocaleString('en-US')} యాంత్రిక తనిఖీలు, 0 విఫలం.`;
+    `verify:shadbala ${GATE_COUNTS.shadbala} · verify:sampradaya ${GATE_COUNTS.sampradaya} — ` +
+    `మొత్తం ${gateTotal.toLocaleString('en-US')} యాంత్రిక తనిఖీలు, 0 విఫలం.`;
 
   return { rows, summaryTe, gateCohortTe, unverifiableTe, groupsTe: groups };
 }
