@@ -308,7 +308,7 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
       </div>
 
       {/* ---------- చట్రం (నిరయన/సాయన) & ఉదయ నిర్వచనం ---------- */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px]">
+      <div className="no-print flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px]">
         <div className="flex items-center gap-1.5">
           <span className="text-[#EDE8E0]/45">చట్రం:</span>
           {([
@@ -347,6 +347,22 @@ export const HinduCalendarView: React.FC<HinduCalendarViewProps> = ({ chart }) =
               {label}
             </button>
           ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => { setAyanamsaMode('lahiri'); setRiseMode('hindu'); }}
+            className="rounded-md border border-white/10 px-2 py-0.5 text-[#EDE8E0]/55 hover:text-[#EDE8E0]"
+            title="డ్రిక్ పంచాంగ్ (High Calendar) ప్రమాణం"
+          >
+            డ్రిక్ ప్రమాణం
+          </button>
+          <button
+            onClick={() => { setAyanamsaMode('sayana'); setRiseMode('centre-refraction'); }}
+            className="rounded-md border border-white/10 px-2 py-0.5 text-[#EDE8E0]/55 hover:text-[#EDE8E0]"
+            title="Hindu Calendar యాప్ చూపే సాయన చట్రం + ఖగోళ ఉదయం"
+          >
+            యాప్ పోలిక
+          </button>
         </div>
         <span className="text-[10px] text-[#EDE8E0]/35">
           {ayanamsaMode === 'sayana'
