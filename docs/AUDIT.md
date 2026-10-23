@@ -643,7 +643,7 @@ special aspects but not the **retrograde-side** ones:
 | Saturn, 10th (270°) | 60 | 15 |
 | Mars, 8th (210°–240°) | 60 → 30 | 45 → 30 |
 | Jupiter, 9th (240°) | 60 | 30 |
-| Saturn, 9th-sign band (240°–270°) | 30 → 60 | 15 → 22.5 |
+| Saturn, 240°–270° band | 30 → 60 (rises to full at 270°) | 30 → 15 (fell away instead) |
 
 Every bhāva-bala number that involved a Saturn or Mars aspect from the far side
 of the chart was therefore computed from a quarter-strength value. Fixed against
