@@ -38,6 +38,8 @@ import {
 import { generateSiddhantaAdvancedAppendices } from '../engine/siddhantaAdvancedAppendices.ts';
 import { NorthIndianKundaliSvg, SouthIndianKundaliSvg } from './ChartsSvg.tsx';
 import { JaiminiCharaDashaVisualizer } from './JaiminiCharaDashaVisualizer.tsx';
+import DrishtiPanel from './DrishtiPanel.tsx';
+import YoginiDashaPanel from './YoginiDashaPanel.tsx';
 
 interface DashaVargaViewProps {
   chart: CompleteChartResult;
@@ -1962,7 +1964,7 @@ export const DashaVargaView: React.FC<DashaVargaViewProps> = ({
                 { id: 'sthanaBala', labelTe: '1. స్థాన బలం (Positional)', descTe: 'ఉచ్ఛ, సప్తవర్గజ, ఓజయుగ్మ, కేంద్ర బలాలు' },
                 { id: 'digBala', labelTe: '2. దిగ్బలం (Directional)', descTe: 'లగ్న/కేంద్రాలలో గ్రహాల దిశా బలం' },
                 { id: 'kalaBala', labelTe: '3. కాల బలం (Temporal)', descTe: 'దివారాత్రి, పక్ష, త్రిభాగ, అబ్ద బలాలు' },
-                { id: 'cheshtaBala', labelTe: '4. చేష్టా బలం (Motional)', descTe: 'వక్ర గమనం, కాంతి, సూర్యుని నుండి దూరం' },
+                { id: 'cheshtaBala', labelTe: '4. చేష్టా బలం (Motional)', descTe: 'చేష్టా కేంద్రం — శీఘ్రోచ్చకు, స్ఫుట-మధ్యమ స్థానాల సగటుకు మధ్య దూరం ÷ 3 (గరిష్ఠం 60)' },
                 { id: 'naisargikaBala', labelTe: '5. నైసర్గిక బలం (Natural)', descTe: 'రవి నుండి శని వరకు సహజ కాంతి క్రమం' },
                 { id: 'drikBala', labelTe: '6. దృక్ బలం (Aspectual)', descTe: 'శుభ/పాప గ్రహాల దృష్ట్యా సంస్కార బలం' },
               ].map((m) => (
@@ -2266,6 +2268,8 @@ export const DashaVargaView: React.FC<DashaVargaViewProps> = ({
           </table>
         </div>
       </section>
+      <YoginiDashaPanel chart={chart} />
+      <DrishtiPanel chart={chart} />
     </div>
   );
 };

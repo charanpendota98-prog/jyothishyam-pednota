@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ACCURACY } from './engine/accuracySummary.ts';
 import {
   AYANAMSA_METADATA,
+  WORLD_CITIES,
   ZODIAC_SIGNS,
   calculateChart,
   type BirthInput,
@@ -9,6 +11,7 @@ import {
   type HouseSystem,
   type PlanetPosition,
 } from './engine/ephemeris.ts';
+import { placeNameTe } from './engine/placeNamesTe';
 import {
   STATE_DISTRICT_ATLAS,
   TELUGU_RASIS,
@@ -22,7 +25,8 @@ import {
   NorthIndianKundaliSvg,
   SouthIndianKundaliSvg,
 } from './components/ChartsSvg.tsx';
-import { SampoornaJathakamView } from './components/SampoornaJathakamView.tsx';
+import { SampoornaJathakamView, JATHAKAM_SECTION_COUNT } from './components/SampoornaJathakamView.tsx';
+import { JathakamBookShell } from './components/JathakamBookShell.tsx';
 import { DashaVargaView } from './components/DashaVargaView.tsx';
 import { PanchangaAdvancedView } from './components/PanchangaAdvancedView.tsx';
 import { SynastryMilanView } from './components/SynastryMilanView.tsx';
@@ -30,6 +34,14 @@ import { ClassicalAiView } from './components/ClassicalAiView.tsx';
 import { PrashnaShastraView } from './components/PrashnaShastraView.tsx';
 import { NamakaranaShastraView } from './components/NamakaranaShastraView.tsx';
 import { TajikaVarshaphalaView } from './components/TajikaVarshaphalaView.tsx';
+import { VastuShastraView } from './components/VastuShastraView.tsx';
+import { HinduCalendarView } from './components/HinduCalendarView.tsx';
+import EclipsesView from './components/EclipsesView.tsx';
+import { GocharaView } from './components/GocharaView.tsx';
+import { JathakaDeepView } from './components/JathakaDeepView.tsx';
+import RashiPhalaStudioView from './components/RashiPhalaStudioView.tsx';
+import { GranthaSourcesView } from './components/GranthaSourcesView.tsx';
+import { AccuracyLedgerPanel } from './components/AccuracyLedgerPanel.tsx';
 import { RoyalWhatsAppSummaryModal } from './components/RoyalWhatsAppSummaryModal.tsx';
 import {
   Bookmark,
@@ -38,6 +50,10 @@ import {
   Plus,
   Menu,
   Compass,
+  Orbit,
+  Layers,
+  Library,
+  Home,
   Clock,
   Calendar,
   Heart,
@@ -48,18 +64,31 @@ import {
   ChevronUp,
   HelpCircle,
   Star,
+  BookOpen,
   Share2,
+  Search,
+  LayoutGrid,
 } from 'lucide-react';
 
 type ActiveWorkspaceTab =
   | 'studio'
+  | 'jathaka_book'
   | 'varshaphala'
   | 'namakarana'
   | 'dasha_vargas'
   | 'panchanga_lots'
   | 'synastry'
   | 'classical_ai'
-  | 'prashna';
+  | 'prashna'
+  | 'vastu'
+  | 'hindu_calendar'
+  | 'eclipses'
+  | 'gochara'
+  | 'jathaka_deep'
+  | 'phala_studio'
+  | 'granthas';
+
+const TIMEZONE_OPTIONS = [...new Set(WORLD_CITIES.map((city) => city.tzName))].sort();
 
 const INITIAL_PROFILES: BirthInput[] = [
   {
@@ -67,10 +96,11 @@ const INITIAL_PROFILES: BirthInput[] = [
     name: 'చరణ్ పెందోట (Charan Pendota)',
     gender: 'male',
     date: '1998-05-14',
-    time: '08:45',
+    time: '08:45:00',
     lat: 17.3850,
     lng: 78.4867,
     tzOffsetHours: 5.5,
+    timezone: 'Asia/Kolkata',
     city: 'హైదరాబాద్ (Hyderabad)',
     country: 'తెలంగాణ, భారతదేశం',
     ayanamsa: 'lahiri',
@@ -86,6 +116,7 @@ const INITIAL_PROFILES: BirthInput[] = [
     lat: 17.6868,
     lng: 83.2185,
     tzOffsetHours: 5.5,
+    timezone: 'Asia/Kolkata',
     city: 'విశాఖపట్నం (Visakhapatnam)',
     country: 'ఆంధ్రప్రదేశ్, భారతదేశం',
     ayanamsa: 'lahiri',
@@ -101,6 +132,7 @@ const INITIAL_PROFILES: BirthInput[] = [
     lat: 16.5062,
     lng: 80.6480,
     tzOffsetHours: 5.5,
+    timezone: 'Asia/Kolkata',
     city: 'ఎన్టీఆర్ జిల్లా (Vijayawada)',
     country: 'ఆంధ్రప్రదేశ్, భారతదేశం',
     ayanamsa: 'lahiri',
@@ -115,6 +147,8 @@ const INITIAL_PROFILES: BirthInput[] = [
     time: '06:33',
     lat: 22.5726,
     lng: 88.3639,
+    // Historical birth-time convention is unverified; keep the legacy offset
+    // rather than silently assuming IANA local-mean-time conversion.
     tzOffsetHours: 5.5,
     city: 'కోల్‌కతా (Kolkata)',
     country: 'భారతదేశం',
@@ -151,6 +185,8 @@ export default function App() {
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [externalPdfTrigger, setExternalPdfTrigger] = useState<number>(0);
   const [isRoyalCardOpen, setIsRoyalCardOpen] = useState<boolean>(false);
+  const [isToolDirectoryOpen, setIsToolDirectoryOpen] = useState<boolean>(false);
+  const [toolQuery, setToolQuery] = useState('');
 
   const handleTriggerFullPdfDownload = () => {
     setActiveTab('studio');
@@ -189,6 +225,7 @@ export default function App() {
         lat: firstDist.lat,
         lng: firstDist.lng,
         tzOffsetHours: firstDist.tzOffsetHours,
+        timezone: 'Asia/Kolkata',
       }));
     }
   };
@@ -204,14 +241,34 @@ export default function App() {
         lat: dist.lat,
         lng: dist.lng,
         tzOffsetHours: dist.tzOffsetHours,
+        timezone: 'Asia/Kolkata',
       }));
     }
   };
 
-  const chart = useMemo(
-    () => calculateChart(birthInput, tradition),
-    [birthInput, tradition]
-  );
+  const [lastValidChart, setLastValidChart] = useState(() => calculateChart(birthInput, tradition));
+  const chartCalculation = useMemo(() => {
+    try {
+      return { chart: calculateChart(birthInput, tradition), error: null as string | null };
+    } catch (error) {
+      return {
+        chart: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }, [birthInput, tradition]);
+  const chart = chartCalculation.chart ?? lastValidChart;
+  useEffect(() => {
+    if (chartCalculation.chart) setLastValidChart(chartCalculation.chart);
+  }, [chartCalculation.chart]);
+  useEffect(() => {
+    const resolvedOffset = chartCalculation.chart?.input.tzOffsetHours;
+    if (resolvedOffset !== undefined && birthInput.timezone && Math.abs(resolvedOffset - birthInput.tzOffsetHours) > 1 / 3600) {
+      setBirthInput((previous) => previous.timezone === birthInput.timezone
+        ? { ...previous, tzOffsetHours: resolvedOffset }
+        : previous);
+    }
+  }, [birthInput.timezone, birthInput.tzOffsetHours, chartCalculation.chart]);
 
   const teJathakam = useMemo(
     () => generateTeluguSampoornaJathakam(chart),
@@ -290,6 +347,20 @@ export default function App() {
       icon: <Compass className="w-4 h-4" />,
     },
     {
+      id: 'jathaka_book',
+      labelTe: `పూర్తి జాతక మహాగ్రంథం (${JATHAKAM_SECTION_COUNT} అధ్యాయాలు)`,
+      shortTe: 'పూర్తి జాతకం',
+      labelEn: 'Full Jathakam Book',
+      icon: <BookOpen className="w-4 h-4" />,
+    },
+    {
+      id: 'phala_studio',
+      labelTe: 'రాశి ఫలాలు & ముహూర్త స్టూడియో (ఏ తేదీకైనా)',
+      shortTe: 'రాశి ఫలాలు',
+      labelEn: 'Rashi Phala Studio',
+      icon: <Sparkles className="w-4 h-4" />,
+    },
+    {
       id: 'varshaphala',
       labelTe: 'వార్షిక ఫలితాలు & 12-నెలలు (Varshaphala)',
       shortTe: 'వర్షఫలం',
@@ -338,13 +409,55 @@ export default function App() {
       labelEn: 'Prashna Shastra',
       icon: <HelpCircle className="w-4 h-4" />,
     },
+    {
+      id: 'granthas',
+      labelTe: 'గ్రంథ మండలం (మూల ఆధారాలు)',
+      shortTe: 'గ్రంథాలు',
+      labelEn: 'Classical Sources',
+      icon: <Library className="w-4 h-4" />,
+    },
+    {
+      id: 'jathaka_deep',
+      labelTe: 'జాతక సూక్ష్మ చక్రం (అవకహడ · వర్గాలు · షడ్బల)',
+      shortTe: 'సూక్ష్మ జాతకం',
+      labelEn: 'Deep Jathaka',
+      icon: <Layers className="w-4 h-4" />,
+    },
+    {
+      id: 'gochara',
+      labelTe: 'గోచార ఫలం (రాశి గతులు)',
+      shortTe: 'గోచారం',
+      labelEn: 'Gochara & Transits',
+      icon: <Orbit className="w-4 h-4" />,
+    },
+    {
+      id: 'hindu_calendar',
+      labelTe: 'హిందూ పంచాంగం & క్యాలెండర్',
+      shortTe: 'పంచాంగం',
+      labelEn: 'Hindu Calendar',
+      icon: <Calendar className="w-4 h-4" />,
+    },
+    {
+      id: 'eclipses',
+      labelTe: 'సూర్య & చంద్ర గ్రహణాలు',
+      shortTe: 'గ్రహణాలు',
+      labelEn: 'Eclipses',
+      icon: <Orbit className="w-4 h-4" />,
+    },
+    {
+      id: 'vastu',
+      labelTe: 'వాస్తు శాస్త్రం (నామ & గృహ)',
+      shortTe: 'వాస్తు',
+      labelEn: 'Vastu Shastra',
+      icon: <Home className="w-4 h-4" />,
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-[#090C18] text-[#EDE8E0] cosmic-starfield flex flex-col pb-16 lg:pb-0">
+    <div className="min-h-screen app-canvas text-[#EDE8E0] flex flex-col pb-16 lg:pb-0">
       {/* STRICT 3-ZONE TOP BAR CONTRACT + MOBILE-FIRST ERGONOMIC HEADER */}
-      <header className="sticky top-0 z-40 bg-[#090C18]/95 backdrop-blur-md border-b border-white/10 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 sm:gap-6 no-print">
-        {/* Zone 1: Single text element wordmark */}
+      <header className="shell-header sticky top-0 z-40 px-3 sm:px-5 lg:px-7 py-2.5 flex items-center justify-between gap-3 sm:gap-5 no-print">
+        {/* Brand */}
         <a
           href="#top"
           onClick={(e) => {
@@ -352,55 +465,82 @@ export default function App() {
             setActiveTab('studio');
             setIsMobileMenuOpen(false);
           }}
-          className="text-xl sm:text-2xl font-display font-bold tracking-wide text-[#EDE8E0] whitespace-nowrap shrink-0 flex items-center gap-2"
+          className="flex items-center gap-2.5 shrink-0 group"
         >
-          <span>AstroSphere</span>
-          <span className="text-[10px] sm:text-xs font-sans font-semibold px-2 py-0.5 rounded bg-[#C9A96E]/15 text-[#C9A96E] border border-[#C9A96E]/35">
-            తెలుగు జాతకం
+          <span className="brand-sigil">
+            <svg viewBox="0 0 40 40" className="w-[22px] h-[22px] sigil-spin" aria-hidden="true">
+              <g stroke="currentColor" strokeWidth="1.05" fill="none" opacity="0.85">
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const a = (i * Math.PI) / 6;
+                  return (
+                    <line
+                      key={i}
+                      x1={20 + 6.5 * Math.cos(a)}
+                      y1={20 + 6.5 * Math.sin(a)}
+                      x2={20 + 15.5 * Math.cos(a)}
+                      y2={20 + 15.5 * Math.sin(a)}
+                    />
+                  );
+                })}
+              </g>
+              <circle cx="20" cy="20" r="6.5" stroke="currentColor" strokeWidth="1.05" fill="none" />
+              <circle cx="20" cy="20" r="2.1" fill="currentColor" />
+            </svg>
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="brand-wordmark font-display text-[19px] sm:text-[21px] font-bold tracking-tight">
+              Jyotishyam
+            </span>
+            <span className="brand-eyebrow mt-1 hidden sm:block">వైదిక జ్యోతిష పరిశోధన మందిరం</span>
           </span>
         </a>
 
-        {/* Zone 2: Desktop 5 concise single-line text navigation links */}
-        <nav className="hidden lg:flex items-center gap-6 overflow-x-auto text-sm font-medium text-[#EDE8E0]/70">
+        {/* Primary navigation */}
+        <nav className="hidden lg:flex nav-track nav-fade overflow-x-auto max-w-[62vw]">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`py-1 border-b-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                activeTab === item.id
-                  ? 'text-[#C9A96E] border-[#C9A96E] font-bold'
-                  : 'border-transparent hover:text-[#EDE8E0]'
-              }`}
+              title={lang === 'te' ? item.labelTe : item.labelEn}
+              data-active={activeTab === item.id}
+              className="nav-pill cursor-pointer"
             >
-              {lang === 'te' ? item.labelTe : item.labelEn}
+              {item.icon}
+              <span>{lang === 'te' ? item.shortTe : item.labelEn}</span>
             </button>
           ))}
         </nav>
 
-        {/* Zone 3: Primary Actions + Mobile Menu Button */}
+        {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setIsRoyalCardOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/45 rounded-lg hover:bg-[#25D366]/25 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-          >
+          <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#5BBFB5]/35 bg-[#5BBFB5]/10 text-[#6FD2C7] text-[10px] font-mono-tabular tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#6FD2C7] aura-pulse" />
+            VSOP87 + ELP-2000 · లహిరి
+          </span>
+
+          <button onClick={() => setIsRoyalCardOpen(true)} className="hidden sm:inline-flex ghost-btn cursor-pointer">
             <Share2 className="w-3.5 h-3.5" />
-            <span>1-పేజీ కార్డు / WhatsApp</span>
+            <span>1-పేజీ కార్డు</span>
           </button>
 
           <button
-            onClick={() => setIsDrawerOpen(true)}
-            className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold bg-[#C9A96E] text-[#090C18] rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap shrink-0 cursor-pointer"
+            onClick={() => setIsToolDirectoryOpen(true)}
+            className="ghost-btn cursor-pointer"
+            aria-label={lang === 'te' ? 'అన్ని జ్యోతిష్య సాధనాలు' : 'All astrology tools'}
           >
-            {lang === 'te'
-              ? `ప్రొఫైల్స్ (${savedProfiles.length})`
-              : `Profiles (${savedProfiles.length})`}
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{lang === 'te' ? 'అన్ని సాధనాలు' : 'All tools'}</span>
           </button>
 
-          {/* Mobile Hamburger Menu Button */}
+          <button onClick={() => setIsDrawerOpen(true)} className="gold-btn cursor-pointer">
+            <span className="hidden sm:inline">{lang === 'te' ? 'ప్రొఫైల్స్' : 'Profiles'}</span>
+            <span className="font-mono-tabular">{savedProfiles.length}</span>
+          </button>
+
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Open Navigation Menu"
-            className="lg:hidden p-2 rounded-lg bg-[#141932] border border-[#C9A96E]/40 text-[#C9A96E] hover:bg-white/10 transition-colors cursor-pointer"
+            className="lg:hidden p-2 rounded-lg bg-white/5 border border-white/12 text-[#E4C68C] hover:bg-white/10 transition-colors cursor-pointer"
           >
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -467,94 +607,82 @@ export default function App() {
         </div>
       )}
 
-      {/* Sub-Header Telemetry & Language / Tradition Bar */}
-      <div className="bg-[#0F1326]/90 border-b border-white/10 px-3 sm:px-6 py-2.5 no-print">
-        <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
-          {/* Unboxed Metadata with Typographic Separators */}
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[#EDE8E0]/80 text-[11px] sm:text-xs">
-            <span className="font-bold text-[#EDE8E0]">{chart.input.name}</span>
-            <span aria-hidden="true">·</span>
-            <span>
-              {chart.input.date} ({chart.input.time}) · {chart.input.city.split('(')[0].trim()}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span className="text-[#C9A96E] font-semibold">
-              లగ్నం: {teJathakam.janmaLagnamTe.split(' ')[0]}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span className="text-[#5BBFB5] font-semibold">
-              రాశి: {teJathakam.janmaRasiTe.split(' ')[0]} ({teJathakam.janmaNakshatramTe} {teJathakam.janmaPadam}వ పాదం · "{teJathakam.namaAksharamTe}")
-            </span>
-            <span aria-hidden="true">·</span>
-            <span className="text-[#9B8FD4] font-semibold">
-              దశ: {TELUGU_PLANETS[activeMaha.lord]?.nameTe ?? activeMaha.lord} / {TELUGU_PLANETS[activeAntar.lord]?.nameTe ?? activeAntar.lord}
-            </span>
+      {/* Chart identity band — the native's five key coordinates at a glance */}
+      <div className="kpi-band px-3 sm:px-5 lg:px-7 py-2.5 no-print">
+        <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="kpi-chip">
+              <span className="kpi-label">జాతకుడు</span>
+              <span className="kpi-value max-w-[150px]">{chart.input.name}</span>
+            </div>
+            <div className="kpi-chip">
+              <span className="kpi-label">జననం</span>
+              <span className="kpi-value font-mono-tabular">
+                {chart.input.date} · {chart.input.time}
+              </span>
+            </div>
+            <div className="kpi-chip">
+              <span className="kpi-label">స్థలం</span>
+              <span className="kpi-value max-w-[160px]">{placeNameTe(chart.input.city)}</span>
+            </div>
+            <div className="kpi-chip">
+              <span className="kpi-label">లగ్నం</span>
+              <span className="kpi-value gold">{teJathakam.janmaLagnamTe.split(' ')[0]}</span>
+            </div>
+            <div className="kpi-chip">
+              <span className="kpi-label">రాశి</span>
+              <span className="kpi-value teal">{teJathakam.janmaRasiTe.split(' ')[0]}</span>
+            </div>
+            <div className="kpi-chip">
+              <span className="kpi-label">నక్షత్రం</span>
+              <span className="kpi-value">
+                {teJathakam.janmaNakshatramTe} · {teJathakam.janmaPadam} · “{teJathakam.namaAksharamTe}”
+              </span>
+            </div>
+            <div className="kpi-chip">
+              <span className="kpi-label">ప్రస్తుత దశ</span>
+              <span className="kpi-value violet">
+                {TELUGU_PLANETS[activeMaha.lord]?.nameTe ?? activeMaha.lord}
+                <span className="text-[#EDE8E0]/40"> / </span>
+                {TELUGU_PLANETS[activeAntar.lord]?.nameTe ?? activeAntar.lord}
+              </span>
+            </div>
+            <div className="kpi-chip hidden md:flex">
+              <span className="kpi-label">అయనాంశ</span>
+              <span className="kpi-value font-mono-tabular">{chart.ayanamsaDeg.toFixed(4)}°</span>
+            </div>
           </div>
 
-          {/* Language & Tradition Controls (Desktop & Tablet) */}
-          <div className="hidden sm:flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={handleTriggerFullPdfDownload}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-[#C9A96E] text-[#090C18] rounded-lg hover:bg-[#d8b97e] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-md"
-            >
+          <div className="hidden sm:flex flex-wrap items-center gap-2">
+            <button onClick={handleTriggerFullPdfDownload} className="gold-btn cursor-pointer">
               <Printer className="w-3.5 h-3.5" />
-              పూర్తి జాతకం PDF (12-Page PDF)
+              పూర్తి జాతకం PDF
             </button>
 
             <button
               onClick={handleTriggerFullPdfDownload}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-[#141932] border border-[#C9A96E]/50 text-[#C9A96E] rounded-lg hover:bg-[#1E2548] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              title="ముద్రణ పుటల ఎంపిక & ప్రింట్ అమరికలు (Print Settings)"
+              className="ghost-btn cursor-pointer"
+              title="ముద్రణ పుటల ఎంపిక & ప్రింట్ అమరికలు"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#C9A96E]" />
-              విభాగాల ఎంపిక (Settings)
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              పుటల ఎంపిక
             </button>
 
-            {/* Language Toggle: తెలుగు | English */}
-            <div className="flex items-center bg-[#090C18] p-1 rounded-lg border border-white/10">
-              <button
-                onClick={() => setLang('te')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                  lang === 'te'
-                    ? 'bg-[#C9A96E] text-[#090C18]'
-                    : 'text-[#EDE8E0]/65 hover:text-[#EDE8E0]'
-                }`}
-              >
-                తెలుగు (సంపూర్ణ జాతకం)
+            <div className="seg">
+              <button data-active={lang === 'te'} onClick={() => setLang('te')}>
+                తెలుగు
               </button>
-              <button
-                onClick={() => setLang('en')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                  lang === 'en'
-                    ? 'bg-[#C9A96E] text-[#090C18]'
-                    : 'text-[#EDE8E0]/65 hover:text-[#EDE8E0]'
-                }`}
-              >
-                English
+              <button data-active={lang === 'en'} onClick={() => setLang('en')}>
+                EN
               </button>
             </div>
 
-            {/* Sidereal vs Tropical */}
-            <div className="flex items-center bg-[#090C18] p-1 rounded-lg border border-white/10">
-              <button
-                onClick={() => setTradition('vedic')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                  tradition === 'vedic'
-                    ? 'bg-white/15 text-[#EDE8E0] font-semibold'
-                    : 'text-[#EDE8E0]/65 hover:text-[#EDE8E0]'
-                }`}
-              >
-                నిరయన వేద జ్యోతిష్యం (Sidereal)
+            <div className="seg">
+              <button data-active={tradition === 'vedic'} onClick={() => setTradition('vedic')}>
+                నిరయన
               </button>
-              <button
-                onClick={() => setTradition('western')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                  tradition === 'western'
-                    ? 'bg-white/15 text-[#EDE8E0] font-semibold'
-                    : 'text-[#EDE8E0]/65 hover:text-[#EDE8E0]'
-                }`}
-              >
-                సాయన పాశ్చాత్య (Tropical)
+              <button data-active={tradition === 'western'} onClick={() => setTradition('western')}>
+                సాయన
               </button>
             </div>
           </div>
@@ -562,9 +690,60 @@ export default function App() {
       </div>
 
       {/* Main Workspace Container */}
-      <main className="flex-1 max-w-[1400px] w-full mx-auto px-3 sm:px-6 py-4 sm:py-7">
+      <main className="flex-1 max-w-[1440px] w-full mx-auto px-3 sm:px-5 lg:px-7 py-4 sm:py-6">
         {activeTab === 'studio' && (
           <div className="space-y-6 sm:space-y-10">
+            {/* Hero — the promise of the platform, with primary trust signals */}
+            <section className="no-print relative overflow-hidden rounded-[24px] border border-white/10 px-5 py-6 sm:px-8 sm:py-8">
+              <div
+                className="absolute inset-0 -z-10"
+                style={{
+                  background:
+                    'radial-gradient(620px 300px at 12% -20%, rgba(217,185,123,0.20), transparent 62%), radial-gradient(520px 280px at 88% 0%, rgba(126,112,210,0.18), transparent 60%), linear-gradient(180deg, rgba(12,16,30,0.94), rgba(6,8,16,0.94))',
+                }}
+              />
+              <div className="absolute -right-10 -top-14 w-56 h-56 rounded-full border border-[#C9A96E]/20 aura-pulse -z-10" />
+              <div className="absolute -right-2 top-2 w-36 h-36 rounded-full border border-[#9B8FD4]/20 -z-10" />
+
+              <div className="flex flex-wrap items-start justify-between gap-6">
+                <div className="max-w-2xl space-y-2.5">
+                  <div className="section-eyebrow">సంపూర్ణ తెలుగు జ్యోతిష శాస్త్రం · నిరయన వేద గణన</div>
+                  <h1 className="text-[26px] sm:text-[34px] leading-[1.25] font-display font-bold text-[#F4F0E8]">
+                    జన్మ క్షణాన్ని <span className="text-[#E4C68C]">ఖచ్చితంగా</span> చదివే జాతక చక్రం
+                  </h1>
+                  <p className="text-[13px] sm:text-[13.5px] leading-relaxed text-[#EDE8E0]/60">
+                    గ్రహ స్ఫుటాలు VSOP87 + ELP-2000 సిద్ధాంతాలతో (astronomy-engine) — స్విస్ ఎఫెమెరిస్
+                    2.10.03 గోల్డెన్ ఫిక్చర్‌తో {ACCURACY.epochs} జనన క్షణాల్లో {ACCURACY.measurements} కొలతలు,
+                    గరిష్ఠ భేదం {ACCURACY.maxDegText} (≈{ACCURACY.maxArcsecText}).
+                    16 వర్గాలు · షడ్బలం · పంచ స్థాయి దశలు · శ్రీపతి భావ సంధులు · అష్టకవర్గం —
+                    ప్రామాణిక పత్రికలతో {ACCURACY.gates} పిన్-టు-పిన్ తనిఖీలు.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 shrink-0">
+                  {[
+                    [ACCURACY.maxDegText, 'స్విస్ ఎఫెమెరిస్ భేదం'],
+                    [String(ACCURACY.gates), 'పత్రికా పిన్-టు-పిన్ తనిఖీలు'],
+                    ['22', 'మూల గ్రంథాలు'],
+                  ].map(([v, l]) => (
+                    <div key={l} className="flex items-baseline gap-2.5">
+                      <span className="font-mono-tabular text-[15px] font-bold text-[#E4C68C] min-w-[68px]">{v}</span>
+                      <span className="text-[10.5px] text-[#EDE8E0]/50">{l}</span>
+                    </div>
+                  ))}
+                  <div className="mt-1 flex flex-col gap-2">
+                    <button onClick={() => setActiveTab('jathaka_book')} className="gold-btn cursor-pointer">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      పూర్తి జాతక మహాగ్రంథం
+                    </button>
+                    <button onClick={() => setActiveTab('jathaka_deep')} className="ghost-btn cursor-pointer">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      సూక్ష్మ జాతక చక్రం
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             {/* 4-Card Executive Jathakam Summary Strip */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 no-print">
               <div className="bg-[#0F1326] border border-[#C9A96E]/35 rounded-xl p-3.5 sm:p-4">
@@ -626,6 +805,11 @@ export default function App() {
                   సూర్యోదయం: <strong className="text-[#5BBFB5]">{teJathakam.suryodayamTe}</strong> · {teJathakam.dashaBalanceAtBirthTe.split('(')[0]}
                 </div>
               </div>
+            </div>
+
+            {/* గణన ప్రమాణ పత్రం — జాతకం ఎంత ఖచ్చితంగా లెక్కించబడిందో తెరిచి చూడవచ్చు */}
+            <div className="no-print">
+              <AccuracyLedgerPanel lang={lang} />
             </div>
 
             {/* Mobile Quick Toggle Bar for Birth Form */}
@@ -763,13 +947,14 @@ export default function App() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[#EDE8E0]/80 mb-1">
-                        పుట్టిన సమయం (24h Time)
+                        పుట్టిన సమయం (24h Time · seconds supported)
                       </label>
                       <input
                         type="time"
-                        value={birthInput.time}
+                        step={1}
+                        value={birthInput.time.length === 5 ? `${birthInput.time}:00` : birthInput.time}
                         onChange={(e) =>
-                          setBirthInput({ ...birthInput, time: e.target.value })
+                          setBirthInput({ ...birthInput, time: e.target.value.length === 5 ? `${e.target.value}:00` : e.target.value })
                         }
                         className="w-full bg-[#090C18] border border-white/15 rounded-lg px-3 py-2 text-xs font-mono-tabular text-[#EDE8E0] focus:outline-none focus:border-[#C9A96E]"
                       />
@@ -813,7 +998,7 @@ export default function App() {
                   </div>
 
                   {/* Custom Lat / Lng / Timezone Fine-Tuning */}
-                  <div className="grid grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                     <div>
                       <label className="block text-[11px] text-[#EDE8E0]/55 mb-1">
                         అక్షాంశం (Lat °N)
@@ -860,12 +1045,31 @@ export default function App() {
                           setBirthInput({
                             ...birthInput,
                             tzOffsetHours: parseFloat(e.target.value) || 0,
+                            timezone: undefined,
                           })
                         }
                         className="w-full bg-[#090C18] border border-white/15 rounded-lg px-2.5 py-1.5 text-xs font-mono-tabular text-[#EDE8E0]"
                       />
                     </div>
+                    <div>
+                      <label className="block text-[11px] text-[#EDE8E0]/55 mb-1">
+                        IANA Time Zone
+                      </label>
+                      <select
+                        value={birthInput.timezone ?? ''}
+                        onChange={(e) => setBirthInput({ ...birthInput, timezone: e.target.value || undefined })}
+                        className="w-full bg-[#090C18] border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-[#EDE8E0]"
+                      >
+                        <option value="">Manual UTC offset</option>
+                        {TIMEZONE_OPTIONS.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                      </select>
+                    </div>
                   </div>
+                  {chartCalculation.error && (
+                    <p role="alert" className="text-xs text-amber-300 bg-amber-950/30 border border-amber-400/30 rounded-lg px-3 py-2">
+                      జనన సమయాన్ని లెక్కించలేకపోయాం: {chartCalculation.error}. సరైన UTC offset ఎంచుకోండి లేదా స్థానిక సమయాన్ని సరిచేయండి.
+                    </p>
+                  )}
 
                   {/* Ayanamsa & House System */}
                   <div className="grid grid-cols-2 gap-3 pt-1">
@@ -913,6 +1117,45 @@ export default function App() {
                         <option value="koch">కోచ్ (Koch)</option>
                       </select>
                     </div>
+
+                    <div>
+                      <label className="block text-xs text-[#EDE8E0]/60 mb-1">
+                        రాహు పాతం (Rahu Node)
+                      </label>
+                      <select
+                        value={birthInput.nodeConvention ?? 'mean'}
+                        onChange={(e) =>
+                          setBirthInput({
+                            ...birthInput,
+                            nodeConvention: e.target.value as 'mean' | 'true',
+                          })
+                        }
+                        className="w-full bg-[#090C18] border border-white/15 rounded-lg px-2.5 py-2 text-xs text-[#EDE8E0] focus:outline-none focus:border-[#C9A96E]"
+                      >
+                        <option value="mean">మధ్యమ రాహు (Mean — పంచాంగ సంప్రదాయం)</option>
+                        <option value="true">సత్య రాహు (True — ఖగోళ స్థితి)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <label className="block text-xs text-[#EDE8E0]/60 mb-1">
+                      గణన కేంద్రం (Planet Calculation Method)
+                    </label>
+                    <select
+                      value={birthInput.calculationMethod ?? 'geocentric'}
+                      onChange={(e) => setBirthInput({
+                        ...birthInput,
+                        calculationMethod: e.target.value as BirthInput['calculationMethod'],
+                      })}
+                      className="w-full bg-[#090C18] border border-white/15 rounded-lg px-2.5 py-2 text-xs text-[#EDE8E0] focus:outline-none focus:border-[#C9A96E]"
+                    >
+                      <option value="geocentric">భూకేంద్రం — OnlineJyotish standard/default</option>
+                      <option value="topocentric">స్థానిక పరిశీలక కేంద్రం — Topocentric</option>
+                    </select>
+                    <p className="mt-1 text-[10px] leading-relaxed text-[#EDE8E0]/45">
+                      Topocentric ఎంపికలో గ్రహాల స్థానాలకు జన్మస్థల parallax వర్తిస్తుంది; రాహు/కేతు గణితం భూకేంద్రంగానే ఉంటుంది.
+                    </p>
                   </div>
                 </div>
               </aside>
@@ -1278,16 +1521,60 @@ export default function App() {
               </div>
             </div>
 
-            {/* FULL TELUGU SAMPOORNA JATHAKAM BOOK (With 6 Structured Chapters & Deep Grantha Research) */}
-            <SampoornaJathakamView
-              chart={chart}
-              selectedPlanetId={selectedPlanetId}
-              onSelectPlanet={(p) => setSelectedPlanetId(p.id)}
-              lang={lang}
-              externalPdfTrigger={externalPdfTrigger}
-            />
+            {/* పూర్తి జాతక మహాగ్రంథం — ప్రత్యేక పఠన పేజీకి దారి */}
+            <section className="no-print relative overflow-hidden rounded-2xl border border-[#D9B97B]/30 bg-gradient-to-br from-[#141A2E] via-[#0C1120] to-[#0A0E1A] px-5 py-5 sm:px-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E4C68C]">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    పూర్తి జాతక మహాగ్రంథం
+                  </div>
+                  <h2 className="mt-1.5 text-lg font-bold text-[#F1DCAE] sm:text-xl">
+                    21 అధ్యాయాల సంపూర్ణ తెలుగు జాతక పుస్తకం — విషయ సూచికతో, అధ్యాయాల వారీగా
+                  </h2>
+                  <p className="mt-1.5 max-w-3xl text-[12px] leading-relaxed text-[#EDE8E0]/60">
+                    పంచాంగం–లగ్నం, షోడశవర్గ–జైమిని, షడ్బల–అష్టకవర్గ, 12 గ్రంథాల పరిశోధన, జీవిత 6 రంగాలు,
+                    ద్వాదశ భావాలు, 120 సంవత్సరాల దశా చక్రం, సాముదాయిక అష్టకవర్గ ఫలం–81 భుక్తి ఫలాలు, దోష–పరిహారాలు, ఉపాయములు, తాజిక వర్షఫలం —
+                    అన్నీ ఒకే పుస్తకంగా, స్టిక్కీ విషయ సూచిక & అక్షర సౌలభ్యంతో.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setActiveTab('jathaka_book')}
+                      className="gold-btn cursor-pointer"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      పూర్తి జాతకం చదవండి
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('jathaka_deep')}
+                      className="ghost-btn cursor-pointer"
+                    >
+                      <Layers className="h-3.5 w-3.5" />
+                      సూక్ష్మ జాతక చక్రం (వర్గాలు · షడ్బల)
+                    </button>
+                  </div>
+                </div>
+                <div className="w-full shrink-0 sm:w-[220px]">
+                  <div className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-3">
+                    {[
+                      [String(JATHAKAM_SECTION_COUNT), 'అధ్యాయాలు'],
+                      ['97', 'ఉపాంశాలు'],
+                      ['309', 'తనిఖీలు'],
+                      ['12', 'గ్రంథాలు'],
+                    ].map(([v, l]) => (
+                      <div key={l} className="flex items-baseline justify-between py-0.5">
+                        <span className="font-mono-tabular text-[13px] font-bold text-[#E4C68C]">{v}</span>
+                        <span className="text-[10px] text-[#EDE8E0]/50">{l}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         )}
+
+        {activeTab === 'phala_studio' && <RashiPhalaStudioView chart={chart} lang={lang} />}
 
         {activeTab === 'varshaphala' && (
           <TajikaVarshaphalaView chart={chart} />
@@ -1343,6 +1630,46 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'hindu_calendar' && (
+          <HinduCalendarView chart={chart} lang={lang} />
+        )}
+
+        {activeTab === 'eclipses' && <EclipsesView chart={chart} lang={lang} />}
+
+        {activeTab === 'gochara' && <GocharaView chart={chart} lang={lang} />}
+
+        {activeTab === 'jathaka_book' && (
+          <div className="pt-4">
+            <JathakamBookShell
+              titleTe="విషయ సూచిక & పఠన సహాయం"
+              subtitleTe={`${chart.input.name || 'జాతకుడు'} · ${chart.input.date} ${chart.input.time} · ${placeNameTe(chart.input.city)} — సంపూర్ణ జాతక మహాగ్రంథం · ${JATHAKAM_SECTION_COUNT} అధ్యాయాలు. విషయ సూచిక పుస్తకం లోపలి శీర్షికల నుండి ఆటోమేటిక్‌గా నిర్మించబడుతుంది; ఏ అధ్యాయానికైనా నేరుగా వెళ్లవచ్చు.`}
+            >
+              <SampoornaJathakamView
+                chart={chart}
+                selectedPlanetId={selectedPlanetId}
+                onSelectPlanet={(p) => setSelectedPlanetId(p.id)}
+                lang={lang}
+                externalPdfTrigger={externalPdfTrigger}
+              />
+            </JathakamBookShell>
+          </div>
+        )}
+
+        {activeTab === 'jathaka_deep' && <JathakaDeepView chart={chart} lang={lang} />}
+
+        {activeTab === 'granthas' && <GranthaSourcesView lang={lang} />}
+
+        {activeTab === 'vastu' && (
+          <VastuShastraView
+            defaultName={birthInput.name}
+            defaultPlaceName={birthInput.city}
+            defaultLat={chart.input.lat}
+            defaultLng={chart.input.lng}
+            defaultTzOffsetHours={chart.input.tzOffsetHours}
+            lang={lang}
+          />
+        )}
+
         {activeTab === 'prashna' && (
           <PrashnaShastraView
             defaultLat={chart.input.lat}
@@ -1386,6 +1713,7 @@ export default function App() {
                       lat: 16.5062,
                       lng: 80.6480,
                       tzOffsetHours: 5.5,
+    timezone: 'Asia/Kolkata',
                       city: 'ఎన్టీఆర్ జిల్లా (Vijayawada)',
                       country: 'ఆంధ్రప్రదేశ్, భారతదేశం',
                       ayanamsa: 'lahiri',
@@ -1474,14 +1802,23 @@ export default function App() {
       )}
 
       {/* Clean Quiet Footer */}
-      <footer className="border-t border-white/10 py-6 px-4 sm:px-6 text-xs text-[#EDE8E0]/45 no-print">
-        <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-4">
-          <span>
-            AstroSphere — శ్రీ సంపూర్ణ తెలుగు జాతక చక్రం & దృగ్గణిత జ్యోతిష్య వేదిక
+      <footer className="border-t border-white/8 py-7 px-4 sm:px-5 lg:px-7 text-xs text-[#EDE8E0]/45 no-print">
+        <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4">
+          <span className="flex items-center gap-2">
+            <span
+              className="grid place-items-center rounded-lg border border-[#C9A96E]/40 text-[#E4C68C]"
+              style={{ width: 22, height: 22 }}
+            >
+              <svg viewBox="0 0 40 40" className="w-3 h-3" aria-hidden="true">
+                <circle cx="20" cy="20" r="13" stroke="currentColor" strokeWidth="1.8" fill="none" />
+                <circle cx="20" cy="20" r="4" fill="currentColor" />
+              </svg>
+            </span>
+            Jyotishyam — సంపూర్ణ తెలుగు జాతక చక్రం &amp; సిద్ధాంత దృగ్గణిత జ్యోతిష వేదిక
           </span>
           <div className="flex flex-wrap items-center gap-4">
-            <button onClick={() => setActiveTab('studio')} className="hover:text-[#EDE8E0]">
-              సంపూర్ణ జాతకం
+            <button onClick={() => setActiveTab('jathaka_book')} className="hover:text-[#EDE8E0]">
+              పూర్తి జాతక గ్రంథం
             </button>
             <button onClick={() => setActiveTab('dasha_vargas')} className="hover:text-[#EDE8E0]">
               వింశోత్తరి దశలు
@@ -1498,38 +1835,163 @@ export default function App() {
             <button onClick={() => setActiveTab('prashna')} className="hover:text-[#EDE8E0]">
               ప్రశ్న శాస్త్రం
             </button>
+            <button onClick={() => setActiveTab('hindu_calendar')} className="hover:text-[#EDE8E0]">
+              హిందూ పంచాంగం
+            </button>
+            <button onClick={() => setActiveTab('jathaka_deep')} className="hover:text-[#EDE8E0]">
+              సూక్ష్మ జాతకం
+            </button>
+            <button onClick={() => setActiveTab('gochara')} className="hover:text-[#EDE8E0]">
+              గోచార ఫలం
+            </button>
+            <button onClick={() => setActiveTab('vastu')} className="hover:text-[#EDE8E0]">
+              వాస్తు శాస్త్రం
+            </button>
+            <button onClick={() => setActiveTab('granthas')} className="hover:text-[#EDE8E0]">
+              గ్రంథ మండలం
+            </button>
           </div>
         </div>
       </footer>
+
+      {isToolDirectoryOpen && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-6 no-print"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tool-directory-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsToolDirectoryOpen(false);
+          }}
+        >
+          <section className="w-full max-w-5xl max-h-[88vh] overflow-hidden rounded-2xl border border-[#C9A96E]/35 bg-[#0B0F1E] shadow-2xl">
+            <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#C9A96E]">
+                  {lang === 'te' ? 'జ్యోతిష్య వర్క్‌స్పేస్' : 'Jyotish workspace'}
+                </div>
+                <h2 id="tool-directory-title" className="mt-1 font-display text-xl font-bold text-[#F4F0E8]">
+                  {lang === 'te' ? 'అన్ని సాధనాలు ఒకేచోట' : 'All tools in one workspace'}
+                </h2>
+                <p className="mt-1 text-xs text-[#EDE8E0]/55">
+                  {lang === 'te'
+                    ? `${navItems.length} గణన విభాగాలు · తెలుగు / English`
+                    : `${navItems.length} calculation areas · Telugu / English`}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsToolDirectoryOpen(false)}
+                aria-label={lang === 'te' ? 'మూసివేయి' : 'Close'}
+                className="rounded-lg border border-white/10 p-2 text-[#EDE8E0]/65 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="border-b border-white/10 px-5 py-3 sm:px-7">
+              <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#070A14] px-3 py-2.5 focus-within:border-[#C9A96E]/60">
+                <Search className="h-4 w-4 shrink-0 text-[#C9A96E]" />
+                <input
+                  autoFocus
+                  value={toolQuery}
+                  onChange={(event) => setToolQuery(event.target.value)}
+                  placeholder={lang === 'te' ? 'జాతకం, పంచాంగం, వివాహం, వాస్తు… వెతకండి' : 'Search chart, panchanga, matching, vastu…'}
+                  className="w-full bg-transparent text-sm text-[#F4F0E8] outline-none placeholder:text-[#EDE8E0]/35"
+                />
+              </label>
+            </div>
+            <div className="grid max-h-[62vh] grid-cols-1 gap-2 overflow-y-auto p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
+              {navItems
+                .filter((item) => {
+                  const query = toolQuery.trim().toLocaleLowerCase();
+                  return !query || `${item.labelTe} ${item.shortTe} ${item.labelEn}`.toLocaleLowerCase().includes(query);
+                })
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsToolDirectoryOpen(false);
+                      setToolQuery('');
+                    }}
+                    className={`group flex min-h-24 items-start gap-3 rounded-xl border p-4 text-left transition-all ${
+                      activeTab === item.id
+                        ? 'border-[#C9A96E]/60 bg-[#C9A96E]/10'
+                        : 'border-white/10 bg-white/[0.025] hover:border-[#C9A96E]/40 hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/10 text-[#E4C68C]">
+                      {item.icon}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold leading-snug text-[#F4F0E8]">
+                        {lang === 'te' ? item.labelTe : item.labelEn}
+                      </span>
+                      <span className="mt-1 block text-[11px] text-[#EDE8E0]/45">
+                        {activeTab === item.id
+                          ? (lang === 'te' ? 'ప్రస్తుతం తెరిచి ఉంది' : 'Currently open')
+                          : (lang === 'te' ? 'విభాగాన్ని తెరవండి' : 'Open workspace')}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              {navItems.filter((item) => `${item.labelTe} ${item.shortTe} ${item.labelEn}`.toLocaleLowerCase().includes(toolQuery.trim().toLocaleLowerCase())).length === 0 && (
+                <div className="col-span-full py-10 text-center text-sm text-[#EDE8E0]/55">
+                  {lang === 'te' ? 'ఈ పేరుతో సాధనం కనిపించలేదు.' : 'No matching tool found.'}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Mobile Sticky Bottom Navigation Bar (Phone Ergonomic 6-Tab Bar) */}
       <nav
         aria-label="Mobile Bottom Navigation"
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#090C18]/95 backdrop-blur-md border-t border-[#C9A96E]/35 px-1 py-1.5 no-print shadow-[0_-8px_24px_rgba(0,0,0,0.6)]"
       >
-        <div className="grid grid-cols-7 gap-1 max-w-lg mx-auto">
-          {navItems.map((item) => {
-            const isAct = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg transition-all cursor-pointer ${
-                  isAct
-                    ? 'bg-[#C9A96E] text-[#090C18] font-bold shadow-sm'
-                    : 'text-[#EDE8E0]/70 hover:text-[#EDE8E0]'
-                }`}
-              >
-                {item.icon}
-                <span className="text-[10px] leading-tight mt-1 truncate max-w-full">
-                  {lang === 'te' ? item.shortTe : item.labelEn.split(' ')[0]}
-                </span>
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-5 gap-0.5 max-w-md mx-auto">
+          {(['studio', 'jathaka_book', 'gochara', 'hindu_calendar'] as ActiveWorkspaceTab[])
+            .map((id) => navItems.find((n) => n.id === id))
+            .filter((n): n is NonNullable<typeof n> => Boolean(n))
+            .map((item) => {
+              const isAct = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-lg transition-all cursor-pointer ${
+                    isAct ? 'text-[#F1DCAE]' : 'text-[#EDE8E0]/55 hover:text-[#EDE8E0]'
+                  }`}
+                >
+                  <span
+                    className={`grid place-items-center w-8 h-7 rounded-lg transition-all ${
+                      isAct
+                        ? 'bg-gradient-to-b from-[#F1DCAE] to-[#C9A96E] text-[#1A1408] shadow-[0_6px_16px_-8px_rgba(217,185,123,0.9)]'
+                        : ''
+                    }`}
+                  >
+                    {item.icon}
+                  </span>
+                  <span className="text-[9.5px] leading-tight truncate max-w-full font-medium">
+                    {lang === 'te' ? item.shortTe : item.labelEn.split(' ')[0]}
+                  </span>
+                </button>
+              );
+            })}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-lg transition-all cursor-pointer ${
+              isMobileMenuOpen ? 'text-[#F1DCAE]' : 'text-[#EDE8E0]/55'
+            }`}
+          >
+            <span className="grid place-items-center w-8 h-7 rounded-lg">
+              <Menu className="w-4 h-4" />
+            </span>
+            <span className="text-[9.5px] leading-tight font-medium">మరిన్ని</span>
+          </button>
         </div>
       </nav>
     </div>

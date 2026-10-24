@@ -1,5 +1,6 @@
 import type { CompleteChartResult, PlanetPosition } from './ephemeris.ts';
 import { TELUGU_PLANETS, TELUGU_RASIS, TELUGU_NAKSHATRAS } from './teluguJathakam.ts';
+import { computeLagnaFunctional, type PlanetId9 } from './lagnaFunctionalEngine.ts';
 
 export type AfflictionSeverity = 'critical' | 'moderate' | 'mild' | 'benefic_support';
 
@@ -468,6 +469,7 @@ function getBadhakaHouseForLagna(lagnaSignIdx: number): number {
 
 export function generateUpayaPariharaReport(chart: CompleteChartResult): UpayaPariharaReport {
   const lagnaSignIdx = chart.ascendant.signIndex;
+  const functionalProfile = computeLagnaFunctional(lagnaSignIdx);
   const lagnaNameTe = TELUGU_RASIS[lagnaSignIdx]?.nameTe ?? chart.ascendant.signName;
   const lagnaLordId = SIGN_LORDS_ID[lagnaSignIdx] ?? 'Sun';
   const lagnaLordTe = TELUGU_PLANETS[lagnaLordId]?.nameTe ?? lagnaLordId;
@@ -508,8 +510,10 @@ export function generateUpayaPariharaReport(chart: CompleteChartResult): UpayaPa
       const rasiNameTe = TELUGU_RASIS[p.signIndex]?.nameTe ?? p.signName;
       const ruledHouses = getHousesRuledByPlanet(pid, lagnaSignIdx);
 
-      // Functional nature
-      const rulesTrikona = ruledHouses.some((h) => h === 1 || h === 5 || h === 9);
+      // Functional nature — యోగకారకత్వం/త్రికోణత్వం ఇక చేతి నియమాలతో కాదు;
+      // lagnaFunctionalEngine (BPHS 34) లెక్కించిన ఫలితమే ప్రమాణం.
+      const fnProfile = functionalProfile.planets.find((x) => x.id === (pid as PlanetId9));
+      const isRealTrikonaLord = Boolean(fnProfile?.isTrikonaLord) && ruledHouses.some((h) => h === 5 || h === 9);
       const rulesDusthana = ruledHouses.some((h) => h === 6 || h === 8 || h === 12);
       const rulesTrishadaya = ruledHouses.some((h) => h === 3 || h === 6 || h === 11);
       const isMaraka = marakaIds.includes(pid);
@@ -517,26 +521,26 @@ export function generateUpayaPariharaReport(chart: CompleteChartResult): UpayaPa
       const isShadow = pid === 'Rahu' || pid === 'Ketu';
 
       const isFunctionalMalefic =
-        isShadow || (!rulesTrikona && (rulesDusthana || rulesTrishadaya));
+        isShadow || (!isRealTrikonaLord && (rulesDusthana || rulesTrishadaya));
 
       let functionalRoleTe = '';
       if (isShadow) {
         functionalRoleTe = 'ఛాయా గ్రహం (కర్మ బంధ కారకుడు)';
       } else if (ruledHouses.includes(1)) {
         functionalRoleTe = `లగ్నాధిపతి (${ruledHouses.join(', ')} స్థానాధిపతి — పరమ శుభుడు)`;
-      } else if (rulesTrikona && ruledHouses.some((h) => h === 4 || h === 7 || h === 10)) {
+      } else if (fnProfile?.isYogakaraka) {
         functionalRoleTe = `రాజయోగకారకుడు (${ruledHouses.join(', ')} స్థానాధిపతి)`;
-      } else if (rulesTrikona) {
+      } else if (isRealTrikonaLord) {
         functionalRoleTe = `త్రికోణాధిపతి (${ruledHouses.join(', ')} స్థానాధిపతి — శుభుడు)`;
       } else if (rulesDusthana) {
-        functionalRoleTe = `దుస్థానాధిపతి (${ruledHouses.join(', ')} స్థానాధిపతి — పాప ఫలదাতা)`;
+        functionalRoleTe = `దుస్థానాధిపతి (${ruledHouses.join(', ')} స్థానాధిపతి — పాప ఫలదాత)`;
       } else {
         functionalRoleTe = `${ruledHouses.join(', ')} భావాధిపతి`;
       }
 
       if (isBadhaka && !isShadow) {
         functionalRoleTe += ` · బాధకాధిపతి (${badhakaSthana}వ స్థానం)`;
-      } else if (isMaraka && !rulesTrikona && !isShadow) {
+      } else if (isMaraka && !isRealTrikonaLord && !isShadow) {
         functionalRoleTe += ' · మారకాధిపతి';
       }
 

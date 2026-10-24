@@ -1,4 +1,6 @@
 import type { CompleteChartResult } from './ephemeris.ts';
+import { computeLagnaFunctional, type PlanetId9 } from './lagnaFunctionalEngine.ts';
+import { lagnaLordHousePhalaTe, lagnaLordInHouseNamedTe } from './lagnaLordHousePhala.ts';
 import {
   TELUGU_PLANETS,
   TELUGU_RASIS,
@@ -184,7 +186,7 @@ const HOUSE_SIMPLE_MEANING_TE: Record<number, string> = {
   2: 'కుటుంబ వృద్ధి, ధన సంపాదన మరియు చక్కని వాక్చాతుర్యం సిద్ధిస్తాయి.',
   3: 'ధైర్య సాహసాలు, సొంత ప్రయత్న విజయం మరియు సహోదర సహకారం లభిస్తాయి.',
   4: 'సొంత ఇల్లు, వాహన యోగం, తల్లి ఆశీస్సులు మరియు మానసిక ప్రశాంతత కలుగుతాయి.',
-  5: 'উన్నత తెలివితేటలు, సంతాన సౌఖ్యం మరియు పూర్వజన్మ పుణ్య ఫలం లభిస్తాయి.',
+  5: 'ఉన్నత తెలివితేటలు, సంతాన సౌఖ్యం మరియు పూర్వజన్మ పుణ్య ఫలం లభిస్తాయి.',
   6: 'పోటీలలో విజయం, శత్రు జయం మరియు వృత్తిలో కష్టపడి ఎదిగే శక్తి లభిస్తాయి.',
   7: 'మంచి జీవిత భాగస్వామి, వ్యాపార అనుకూలత మరియు సామాజిక గౌరవం లభిస్తాయి.',
   8: 'దీర్ఘాయుష్షు, పరిశోధనా శక్తి మరియు ఆకస్మిక ధన లాభాలు కలుగుతాయి.',
@@ -212,6 +214,7 @@ export function generateSampoornaLifeChronicle(
   advancedAppendices: SiddhantaAdvancedAppendicesReport
 ): SampoornaLifeChronicleReport {
   const jaiminiCharaDashaReport = calculateJaiminiCharaDasha(chart, 'kn_rao');
+  const functional = computeLagnaFunctional(chart.ascendant.signIndex);
   const birthYear = parseInt(chart.input.date.split('-')[0], 10) || 1995;
   const lagnaSign = chart.ascendant.signIndex;
   const lagnaRasiTe = pureTe(TELUGU_RASIS[lagnaSign]?.nameTe) || 'మేష రాశి';
@@ -244,15 +247,72 @@ export function generateSampoornaLifeChronicle(
 
   const swaroopaTitleTe = `${lagnaRasiTe} లగ్నం · ${janmaRasiClean} · ${nakshatraClean} (${jathakam.janmaPadam}వ పాదం) — జాతక ముఖ్యాంశాలు`;
 
-  const physicalAndMentalConstitutionTe = `మీరు ${lagnaRasiTe} లగ్నంలో జన్మించారు. లగ్నాధిపతి ${lagnaLordTe} ${lagnaHouseOfLord}వ భావంలో ఉండటం వల్ల స్వశక్తిపై ఎదిగే పట్టుదల, ఆత్మగౌరవం, నిజాయితీ మీ సహజ లక్షణాలు. ${janmaRasiClean}లో ${nakshatraClean} నక్షత్రం (${pureTe(moonNakshatraObj.ganaTe)}) వల్ల లోతైన ఆలోచనా శక్తి, కుటుంబానికి అండగా నిలిచే బాధ్యత మరియు సమయానుకూల నిర్ణయాలు తీసుకునే నేర్పు ఉంటాయి.`;
+  const physicalAndMentalConstitutionTe = `మీరు ${lagnaRasiTe} లగ్నంలో జన్మించారు. ${lagnaLordInHouseNamedTe(pureTe(TELUGU_PLANETS[lagnaLordId]?.nameTe) || 'లగ్నాధిపతి', lagnaHouseOfLord)} జన్మ రాశి ${janmaRasiClean}, ${nakshatraClean} నక్షత్రం (${pureTe(moonNakshatraObj.ganaTe)}) — మనస్సు స్వభావానికి ఇది కూడా స్పష్టమైన ముద్ర వేస్తుంది.`;
 
-  const atmakarakaAndSoulMissionTe = `మీ జాతకంలో ఆత్మకారకుడు "${akNameClean}" మరియు అమాత్యకారకుడు "${amkNameClean}". దీనివల్ల జీవితంలో ధర్మబద్ధంగా సంపాదించడం, వృత్తిలో ఉన్నత స్థానానికి చేరుకోవడం మరియు కుటుంబ గౌరవాన్ని నిలబెట్టడం మీ ప్రధాన జీవన లక్ష్యం. 30 సంవత్సరాల వయస్సు నుండి ఆర్థిక స్థిరత్వం, సొంత ఆస్తులు మరియు సమాజంలో ప్రత్యేక గుర్తింపు లభిస్తాయి.`;
+  // ఆత్మకారకుడి మహాదశ వయస్సు-వ్యవధిని చార్ట్ నుంచే లెక్కిస్తాము (ఏ వయస్సు రాయకూడదు).
+  const birthMs = new Date(`${chart.input.date}T${chart.input.time || '00:00'}:00`).getTime();
+  const akDasha = chart.dashas.find((d) => d.lord === akRow?.planetId);
+  const ageAt = (iso: string): number => {
+    const ms = new Date(`${iso}T00:00:00`).getTime();
+    return Number.isFinite(ms) && Number.isFinite(birthMs) ? Math.floor((ms - birthMs) / (365.2425 * 86400000)) : NaN;
+  };
+  const akAgeStart = akDasha ? ageAt(akDasha.startDate) : NaN;
+  const akAgeEnd = akDasha ? ageAt(akDasha.endDate) : NaN;
+  const currentAge = Number.isFinite(birthMs) ? (Date.now() - birthMs) / (365.2425 * 86400000) : NaN;
+  const fmtDmy = (iso?: string): string => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return y && m && d ? `${d}-${m}-${y}` : iso;
+  };
+  const akDashaPeriodTe = (() => {
+    if (!Number.isFinite(akAgeStart) || !Number.isFinite(akAgeEnd) || akAgeEnd <= 0) return '';
+    const from = Math.max(0, akAgeStart);
+    const to = Math.max(0, akAgeEnd);
+    const windowTe =
+      from === 0
+        ? `జన్మ నుండి ${to} సంవత్సరాల వరకు (${fmtDmy(akDasha?.endDate)} వరకు)`
+        : `${from}–${to} సంవత్సరాల మధ్య (${fmtDmy(akDasha?.startDate)} – ${fmtDmy(akDasha?.endDate)})`;
+    const phase = Number.isFinite(currentAge)
+      ? currentAge >= to
+        ? ' ఈ దశ గతించింది; ఈ కాలంలో వేసిన పునాదే తర్వాతి జీవితానికి బలం.'
+        : currentAge + 0.02 >= from
+          ? ' ఈ దశ ఇప్పుడు నడుస్తోంది — జీవన లక్ష్య సాధనకు ఇదే ప్రధాన కాలం.'
+          : ' ఈ దశ రాబోతోంది; సన్నాహం ఇప్పటి నుంచే ప్రారంభించడం మేలు.'
+      : '';
+    return ` ఆత్మకారకుడు ${akNameClean} మహాదశ ${windowTe}.${phase}`;
+  })();
 
-  const lagnaAndChandraSynthesisTe = `లగ్నం (${lagnaRasiTe}), జన్మ రాశి (${janmaRasiClean}) మరియు సూర్య స్థితి (${sunObj.house}వ భావం) సమన్వయం ప్రకారం — ${pureTe(jathakam.lagnaShastraPramanam.yogakarakaGrahaTe)} మీకు అత్యంత శుభ ఫలితాలను ఇచ్చే రాజయోగ గ్రహాలు.`;
+  // కారకుడు ఏ భావంలో ఉన్నాడో ఆ భావపు సారాంశాన్ని అక్కడే వాడుతాము.
+  const bhavaEssenceTe = (house?: number): string => {
+    if (!house) return '';
+    const line = lagnaLordHousePhalaTe(house);
+    const afterDash = line.split('—')[1] ?? '';
+    return afterDash.split(';')[0].replace(/\.$/, '').trim();
+  };
+  const akBhavaEssence = bhavaEssenceTe(akRow?.house);
+  const amkBhavaEssence = bhavaEssenceTe(amkRow?.house);
+  const soulFocusTe = KARAKA_SOUL_TE[akRow?.planetId ?? ''] ?? '';
+  const careerFocusTe = KARAKA_CAREER_TE[amkRow?.planetId ?? ''] ?? '';
+
+  const atmakarakaAndSoulMissionTe =
+    `మీ జాతకంలో ఆత్మకారకుడు (AK) "${akNameClean}" — ${pureTe(akRow?.rasiTe)} రాశి, ${akRow?.degreeFormatted ?? ''}, ${akRow?.house}వ భావం.` +
+    (akBhavaEssence ? ` ఈ భావ స్వభావం: ${akBhavaEssence}.` : '') +
+    (soulFocusTe ? ` ఆత్మ లక్ష్యం: ${soulFocusTe}.` : '') +
+    ` అమాత్యకారకుడు (AmK) "${amkNameClean}" — ${pureTe(amkRow?.rasiTe)} రాశి, ${amkRow?.house}వ భావం;` +
+    (amkBhavaEssence ? ` ${amkBhavaEssence}.` : '') +
+    (careerFocusTe ? ` వృత్తి మార్గం: ${careerFocusTe}.` : '') +
+    akDashaPeriodTe;
+
+  const beneficNames = functional.benefics.map((id: PlanetId9) => pureTe(TELUGU_PLANETS[id]?.nameTe) || id);
+  const lagnaAndChandraSynthesisTe =
+    `లగ్నం ${lagnaRasiTe}, జన్మ రాశి ${janmaRasiClean}, సూర్యుడు ${sunObj.house}వ భావంలో — ఈ మూడింటి సమన్వయమే మీ వ్యక్తిత్వపు మూలం. ` +
+    (functional.yogakarakas.length
+      ? `${beneficNames.join(', ')} మీ లగ్నానికి క్రియాత్మక శుభులు; వీరిలో ${pureTe(TELUGU_PLANETS[functional.yogakarakas[0]]?.nameTe)} ఏకగ్ర యోగకారకుడు — ఈయన దశలలో ఉన్నతి స్పష్టంగా కనిపిస్తుంది.`
+      : `${beneficNames.join(', ')} మీ లగ్నానికి క్రియాత్మక శుభులు. ${lagnaRasiTe} లగ్నానికి ఒకే గ్రహం కేంద్ర-త్రికోణాలు రెండూ పాలించనందున శాస్త్రీయంగా ఏకగ్ర యోగకారకుడు లేడు — అత్యుత్తమ శుభుడు ${pureTe(TELUGU_PLANETS[functional.bestBenefic]?.nameTe)}; ఈయన బలమైన దశలలో ఫలితాలు మెరుగ్గా ఉంటాయి.`);
 
   const keyLifeStrengthsTe = [
     `లగ్నాధిపతి ${lagnaLordTe} ${lagnaHouseOfLord}వ భావ బలం వల్ల స్వయంకృషితో ఉన్నత స్థాయికి ఎదిగే సంకల్ప బలం.`,
-    `ఆత్మకారకుడు ${akNameClean} అనుగ్రహంతో చురుకైన మేధస్సు, దూరదృష్టి మరియు సత్యనిষ্ঠ.`,
+    `ఆత్మకారకుడు ${akNameClean} అనుగ్రహంతో చురుకైన మేధస్సు, దూరదృష్టి మరియు సత్యనిష్ఠ.`,
     `అమాత్యకారకుడు ${amkNameClean} మరియు దశాంశ (D10) బలం వల్ల ఉద్యోగ/వ్యాపార రంగాలలో స్థిరమైన పురోగతి.`,
     `శుభ గ్రహాల దశా-భుక్తి కాలాలలో సొంత ఇల్లు, వాహనం మరియు ఆర్థిక వృద్ధి.`,
   ];
@@ -453,16 +513,16 @@ export function generateSampoornaLifeChronicle(
       const isDusthanaLord = ownedHouses.some((h) => [6, 8, 12].includes(h));
 
       let functionalRoleTe = 'సమ ఫలదాత';
-      if (isKendraLord && isTrikonaLord) {
-        functionalRoleTe = 'రాజయోగకారకుడు';
-      } else if (isTrikonaLord) {
-        functionalRoleTe = 'శుభ కోణాధిపతి';
-      } else if (isKendraLord && !isDusthanaLord) {
-        functionalRoleTe = 'కేంద్రాధిపతి';
-      } else if (isDusthanaLord) {
-        functionalRoleTe = 'విపరీత యోగ / దుస్థానాధిపతి';
-      } else if (ng.id === 'Rahu' || ng.id === 'Ketu') {
+      if (ng.id === 'Rahu' || ng.id === 'Ketu') {
         functionalRoleTe = 'కర్మ ఛాయా గ్రహం';
+      } else {
+        const fn = functional.planets.find((p) => p.id === (ng.id as PlanetId9));
+        if (fn?.isYogakaraka) functionalRoleTe = 'యోగకారకుడు (కేంద్ర + త్రికోణ)';
+        else if (fn?.isKendradhipatiDosha) functionalRoleTe = 'కేంద్రాధిపత్య దోష గ్రహం';
+        else if (fn?.isTrikonaLord) functionalRoleTe = 'త్రికోణాధిపతి — శుభుడు';
+        else if (fn?.nature === 'papa') functionalRoleTe = 'క్రియాత్మక పాపగ్రహం';
+        else if (fn?.isMaraka) functionalRoleTe = 'మారకాధిపతి (2/7)';
+        else if (fn?.nature === 'shubha') functionalRoleTe = 'క్రియాత్మక శుభుడు';
       }
 
       const careerSectors = PLANET_CAREER_SECTORS_TE[ng.id] ?? PLANET_CAREER_SECTORS_TE.Sun;
@@ -580,3 +640,31 @@ export function generateSampoornaLifeChronicle(
     jaiminiCharaDashaReport,
   };
 }
+
+/* ────────────────────────────────────────────────────────────────
+ * కారకుల ఆత్మ/వృత్తి సూచనలు — గ్రహ స్వభావం ఆధారంగా (BPHS / Jaimini).
+ * ఒకే వాక్యం అందరికీ కాదు; గ్రహాన్ని బట్టి మారుతుంది.
+ * ──────────────────────────────────────────────────────────────── */
+export const KARAKA_SOUL_TE: Record<string, string> = {
+  Sun: 'ఆత్మవిశ్వాసం, నాయకత్వం, పితృ-పరంపర మరియు అధికార రంగంలో గుర్తింపు',
+  Moon: 'మనస్సు నిలకడ, మాతృ-సేవ, ప్రజా సంబంధాలు మరియు జల-ప్రయాణ రంగం',
+  Mars: 'ధైర్యం, పరాక్రమం, ఇంజనీరింగ్-రక్షణ-ఆస్తి రంగంలో సాధన',
+  Mercury: 'బుద్ధి-వాక్కు, వాణిజ్యం, లేఖన-గణితం మరియు సమాచార రంగంలో నైపుణ్యం',
+  Jupiter: 'ధర్మం, గురుత్వం, బోధన మరియు ఆధ్యాత్మిక మార్గదర్శనం',
+  Venus: 'సౌందర్యం, కళ, సుఖ-భోగం మరియు సంబంధ-సమన్వయం',
+  Saturn: 'క్రమశిక్షణ, సేవ, శ్రమ మరియు దీర్ఘకాల నిర్మాణం',
+  Rahu: 'ఆవిష్కరణ, విదేశీ-సాంకేతిక రంగం మరియు అసాధారణ మార్గంలో పురోగతి',
+  Ketu: 'వైరాగ్యం, పరిశోధన, గూఢ విద్య మరియు ఆధ్యాత్మిక లోతు',
+};
+
+export const KARAKA_CAREER_TE: Record<string, string> = {
+  Sun: 'ప్రభుత్వం, అధికార యంత్రాంగం, ఆరోగ్య-ఔషధ రంగం',
+  Moon: 'ప్రజా సంబంధాలు, ఆతిథ్యం, ద్రవ-పదార్థ వాణిజ్యం, విదేశీ సేవ',
+  Mars: 'ఇంజినీరింగ్, నిర్మాణం, రక్షణ, లాజిస్టిక్స్, స్థిరాస్తి',
+  Mercury: 'వాణిజ్యం, ఆర్థిక-లెక్కలు, రచన-మీడియా, సాఫ్ట్‌వేర్',
+  Jupiter: 'బోధన, ఆర్థిక సలహా, న్యాయం, ఆధ్యాత్మిక-గురు వృత్తి',
+  Venus: 'కళ-సినీ-సంగీతం, అలంకరణ, ఆభరణాలు, సౌందర్య రంగం',
+  Saturn: 'సేవా రంగం, ఉపాధి-శ్రమ, యంత్రాలు, భూమి-గనులు, దీర్ఘకాల ప్రాజెక్టులు',
+  Rahu: 'సాంకేతికం, విదేశీ వాణిజ్యం, రవాణా, ఔషధ-రసాయనాలు',
+  Ketu: 'పరిశోధన, గూఢ విద్య, ఆధ్యాత్మికం, వైద్య-జ్యోతిష సలహా',
+};

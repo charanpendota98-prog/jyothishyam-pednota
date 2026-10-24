@@ -8,6 +8,7 @@ import {
   TELUGU_PLANETS,
   TELUGU_RASIS,
 } from './teluguJathakam.ts';
+import { placeNameTe } from './placeNamesTe';
 
 export interface SiddhantaAuditItem {
   id: string;
@@ -288,7 +289,7 @@ export function generateVerificationAndAnalysisReport(
       isShifted,
       shiftEffectTe: isShifted
         ? `${pNameTe} రాశి చక్రంలో ${p.house}వ భావంలో ఉన్నప్పటికీ, శ్రీపతి భావ చలిత గణన ప్రకారం ${chalitaHouse}వ భావ సంధిలోకి మారినందున దశా-భుక్తి కాలంలో ${p.house}వ భావంతో పాటు ${chalitaHouse}వ భావ ఫలితాలను కూడా బలంగా ఇస్తాడు.`
-        : `${pNameTe} రాశి చక్రం మరియు భావ చలిత చక్రం రెంటిలోనూ స్థిరంగా ${p.house}వ భావంలోనే ఉన్నాడు (100% ఏకমুখ బలం).`,
+        : `${pNameTe} రాశి చక్రం మరియు భావ చలిత చక్రం రెంటిలోనూ స్థిరంగా ${p.house}వ భావంలోనే ఉన్నాడు (100% ఏకముఖ బలం).`,
     };
   });
 
@@ -493,7 +494,7 @@ export function generateVerificationAndAnalysisReport(
     return {
       planetId: pid,
       planetNameTe: TELUGU_PLANETS[pid]?.nameTe ?? pid,
-      rasiAndDegreeTe: `${TELUGU_RASIS[p.signIndex]?.nameTe.split(' ')[0]} ${p.formattedDMS}`,
+      rasiAndDegreeTe: `${TELUGU_RASIS[p.signIndex]?.nameTe.split(' ')[0]} ${p.formattedDMS}`.replace(/[()]/g, ''),
       baladiAvasthaTe: baladi.label,
       baladiStrengthPct: baladi.pct,
       jagradadiAvasthaTe,
@@ -556,10 +557,10 @@ export function generateVerificationAndAnalysisReport(
   const absLmtSec = Math.round((Math.abs(lmtDiffMinFloat) - absLmtMin) * 60);
 
   // Day / Night & Suryodayadi Vara check
-  const [bHr, bMin] = chart.input.time.split(':').map(Number);
+  const [bHr, bMin, bSec] = chart.input.time.split(':').map(Number);
   const [srHr, srMin] = chart.panchanga.sunTimes.sunriseLocal.split(':').map(Number);
   const [ssHr, ssMin] = chart.panchanga.sunTimes.sunsetLocal.split(':').map(Number);
-  const birthMins = (bHr || 0) * 60 + (bMin || 0);
+  const birthMins = (bHr || 0) * 60 + (bMin || 0) + (bSec || 0) / 60;
   const sunriseMins = (srHr || 6) * 60 + (srMin || 0);
   const sunsetMins = (ssHr || 18) * 60 + (ssMin || 0);
   const isBeforeSunrise = birthMins < sunriseMins;
@@ -626,7 +627,7 @@ export function generateVerificationAndAnalysisReport(
       calculatedValueTe: `అయనాంశ: ${formatDMS(chart.ayanamsaDeg)} · LMT సవరణ: ${lmtSign}${absLmtMin} ని. ${absLmtSec} సె.`,
       status: 'verified',
       statusBadgeTe: '100% దృగ్గణిత ప్రమాణం',
-      deepExplanationTe: `ఈ కుండలి గణనలో NASA JPL DE421 / VSOP87 ఖగోళ సూత్రాలతో పాటు ${chart.input.city} యొక్క ఖచ్చితమైన అక్షాంశ-రేఖాంశాలకు (${chart.input.lat.toFixed(2)}°N, ${chart.input.lng.toFixed(2)}°E) స్థానిక సూర్య కాలమానం (Local Sidereal Time) అనువర్తించబడింది.`,
+      deepExplanationTe: `ఈ కుండలి గణనలో NASA JPL DE421 / VSOP87 ఖగోళ సూత్రాలతో పాటు ${placeNameTe(chart.input.city)} యొక్క ఖచ్చితమైన అక్షాంశ-రేఖాంశాలకు (${chart.input.lat.toFixed(2)}°N, ${chart.input.lng.toFixed(2)}°E) స్థానిక సూర్య కాలమానం (Local Sidereal Time) అనువర్తించబడింది.`,
     },
     {
       id: 'suryodayadi_vara',

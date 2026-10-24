@@ -9,6 +9,14 @@ import {
   TELUGU_PLANETS,
   TELUGU_RASIS,
 } from './teluguJathakam.ts';
+import { placeNameTe } from './placeNamesTe';
+import {
+  TITHI_NAMES_TE,
+  YOGA_NAMES_TE,
+  KARANA_MOVABLE_TE,
+  KARANA_MOVABLE_EN,
+  KARANA_FIXED,
+} from './hinduCalendarEngine.ts';
 
 export interface UpagrahaPosition {
   id: string;
@@ -234,6 +242,13 @@ function formatSignDMS(lon: number): string {
   const s = Math.round((mFloat - m) * 60);
   return `${String(d).padStart(2, '0')}° ${String(m).padStart(2, '0')}' ${String(s === 60 ? 59 : s).padStart(2, '0')}"`;
 }
+
+
+/** సంకల్ప వాక్యానికి — తిథి/వార/కరణ పేర్లు సంస్కృత-తెలుగు రూపంలో. */
+const VARA_NAMES_TE_SANSKRIT: Record<string, string> = {
+  Sunday: 'భాను', Monday: 'సోమ', Tuesday: 'భౌమ', Wednesday: 'సౌమ్య',
+  Thursday: 'గురు', Friday: 'శుక్ర', Saturday: 'శని',
+};
 
 export function generateSiddhantaAdvancedAppendices(
   chart: CompleteChartResult
@@ -568,7 +583,7 @@ export function generateSiddhantaAdvancedAppendices(
     2: {
       te: 'పారిజాతాంశ ★ (2 వర్గాలలో స్వ/ఉచ్చ)',
       sanskrit: 'Parijatamsa',
-      phalaTe: 'ఉదార స్వభావం, ధర్మ నిষ্ঠ, సుఖ-సంతోషాలు మరియు గౌరవం.',
+      phalaTe: 'ఉదార స్వభావం, ధర్మ నిష్ఠ, సుఖ-సంతోషాలు మరియు గౌరవం.',
     },
     3: {
       te: 'ఉత్తమాంశ ★★ (3 వర్గాలలో స్వ/ఉచ్చ)',
@@ -857,10 +872,24 @@ export function generateSiddhantaAdvancedAppendices(
   // 8. SWASTISRI CLASSICAL TELUGU JATHAKAM PROCLAMATION PARAGRAPH
   // ==========================================================================
   const moonNakTe = TELUGU_NAKSHATRAS[Math.floor(moon.siderealLon / (360 / 27))]?.nameTe ?? moon.nakshatra;
+  // కరణం పేరు తెలుగులో (సంకల్ప వాక్యానికి) — ఇంగ్లీషు పేరుతో పోల్చి తీసుకుంటాము.
+  const karanaTe =
+    KARANA_MOVABLE_TE[KARANA_MOVABLE_EN.indexOf(chart.panchanga.karana.name)] ??
+    KARANA_FIXED.find((k) => k.en === chart.panchanga.karana.name)?.te ??
+    chart.panchanga.karana.name;
   const lagnaNameTe = TELUGU_RASIS[ascSign]?.nameTe.split(' ')[0] ?? '';
   const rasiNameTe = TELUGU_RASIS[moonSign]?.nameTe.split(' ')[0] ?? '';
 
-  const swastiSriProclamationTe = `స్వస్తిశ్రీ చాంద్రమాన/సౌరమాన కలియుగ ప్రమాణే శాలివాహన శక వర్షంబులు చనుచుండగా, ఆంగ్ల తేదీ ${chart.input.date} న, స్థానిక సమయం ${chart.input.time} గంటలకు (${chart.input.city} క్షేత్రే, అక్షాంశం: ${chart.input.lat.toFixed(2)}°N, రేఖాంశం: ${chart.input.lng.toFixed(2)}°E), సూర్యోదయం ${chart.panchanga.sunTimes.sunriseLocal} గం.లకు ఆరంభమైన దిన ప్రమాణంలో, ${chart.panchanga.tithi.paksha.includes('Shukla') ? 'శుక్ల పక్ష' : 'కృష్ణ పక్ష'} ${chart.panchanga.tithi.name} తిథౌ, ${chart.panchanga.vara.sanskrit} వాసరే, ${moonNakTe} నక్షత్రే (${moon.pada}వ పాదే), ${chart.panchanga.yoga.name} యోగే, ${chart.panchanga.karana.name} కరణే, శుభ ${lagnaNameTe} లగ్నే (${TELUGU_RASIS[chart.ascendant.d9Sign]?.nameTe.split(' ')[0]} నవాంశే), ${rasiNameTe} రాశౌ చిరంజీవి/సౌభాగ్యవతి "${chart.input.name}" శుభ జననమయ్యెను.`;
+  // సంకల్ప వాక్యానికి తెలుగు తేదీ/సమయం/స్థలం + లింగానుసార నామం
+  const MONTH_TE_SANKALPA = ['జనవరి','ఫిబ్రవరి','మార్చి','ఏప్రిల్','మే','జూన్','జూలై','ఆగస్టు','సెప్టెంబర్','అక్టోబర్','నవంబర్','డిసెంబర్'];
+  const [byy, bmm, bdd] = chart.input.date.split('-').map((x) => Number(x));
+  const dateTeSankalpa = `క్రీ.శ. ${byy} ${MONTH_TE_SANKALPA[(bmm || 1) - 1]} ${bdd}`;
+  const [bhh, bmi] = chart.input.time.split(':');
+  const timeTeSankalpa = `${Number(bhh)} గంటల ${Number(bmi)} నిమిషాల`;
+  const placeTeSankalpa = placeNameTe(chart.input.city);
+  const nativeWordTe = (chart.input.gender ?? 'male') === 'female' ? 'సౌభాగ్యవతి' : 'చిరంజీవి';
+
+  const swastiSriProclamationTe = `స్వస్తిశ్రీ చాంద్రమాన/సౌరమాన కలియుగ ప్రమాణే శాలివాహన శక వర్షంబులు చనుచుండగా, ఆంగ్ల తేదీ ${dateTeSankalpa} న, స్థానిక సమయం ${timeTeSankalpa}కు (${placeTeSankalpa} క్షేత్రే, అక్షాంశం: ${chart.input.lat.toFixed(2)}°N, రేఖాంశం: ${chart.input.lng.toFixed(2)}°E), సూర్యోదయం ${chart.panchanga.sunTimes.sunriseLocal} గం.లకు ఆరంభమైన దిన ప్రమాణంలో, ${chart.panchanga.tithi.paksha.includes('Shukla') ? 'శుక్ల పక్ష' : 'కృష్ణ పక్ష'} ${TITHI_NAMES_TE[(chart.panchanga.tithi.number - 1) % 15]} తిథౌ, ${VARA_NAMES_TE_SANSKRIT[chart.panchanga.vara.name] ?? chart.panchanga.vara.sanskrit} వాసరే, ${moonNakTe} నక్షత్రే (${moon.pada}వ పాదే), ${YOGA_NAMES_TE[chart.panchanga.yoga.number - 1] ?? chart.panchanga.yoga.name} యోగే, ${karanaTe} కరణే, శుభ ${lagnaNameTe} లగ్నే (${TELUGU_RASIS[chart.ascendant.d9Sign]?.nameTe.split(' ')[0]} నవాంశే), ${rasiNameTe} రాశౌ ${nativeWordTe} "${chart.input.name}" శుభ జననమయ్యెను.`;
 
   return {
     swastiSriProclamationTe,

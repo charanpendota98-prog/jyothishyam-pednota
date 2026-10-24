@@ -1,5 +1,39 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { GRANTHA_PAGES } from '../engine/granthaPageMap.ts';
+
+/** ముద్రణ నాణ్యత — పుస్తకాన్ని అచ్చు వేయించేవారికి 300 DPI కావాలి. */
+export interface PdfExportOptions {
+  /**
+   * రెండరింగ్ స్కేల్. 960 CSS px వెడల్పు పుటను ఇంత రెట్లు పెంచి canvas లోకి తీస్తాము.
+   * 2.45 × 960 = 2352 px / 198 mm ≈ 302 DPI — ముద్రణ ప్రమాణం.
+   * 1.85 (పాత విలువ) = 228 DPI — తెరపై బాగానే ఉంటుంది, అచ్చులో సన్నంగా కనిపిస్తుంది.
+   */
+  renderScale?: number;
+  /** JPEG నాణ్యత (0–1). పాఠ్యం ఉన్న పుటలకు 0.96 సిఫారసు. */
+  jpegQuality?: number;
+}
+
+/**
+ * ఎగుమతి సమయంలో పుట 194 mm (733 px @96dpi) వెడల్పుతో రెండర్ అవుతుంది —
+ * అదే A4 ముద్రణ కొలత. DPI లెక్క ఈ వెడల్పు మీదే.
+ */
+const PAGE_RENDER_WIDTH_PX = 733;
+const A4_PRINTABLE_WIDTH_MM = 198;
+const MM_PER_INCH = 25.4;
+
+/** రెండరింగ్ స్కేల్ ఇచ్చినప్పుడు A4 ముద్రణ రిజల్యూషన్ (DPI). */
+export function renderDpi(renderScale: number): number {
+  return Math.round((PAGE_RENDER_WIDTH_PX * renderScale) / (A4_PRINTABLE_WIDTH_MM / MM_PER_INCH));
+}
+
+/** ముద్రణ ప్రమాణం — 733 px × 3.2 = 2346 px / 198 mm ≈ 301 DPI. */
+export const PRINT_RENDER_SCALE = 3.2;
+/** వేగవంతమైన ప్రివ్యూ — ~208 DPI. */
+export const SCREEN_RENDER_SCALE = 2.2;
+
+/** A4 ముద్రణ లేఅవుట్‌ను తెరపై అమలు చేసే క్లాస్ (index.css లో నియమాలు). */
+export const A4_EXPORT_CLASS = 'pdf-a4-export';
 
 export interface PdfExportProgress {
   isExporting: boolean;
@@ -190,8 +224,11 @@ export async function exportClassicalJathakaToPdf(
   personName: string,
   birthDate: string,
   onProgress?: (progress: PdfExportProgress) => void,
-  selectedPages?: number[]
+  selectedPages?: number[],
+  options?: PdfExportOptions
 ): Promise<void> {
+  const renderScale = options?.renderScale ?? PRINT_RENDER_SCALE;
+  const jpegQuality = options?.jpegQuality ?? 0.96;
   const allPages = Array.from(
     containerEl.querySelectorAll<HTMLElement>('.classical-grantha-page')
   );
@@ -218,6 +255,14 @@ export async function exportClassicalJathakaToPdf(
     compress: true,
   });
 
+  pdf.setProperties({
+    title: `సంపూర్ణ జాతక మహాగ్రంథం — ${personName}`,
+    subject: `Vedic jathakam, ${personName}, born ${birthDate}`,
+    author: 'Sri Sampoorna Jathaka Maha Grantha',
+    creator: 'Jyothishyam Pednota',
+    keywords: `jathakam, horoscope, vedic astrology, ${personName}, ${birthDate}`,
+  });
+
   const a4WidthMm = 210;
   const a4HeightMm = 297;
   const marginMm = 6;
@@ -230,31 +275,33 @@ export async function exportClassicalJathakaToPdf(
       isExporting: true,
       currentPage: i + 1,
       totalPages,
-      statusMessageTe: `సంపూర్ణ జాతక మహాగ్రంథం PDF తయారవుతోంది... పుట ${i + 1} / ${totalPages} (Generating Page ${i + 1} of ${totalPages})`,
+      statusMessageTe: `సంపూర్ణ జాతక మహాగ్రంథం PDF తయారవుతోంది... పుట ${i + 1} / ${totalPages} · ${renderDpi(renderScale)} DPI (Generating Page ${i + 1} of ${totalPages})`,
     });
 
     // Give UI thread a frame to paint progress bar
     await new Promise((resolve) => setTimeout(resolve, 40));
 
-    // Temporarily force desktop A4 width so mobile phones also export crisp A4 tables
+    // A4 ముద్రణ కొలతలు — మొబైల్‌లోనూ, డెస్క్‌టాప్‌లోనూ ఒకే లేఅవుట్.
+    // 194 mm వెడల్పు + pt ఫాంట్లు (index.css: .pdf-a4-export) — అచ్చులో నిజమైన పరిమాణం.
     const prevWidth = pageEl.style.width;
     const prevMaxWidth = pageEl.style.maxWidth;
-    pageEl.style.width = '960px';
-    pageEl.style.maxWidth = '960px';
+    pageEl.style.width = '194mm';
+    pageEl.style.maxWidth = '194mm';
+    pageEl.classList.add(A4_EXPORT_CLASS);
 
     try {
       const canvas = await html2canvas(pageEl, {
-        scale: 1.85,
+        scale: renderScale,
         useCORS: true,
         backgroundColor: '#FFFEFA',
         logging: false,
-        windowWidth: 1080,
+        windowWidth: 820,
         onclone: (clonedDoc, clonedEl) => {
           sanitizeCloneForHtml2Canvas(clonedDoc, clonedEl, '#FFFEFA');
         },
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
       const imgWidthPx = canvas.width;
       const imgHeightPx = canvas.height;
 
@@ -282,12 +329,54 @@ export async function exportClassicalJathakaToPdf(
         renderWidthMm,
         renderHeightMm,
         undefined,
-        'FAST'
+        'SLOW'
+      );
+
+      // పుట సంఖ్య — ప్రతి PDF పుట కింద (విషయ సూచికలో చూపిన నంబర్లతో సరిపోతుంది)
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(150, 140, 120);
+      pdf.text(
+        `Sri Sampoorna Jathaka Maha Grantha  ·  page ${i + 1} / ${totalPages}`,
+        a4WidthMm / 2,
+        a4HeightMm - 2.2,
+        { align: 'center' }
       );
     } finally {
       pageEl.style.width = prevWidth;
       pageEl.style.maxWidth = prevMaxWidth;
+      pageEl.classList.remove(A4_EXPORT_CLASS);
     }
+  }
+
+  // ── PDF బుక్‌మార్క్‌లు (outline) ──────────────────────────────────────
+  // గ్రంథ పుట చిట్టా (granthaPageMap) నుంచే — విషయ సూచికలోని నంబర్లే ఇక్కడా.
+  // jsPDF బుక్‌మార్క్ శీర్షికలను UTF-16 గా ఎన్‌కోడ్ చేయదు; అందుకే ASCII ఆంగ్ల
+  // శీర్షికలు వాడుతున్నాము (తెలుగు శీర్షిక అక్షరాలు పాడైపోతాయి).
+  try {
+    // ఎంపిక చేసిన పుటలు ఎగుమతి అయినప్పుడు సూచిక సంఖ్య కాదు — మొత్తం గ్రంథంలో
+    // ఆ పుట స్థానమే బుక్‌మార్క్ శీర్షికకు మూలం (లేకపోతే శీర్షికలు పక్కకు జరుగుతాయి).
+    const outlinePages = pages.map((el) => GRANTHA_PAGES[allPages.indexOf(el)]);
+    const parentByPart = new Map<string, ReturnType<typeof pdf.outline.add>>();
+    let partIdx = 0;
+    for (let i = 0; i < totalPages; i++) {
+      const meta = outlinePages[i];
+      const title = meta
+        ? `${meta.num}. ${meta.titleEn.replace(/^\d+\.\s*/, '')}`
+        : `Page ${i + 1}`;
+      const safeTitle = title.replace(/[^\x20-\x7E]/g, '').trim() || `Page ${i + 1}`;
+      const partKey = meta?.partTe ?? '';
+      let parent = parentByPart.get(partKey);
+      if (meta && !parent) {
+        partIdx += 1;
+        const partName = meta.partEn || `Part ${partIdx}`;
+        parent = pdf.outline.add(null, partName, { pageNumber: i + 1 });
+        parentByPart.set(partKey, parent);
+      }
+      pdf.outline.add(parent ?? null, safeTitle, { pageNumber: i + 1 });
+    }
+  } catch {
+    /* బుక్‌మార్క్‌లు విఫలమైనా PDF డౌన్‌లోడ్ ఆగకూడదు */
   }
 
   const safeName = personName

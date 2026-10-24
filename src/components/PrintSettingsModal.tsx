@@ -13,6 +13,8 @@ import {
   Award,
   BookOpen,
 } from 'lucide-react';
+import { GRANTHA_PAGES } from '../engine/granthaPageMap.ts';
+import { PRINT_RENDER_SCALE, renderDpi } from '../utils/pdfBookExporter.ts';
 
 export interface PrintableSectionItem {
   pageNum: number;
@@ -24,124 +26,49 @@ export interface PrintableSectionItem {
   recommendedFor: string;
 }
 
-export const PRINTABLE_JATHAKA_PAGES: PrintableSectionItem[] = [
+/** ప్రతి పుటకూ — గ్రంథ చిట్టా (granthaPageMap) నుంచే, చేతితో రాసిన జాబితా కాదు. */
+export const PRINTABLE_JATHAKA_PAGES: PrintableSectionItem[] = GRANTHA_PAGES.map((pg) => ({
+  pageNum: pg.num,
+  id: pg.id,
+  titleTe: `పుట ${pg.num}: ${pg.titleTe}`,
+  titleEn: pg.titleEn,
+  descriptionTe: pg.partTe,
+  categoryTe: pg.partTe.replace(/^\S+ భాగం · /, ''),
+  recommendedFor: pg.num === 1 ? 'తప్పనిసరి — జనన వివరాలు, కుండలి' : pg.partTe.replace(/^\S+ భాగం · /, ''),
+}));
+
+/** అన్ని పుటల సంఖ్యలు — ఎగుమతి డిఫాల్ట్ ఇదే. */
+export const ALL_JATHAKA_PAGES: number[] = GRANTHA_PAGES.map((pg) => pg.num);
+
+/** భాగం వారీగా పుటలు — శీఘ్ర ఎంపికలకు. */
+const pagesOfPart = (partPrefix: string) =>
+  GRANTHA_PAGES.filter((pg) => pg.partTe.startsWith(partPrefix)).map((pg) => pg.num);
+
+const PART_I = pagesOfPart('ప్రథమ');
+const PART_II = pagesOfPart('ద్వితీయ');
+const PART_V = pagesOfPart('పంచమ');
+const PART_VI = pagesOfPart('షష్ఠ');
+const PART_VII = pagesOfPart('సప్తమ');
+const PART_VIII = pagesOfPart('అష్టమ');
+
+interface PresetItem {
+  key: string;
+  labelTe: string;
+  pages: number[];
+  color: string;
+}
+
+const PRESETS: PresetItem[] = [
+  { key: 'all', labelTe: 'సంపూర్ణ గ్రంథం', pages: ALL_JATHAKA_PAGES, color: '#C9A96E' },
   {
-    pageNum: 1,
-    id: 'page_1_mukhapatram',
-    titleTe: 'పుట 1: ముఖపత్రం, పంచాంగం, లగ్న-నవాంశ కుండలి & స్ఫుటాలు',
-    titleEn: 'Page 1: Title, Master Panchanga & D1/D9 Kundali',
-    descriptionTe: 'జనన వివరాలు, పంచాంగ పంచాంగాలు, లగ్న-నవాంశ చక్రాలు, నిరయన గ్రహ స్ఫుట పట్టిక.',
-    categoryTe: 'ప్రధాన కుండలి',
-    recommendedFor: 'అన్ని ముద్రణలలో తప్పనిసరి',
+    key: 'kundali',
+    labelTe: 'కుండలి & బలాలు',
+    pages: [...PART_I, ...PART_II],
+    color: '#5BBFB5',
   },
-  {
-    pageNum: 2,
-    id: 'page_2_chalita_upagraha',
-    titleTe: 'పుట 2: భావ చలిత పట్టిక, చలిత కుండలి & 11 ఉపగ్రహాలు',
-    titleEn: 'Page 2: Bhava Chalita, Upagrahas & Friendship',
-    descriptionTe: 'శ్రీపతి భావ చలిత ఆరంభ/మధ్య/సంధి స్ఫుటాలు, ధూమ/వ్యాతీపాత ఉపగ్రహాలు, పంచధా మైత్రి.',
-    categoryTe: 'చలిత & ఉపగ్రహాలు',
-    recommendedFor: 'లోతైన భావ విశ్లేషణకు',
-  },
-  {
-    pageNum: 3,
-    id: 'page_3_shodashavarga',
-    titleTe: 'పుట 3: షోడశవర్గ చక్ర మాలిక (D2-D12) & వైశేషికాంశ బలం',
-    titleEn: 'Page 3: Shodashavarga Charts (D2-D12) & Vaisheshikamsa',
-    descriptionTe: 'హోరా (D2), ద్రేక్కాణ (D3), చతుర్థాంశ (D4), సప్తాంశ (D7), దశాంశ (D10), ద్వాదశాంశ (D12).',
-    categoryTe: 'వర్గ చక్రాలు',
-    recommendedFor: 'వృత్తి, సంతాన, ఆస్తి విచారణకు',
-  },
-  {
-    pageNum: 4,
-    id: 'page_4_shadbala_bhava',
-    titleTe: 'పుట 4: షడ్బల పిండం, ఇష్ట-కష్ట ఫలాలు & భావ బలం',
-    titleEn: 'Page 4: Shadbala Pinda, Ishta/Kashta & Bhava Bala',
-    descriptionTe: 'సప్త గ్రహాల ఆరు విధాల బలాలు (విరూపలు & రూపాలు), ఇష్ట-కష్ట గణన, ద్వాదశ భావ బలాలు.',
-    categoryTe: 'గ్రహ బలాలు',
-    recommendedFor: 'గ్రహ సామర్థ్య విశ్లేషణకు',
-  },
-  {
-    pageNum: 5,
-    id: 'page_5_ashtakavarga',
-    titleTe: 'పుట 5: భిన్నాష్టకవర్గ, సర్వాష్టకవర్గ & సుదర్శన చక్రం',
-    titleEn: 'Page 5: Ashtakavarga 337 Bindus & Sudarshana Chakra',
-    descriptionTe: 'సప్త గ్రహాల బిందువులు, సర్వాష్టకవర్గ 337 బిందువులు, శోధ్య పిండ సాధన, సుదర్శన చక్రం.',
-    categoryTe: 'అష్టకవర్గ',
-    recommendedFor: 'గోచార కాల నిర్ణయానికి',
-  },
-  {
-    pageNum: 6,
-    id: 'page_6_jaimini_sadesati',
-    titleTe: 'పుట 6: జైమిని కారకులు, చర దశా కాలచక్రం & ఏలినాటి శని',
-    titleEn: 'Page 6: Jaimini Karakas, Chara Dasha & Sade Sati',
-    descriptionTe: 'ఆత్మకారకాది సప్త కారకులు, చర దశా కాలచక్రం, పాప సామ్యం, ఏలినాటి శని సమగ్ర దశలు.',
-    categoryTe: 'దశా & శని గోచారం',
-    recommendedFor: 'జైమిని & శని ప్రభావ పరిశీలనకు',
-  },
-  {
-    pageNum: 7,
-    id: 'page_7_vimshottari_81',
-    titleTe: 'పుట 7: వింశోత్తరి 81 అంతర్దశల సంపూర్ణ కాలచక్ర పట్టిక',
-    titleEn: 'Page 7: Vimshottari 81 Bhukti Periods & Dates',
-    descriptionTe: '120 సంవత్సరాల 9 మహాదశల లోని 81 అంతర్దశల ఆరంభ-సమాప్తి తేదీల సంపూర్ణ పట్టిక.',
-    categoryTe: 'కాల చక్రం',
-    recommendedFor: 'జీవిత కాలగణనకు అత్యంత ముఖ్యం',
-  },
-  {
-    pageNum: 8,
-    id: 'page_8_graha_phala_1',
-    titleTe: 'పుట 8: సమగ్ర జీవిత స్వరూపం & నవగ్రహ ఫలితాలు (భాగం-1)',
-    titleEn: 'Page 8: Life Overview & Navagraha Phala Part 1',
-    descriptionTe: 'జాతకుని శారీరక, మానసిక గుణాలు, రవి, చంద్ర, కుజ, బుధ గ్రహాల వ్యక్తిగత సమగ్ర ఫలితాలు.',
-    categoryTe: 'జీవిత ఫలితాలు',
-    recommendedFor: 'వ్యక్తిత్వ & ప్రవర్తన విశ్లేషణకు',
-  },
-  {
-    pageNum: 9,
-    id: 'page_9_graha_phala_2',
-    titleTe: 'పుట 9: నవగ్రహ ఫలితాలు (భాగం-2), వివాహ & ఉద్యోగ బ్లూప్రింట్',
-    titleEn: 'Page 9: Navagraha Phala Part 2, Marriage & Career',
-    descriptionTe: 'గురు, శుక్ర, శని, రాహు, కేతు ఫలితాలు, వివాహ భాగస్వామి లక్షణాలు, అనుకూల వృత్తి రంగాలు.',
-    categoryTe: 'జీవిత ఫలితాలు',
-    recommendedFor: 'వివాహం & వ్యాపార నిర్ణయాలకు',
-  },
-  {
-    pageNum: 10,
-    id: 'page_10_seven_stages',
-    titleTe: 'పుట 10: 7 జీవిత పర్వాల కాలచక్ర చరిత్ర & మహాదశా ఫలితాలు',
-    titleEn: 'Page 10: 7 Life Stages Chronicle & Mahadasha Predictions',
-    descriptionTe: 'బాల్యం, విద్యా ప్రస్థానం, ఉద్యోగం, గృహస్థం, ప్రౌఢ, ఉత్తరాయణ పర్వాల సమగ్ర జీవిత గాథ.',
-    categoryTe: 'కాలచరిత్ర',
-    recommendedFor: 'సమగ్ర భవిష్యత్ మార్గదర్శకానికి',
-  },
-  {
-    pageNum: 11,
-    id: 'page_11_dvadasha_bhavas',
-    titleTe: 'పుట 11: ద్వాదశ భావ సంపూర్ణ ఫలితాలు (1–12 భావాలు)',
-    titleEn: 'Page 11: 12 Bhavas Complete Comprehensive Predictions',
-    descriptionTe: 'తను, ధన, సహజ, సుఖ, పుత్ర, శత్రు, కళత్ర, ఆయుష్షు, భాగ్య, రాజ్య, లాభ, వ్యయ భావాల ఫలితాలు.',
-    categoryTe: 'భావ ఫలితాలు',
-    recommendedFor: 'జీవిత సమగ్ర పార్శ్వాల అవగాహనకు',
-  },
-  {
-    pageNum: 12,
-    id: 'page_12_dosha_remedies',
-    titleTe: 'పుట 12: సంపూర్ణ దోష పరీక్ష, వేదోక్త పరిహార మంజరి & ముగింపు',
-    titleEn: 'Page 12: Dosha Diagnostics, Vedic Remedies & Siddhanti Seal',
-    descriptionTe: 'కుజ/కాలసర్ప దోషాలు, నవగ్రహ జపాలు, రత్నధారణ, విశేష దానాలు, క్షేత్ర దర్శనాలు, ఆశీర్వాదం.',
-    categoryTe: 'పరిహారములు',
-    recommendedFor: 'శాంతి, ఉపాసన & నివారణకు',
-  },
-  {
-    pageNum: 13,
-    id: 'page_13_varshaphala_12month',
-    titleTe: 'పుట 13: తాజిక వర్షఫలం, ముంథా, ముద్ద దశా & 12-నెలల ఫలితాలు',
-    titleEn: 'Page 13: Tajika Varshaphala & 12-Month Calendar Forecast',
-    descriptionTe: 'వర్ష ప్రవేశ ముహూర్తం, వర్ష కుండలి, ముంథా, వర్షేశ్వరుడు, 365-రోజుల ముద్ద దశ & 12 నెలల మాసవారీ ఫలితాలు.',
-    categoryTe: 'వార్షిక ఫలితాలు',
-    recommendedFor: 'ఈ సంవత్సర 12-నెలల భవిష్యవాణికి',
-  },
+  { key: 'dasha', labelTe: 'దశా · గోచారం', pages: [...PART_VII, ...PART_VIII], color: '#10B981' },
+  { key: 'yoga', labelTe: 'యోగ · పండిత విచారణ', pages: PART_VI, color: '#9B8FD4' },
+  { key: 'parihara', labelTe: 'పరిహారం', pages: PART_V, color: '#E0A96D' },
 ];
 
 export interface PrintSettingsModalProps {
@@ -161,9 +88,7 @@ export const PrintSettingsModal: React.FC<PrintSettingsModalProps> = ({
   personName,
   birthDate,
 }) => {
-  const [selectedPages, setSelectedPages] = useState<number[]>([
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-  ]);
+  const [selectedPages, setSelectedPages] = useState<number[]>(ALL_JATHAKA_PAGES);
 
   if (!isOpen) return null;
 
@@ -180,7 +105,7 @@ export const PrintSettingsModal: React.FC<PrintSettingsModalProps> = ({
   };
 
   const selectAll = () => {
-    setSelectedPages([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    setSelectedPages(ALL_JATHAKA_PAGES);
   };
 
   const deselectAll = () => {
@@ -245,82 +170,31 @@ export const PrintSettingsModal: React.FC<PrintSettingsModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-              <button
-                type="button"
-                onClick={() => applyPreset([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  selectedPages.length === 13
-                    ? 'bg-[#C9A96E] text-[#090C18] font-bold border-[#C9A96E] shadow'
-                    : 'bg-[#090C18] border-white/10 text-[#EDE8E0] hover:border-[#C9A96E]/50'
-                }`}
-              >
-                <div className="font-bold text-xs truncate">1. సంపూర్ణ గ్రంథం</div>
-                <div className="text-[10px] opacity-80 mt-0.5">పూర్తి 13 పుటలు</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => applyPreset([1, 3, 7])}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  selectedPages.length === 3 &&
-                  selectedPages.includes(1) &&
-                  selectedPages.includes(3) &&
-                  selectedPages.includes(7)
-                    ? 'bg-[#5BBFB5] text-[#090C18] font-bold border-[#5BBFB5] shadow'
-                    : 'bg-[#090C18] border-white/10 text-[#EDE8E0] hover:border-[#5BBFB5]/50'
-                }`}
-              >
-                <div className="font-bold text-xs truncate">2. కుండలి & దశా పత్రం</div>
-                <div className="text-[10px] opacity-80 mt-0.5">పుటలు 1, 3, 7 (3 పుటలు)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => applyPreset([1, 12])}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  selectedPages.length === 2 &&
-                  selectedPages.includes(1) &&
-                  selectedPages.includes(12)
-                    ? 'bg-[#E0A96D] text-[#090C18] font-bold border-[#E0A96D] shadow'
-                    : 'bg-[#090C18] border-white/10 text-[#EDE8E0] hover:border-[#E0A96D]/50'
-                }`}
-              >
-                <div className="font-bold text-xs truncate">3. పరిహార & దోష పత్రం</div>
-                <div className="text-[10px] opacity-80 mt-0.5">పుటలు 1, 12 (2 పుటలు)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => applyPreset([1, 4, 5])}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  selectedPages.length === 3 &&
-                  selectedPages.includes(1) &&
-                  selectedPages.includes(4) &&
-                  selectedPages.includes(5)
-                    ? 'bg-[#9B8FD4] text-[#090C18] font-bold border-[#9B8FD4] shadow'
-                    : 'bg-[#090C18] border-white/10 text-[#EDE8E0] hover:border-[#9B8FD4]/50'
-                }`}
-              >
-                <div className="font-bold text-xs truncate">4. గ్రహ బలాలు & అష్టక</div>
-                <div className="text-[10px] opacity-80 mt-0.5">పుటలు 1, 4, 5 (3 పుటలు)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => applyPreset([1, 8, 9, 10])}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  selectedPages.length === 4 &&
-                  selectedPages.includes(1) &&
-                  selectedPages.includes(8) &&
-                  selectedPages.includes(9) &&
-                  selectedPages.includes(10)
-                    ? 'bg-[#10B981] text-[#090C18] font-bold border-[#10B981] shadow'
-                    : 'bg-[#090C18] border-white/10 text-[#EDE8E0] hover:border-[#10B981]/50'
-                }`}
-              >
-                <div className="font-bold text-xs truncate">5. జీవిత కాలచక్రం</div>
-                <div className="text-[10px] opacity-80 mt-0.5">పుటలు 1, 8, 9, 10 (4 పుటలు)</div>
-              </button>
+              {PRESETS.map((preset) => {
+                const active =
+                  selectedPages.length === preset.pages.length &&
+                  preset.pages.every((p) => selectedPages.includes(p));
+                return (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => applyPreset(preset.pages)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      active
+                        ? 'text-[#090C18] font-bold shadow'
+                        : 'bg-[#090C18] border-white/10 text-[#EDE8E0] hover:border-white/30'
+                    }`}
+                    style={active ? { backgroundColor: preset.color, borderColor: preset.color } : undefined}
+                  >
+                    <div className="font-bold text-xs truncate">{preset.labelTe}</div>
+                    <div className="text-[10px] opacity-80 mt-0.5">
+                      {preset.pages.length === ALL_JATHAKA_PAGES.length
+                        ? `పూర్తి ${preset.pages.length} పుటలు`
+                        : `${preset.pages.length} పుటలు`}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -378,10 +252,10 @@ export const PrintSettingsModal: React.FC<PrintSettingsModalProps> = ({
         <div className="p-4 sm:p-5 bg-[#090C18] border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 rounded-full bg-[#5BBFB5]/15 border border-[#5BBFB5]/40 text-[#5BBFB5] font-mono-tabular font-bold text-xs">
-              ఎంపిక చేసినవి: {selectedPages.length} / 13 పుటలు
+              ఎంపిక చేసినవి: {selectedPages.length} / {ALL_JATHAKA_PAGES.length} పుటలు
             </span>
             <span className="text-[11px] text-[#EDE8E0]/60 hidden sm:inline">
-              A4 పోర్ట్రైట్ · హై-రెజల్యూషన్ ప్రింట్ క్వాలిటీ
+              A4 పోర్ట్రైట్ · {renderDpi(PRINT_RENDER_SCALE)} DPI ముద్రణ నాణ్యత · {ALL_JATHAKA_PAGES.length} పుటలు
             </span>
           </div>
 

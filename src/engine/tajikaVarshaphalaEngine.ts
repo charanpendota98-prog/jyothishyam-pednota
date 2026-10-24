@@ -827,7 +827,7 @@ export function generateTajikaVarshaphalaReport(
     Math.max(60, avgMonthScore + Math.round(munthaAnalysis.scoreBoost / 2))
   );
 
-  const annualExecutiveSummaryTe = `${targetYear} సంవత్సరంలో (${runningYearOfLife}వ ఏట) మీ వర్ష ప్రవేశం ${varshaInput.date} (${weekdayTe}) నాడు ${varshaInput.time} గంటలకు ${TELUGU_RASIS[varshaLagnaIdx].nameTe} లగ్నంలో జరుగుతున్నది. ఈ ఏడాది ముంథా ${munthaRasiTe} లో (వర్ష లగ్నం నుండి ${munthaHouseFromVarshaLagna}వ భావం) ఉండగా, "${varsheshwara.planetNameTe}" వర్షేశ్వరుడిగా (Year Lord) వ్యవహరిస్తున్నాడు. మొత్తం ${tajikaYogas.length} తాజిక యోగాలు మరియు 12 నెలల గ్రహ గమనం ప్రకారం ఈ సంవత్సరం వార్షిక శుభ ఫల స్కోరు ${annualOverallScorePct}% గా నమోదైంది.`;
+  const annualExecutiveSummaryTe = `${targetYear} సంవత్సరంలో (${runningYearOfLife}వ ఏట) మీ వర్ష ప్రవేశం ${varshaInput.date} · ${weekdayTe} నాడు ${varshaInput.time} గంటలకు ${TELUGU_RASIS[varshaLagnaIdx].nameTe} లగ్నంలో జరుగుతున్నది. ఈ ఏడాది ముంథా ${munthaRasiTe} లో (వర్ష లగ్నం నుండి ${munthaHouseFromVarshaLagna}వ భావం) ఉండగా, "${varsheshwara.planetNameTe}" వర్షేశ్వరుడిగా (Year Lord) వ్యవహరిస్తున్నాడు. మొత్తం ${tajikaYogas.length} తాజిక యోగాలు మరియు 12 నెలల గ్రహ గమనం ప్రకారం ఈ సంవత్సరం వార్షిక శుభ ఫల స్కోరు ${annualOverallScorePct}% గా నమోదైంది.`;
 
   return {
     targetYear,

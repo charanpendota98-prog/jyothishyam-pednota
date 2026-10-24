@@ -6,3 +6,16 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# generated vastu plan export
+vastu-full-plan*.html
+
+# generated pandita jathakam export
+jathaka-pandita*.html
+
+# scratch audit harness
+.tmp/
+.cache/
+
+# persisted pandit profile store
+data/

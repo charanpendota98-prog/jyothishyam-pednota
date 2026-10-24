@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -19,6 +20,19 @@ import {
   TELUGU_PLANETS,
   generateTeluguSampoornaJathakam,
 } from './src/engine/teluguJathakam.ts';
+import {
+  computeDayPanchanga,
+  getMonthCalendar,
+  getYearOverview,
+  upcomingFestivals,
+  resolveHinduEra,
+  type GeoContext,
+  type RiseConvention,
+} from './src/engine/hinduCalendarEngine.ts';
+import type { SiderealMode } from './src/engine/astroCore.ts';
+import { computeGocharaReport } from './src/engine/gocharaVedhaEngine.ts';
+import { resolveLocalCivilTime } from './src/engine/localCivilTime.ts';
+import { GRANTHAS, GRANTHA_DOMAINS } from './src/engine/classicalSources.ts';
 
 dotenv.config();
 
@@ -27,6 +41,40 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
+
+/**
+ * జెమినీ మోడల్ ఎంపిక.
+ * `gemini-3.8-flash` అనే మోడల్ Google API లో లేదు — అలాంటి పేరుతో పిలిస్తే
+ * ప్రతిసారి 404 వచ్చి, నిశ్శబ్దంగా స్థిర (static) సమాధానం ఇవ్వబడేది.
+ * ఇప్పుడు నిజంగా ఉన్న మోడల్‌లు మాత్రమే, వరుసగా ప్రయత్నిస్తాము.
+ */
+const GEMINI_MODELS: string[] = [
+  process.env.GEMINI_MODEL,
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+].filter((m): m is string => Boolean(m && m.trim()));
+
+/** మోడల్ ఒకటి పని చేయకపోతే తదుపరిది ప్రయత్నించి, పనిచేసిన దాన్ని గుర్తుపెట్టుకుంటాము. */
+let workingModel: string | null = null;
+async function generateWithFallback(
+  ai: GoogleGenAI,
+  params: Omit<Parameters<GoogleGenAI['models']['generateContent']>[0], 'model'>
+): Promise<{ text: string; model: string }> {
+  const order = workingModel
+    ? [workingModel, ...GEMINI_MODELS.filter((m) => m !== workingModel)]
+    : GEMINI_MODELS;
+  let lastErr: unknown = null;
+  for (const model of order) {
+    try {
+      const response = await ai.models.generateContent({ ...params, model });
+      workingModel = model;
+      return { text: response.text ?? '', model };
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr ?? new Error('No Gemini model available');
+}
 
 function getGenAIClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -43,8 +91,38 @@ function getGenAIClient(): GoogleGenAI | null {
   });
 }
 
+/* ------------------------------------------------------------------ *
+ *  వాడుకరి ప్రొఫైల్‌లు — డిస్క్‌లో నిల్వ (సర్వర్ రీస్టార్ట్ అయినా పోకుండా)
+ * ------------------------------------------------------------------ */
+const PROFILE_STORE_DIR = process.env.JYOTHISHYA_DATA_DIR || path.join(__dirname, 'data');
+const PROFILE_STORE_FILE = path.join(PROFILE_STORE_DIR, 'profiles.json');
+
+function loadStoredProfiles(): BirthInput[] | null {
+  try {
+    if (!fs.existsSync(PROFILE_STORE_FILE)) return null;
+    const raw = fs.readFileSync(PROFILE_STORE_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((p) => p && typeof p.name === 'string');
+  } catch (err) {
+    console.warn('[profiles] నిల్వ చదవలేకపోయాం:', err);
+    return null;
+  }
+}
+
+function persistProfiles(profiles: BirthInput[]) {
+  try {
+    fs.mkdirSync(PROFILE_STORE_DIR, { recursive: true });
+    const tmp = `${PROFILE_STORE_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(profiles, null, 2), 'utf8');
+    fs.renameSync(tmp, PROFILE_STORE_FILE);
+  } catch (err) {
+    console.warn('[profiles] నిల్వ చేయలేకపోయాం:', err);
+  }
+}
+
 // Pre-populated Astrologer Workspace Client Profiles (Telugu & International)
-const savedProfiles: BirthInput[] = [
+const SEED_PROFILES: BirthInput[] = [
   {
     id: 'charan-telugu-jathakam',
     name: 'చరణ్ పెందోట (Charan Pendota)',
@@ -103,6 +181,201 @@ const savedProfiles: BirthInput[] = [
   },
 ];
 
+/** ప్రారంభ ప్రొఫైల్‌లు: డిస్క్‌లో ఉన్నవి ఉంటే అవి, లేకపోతే ఉదాహరణ ప్రొఫైల్‌లు. */
+const savedProfiles: BirthInput[] = loadStoredProfiles() ?? [...SEED_PROFILES];
+
+/* ==================================================================== *
+ *  Panchanga / calendar / gochara / sources API
+ *
+ *  All of these are pure functions of (date, lat, lng, tz, ayanamsa), so the
+ *  endpoints validate their inputs strictly and answer deterministically.
+ * ==================================================================== */
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function isValidISODate(value: string): boolean {
+  if (!ISO_DATE_RE.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+
+/** Resolve an IANA zone at a local civil time; iterative offset handles DST. */
+function resolveIanaOffsetHours(timeZone: string, date: string, time = '12:00', preferredOffsetHours?: number): number {
+  return resolveLocalCivilTime(date, time, timeZone, preferredOffsetHours).offsetHours;
+}
+
+function parseGeo(body: any, localDate?: string, localTime = '12:00'): { geo: GeoContext; mode: SiderealMode; timezone?: string } {
+  const lat = Number(body?.lat ?? 17.385);
+  const lng = Number(body?.lng ?? body?.lon ?? 78.4867);
+  const timezoneCandidate = body?.timezone ?? (typeof body?.tz === 'string' && !Number.isFinite(Number(body.tz)) ? body.tz : undefined);
+  const timezone = typeof timezoneCandidate === 'string' && timezoneCandidate.length ? timezoneCandidate : undefined;
+  const dateForZone = localDate ?? String(body?.date ?? new Date().toISOString().slice(0, 10));
+  const explicitOffset = body?.tzOffsetHours ?? (body?.tz !== undefined && Number.isFinite(Number(body.tz)) ? body.tz : undefined);
+  const tzOffsetHours = explicitOffset !== undefined
+    ? Number(explicitOffset)
+    : timezone
+      ? resolveIanaOffsetHours(timezone, dateForZone, localTime)
+      : 5.5;
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) throw new Error('lat must be between -90 and 90');
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) throw new Error('lng must be between -180 and 180');
+  if (!Number.isFinite(tzOffsetHours) || tzOffsetHours < -12 || tzOffsetHours > 14)
+    throw new Error('tzOffsetHours must be between -12 and 14');
+  const allowed = ['lahiri', 'sayana', 'raman', 'kp', 'fagan_bradley', 'yukteshwar', 'true_citra', 'pushya'] as const;
+  const modeRaw = String(body?.ayanamsa ?? body?.ayanamsha ?? 'lahiri').toLowerCase();
+  if (!(allowed as readonly string[]).includes(modeRaw)) throw new Error(`Unsupported ayanamsha: ${modeRaw}`);
+  const mode = modeRaw as (typeof allowed)[number];
+  return {
+    geo: { lat, lng, tzOffsetHours, placeName: String(body?.placeName ?? body?.city ?? '') || '—' },
+    mode: mode as (typeof allowed)[number],
+    timezone,
+  };
+}
+
+/** Full panchanga for one civil day. `GET /api/panchanga?date=2026-10-22&lat=..&lng=..&tz=5.5` */
+app.get('/api/panchanga', (req, res) => {
+  try {
+    const date = String(req.query.date ?? '').trim();
+    if (!isValidISODate(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const { geo, mode } = parseGeo(req.query);
+    const riseParam = String(req.query.rise ?? 'hindu');
+    const allowedRise: RiseConvention[] = ['hindu', 'upper-limb', 'centre-refraction', 'app'];
+    if (!allowedRise.includes(riseParam as RiseConvention)) throw new Error(`Unsupported rise convention: ${riseParam}`);
+    const riseConvention = riseParam as RiseConvention;
+    const day = computeDayPanchanga(date, { ...geo, placeName: String(req.query.placeName ?? geo.placeName) }, {
+      siderealMode: mode,
+      riseConvention,
+    });
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(day);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute panchanga' });
+  }
+});
+
+/** Same input, POST body (for long place names / clients that avoid query strings). */
+app.post('/api/panchanga', (req, res) => {
+  try {
+    const date = String(req.body?.date ?? '').trim();
+    if (!isValidISODate(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const { geo, mode } = parseGeo(req.body, date);
+    const rise = String(req.body?.rise ?? 'hindu');
+    const allowedRise: RiseConvention[] = ['hindu', 'upper-limb', 'centre-refraction', 'app'];
+    if (!allowedRise.includes(rise as RiseConvention)) throw new Error(`Unsupported rise convention: ${rise}`);
+    res.json(computeDayPanchanga(date, geo, { siderealMode: mode, riseConvention: rise as RiseConvention }));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute panchanga' });
+  }
+});
+
+/** Month grid. `GET /api/calendar/month?year=2026&month=10` */
+app.get('/api/calendar/month', (req, res) => {
+  try {
+    const year = Number(req.query.year);
+    const month = Number(req.query.month);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return res.status(400).json({ error: 'year out of range' });
+    if (!Number.isInteger(month) || month < 1 || month > 12) return res.status(400).json({ error: 'month must be 1-12' });
+    const { geo, mode } = parseGeo(req.query);
+    res.json({
+      year,
+      month,
+      days: getMonthCalendar(year, month, geo, { siderealMode: mode }),
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute month' });
+  }
+});
+
+/** Year overview: months, sankrantis, eclipses, festivals, era. */
+app.get('/api/calendar/year', (req, res) => {
+  try {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return res.status(400).json({ error: 'year out of range' });
+    const { geo, mode } = parseGeo(req.query);
+    res.json(getYearOverview(year, geo, { siderealMode: mode }));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute year' });
+  }
+});
+
+/** Upcoming festivals. `GET /api/festivals/upcoming?from=2026-10-22&count=12` */
+app.get('/api/festivals/upcoming', (req, res) => {
+  try {
+    const from = String(req.query.from ?? new Date().toISOString().slice(0, 10));
+    if (!isValidISODate(from)) return res.status(400).json({ error: 'from must be YYYY-MM-DD' });
+    const count = Math.min(60, Math.max(1, Number(req.query.count ?? 12) || 12));
+    const { geo, mode } = parseGeo(req.query);
+    res.json({ from, count, festivals: upcomingFestivals(from, geo, { siderealMode: mode, count }) });
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to list festivals' });
+  }
+});
+
+/**
+ * Gochara (transits from the natal Moon).
+ * Accepts either a full birth `input` (moon sign derived) or an explicit
+ * `moonSignIndex` (0 = Mesha) + `moonNakshatraIndex`.
+ */
+app.post('/api/gochara', (req, res) => {
+  try {
+    const body = req.body ?? {};
+    let moonSignIndex: number;
+    let moonNakIndex: number;
+    let tz = Number(body.tzOffsetHours ?? 5.5);
+    let mode: any = body.ayanamsa ?? 'lahiri';
+
+    if (body.input) {
+      const chart = calculateChart(body.input as BirthInput, body.tradition ?? 'vedic');
+      const moon = chart.planets.find((p) => p.id === 'Moon');
+      if (!moon) throw new Error('Moon position unavailable');
+      moonSignIndex = moon.signIndex;
+      moonNakIndex = Math.floor(moon.siderealLon / (360 / 27));
+      tz = Number(body.input.tzOffsetHours ?? tz);
+      mode = body.input.ayanamsa ?? mode;
+    } else {
+      moonSignIndex = Number(body.moonSignIndex);
+      moonNakIndex = Number(body.moonNakshatraIndex ?? 0);
+      if (!Number.isInteger(moonSignIndex) || moonSignIndex < 0 || moonSignIndex > 11)
+        throw new Error('moonSignIndex must be 0-11 (0 = Mesha)');
+      if (!Number.isInteger(moonNakIndex) || moonNakIndex < 0 || moonNakIndex > 26)
+        throw new Error('moonNakshatraIndex must be 0-26');
+    }
+
+    const asOfISO = String(body.asOfISO ?? new Date().toISOString().slice(0, 10));
+    if (!isValidISODate(asOfISO)) throw new Error('asOfISO must be YYYY-MM-DD');
+    const report = computeGocharaReport(moonSignIndex, moonNakIndex, {
+      asOfISO,
+      tzOffsetHours: tz,
+      siderealMode: mode,
+    });
+    res.json(report);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute gochara' });
+  }
+});
+
+/** Era / samvatsara for a date (Shaka, Vikram, Kali, samvatsara name). */
+app.get('/api/era', (req, res) => {
+  try {
+    const date = String(req.query.date ?? '').trim();
+    if (!isValidISODate(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const { geo, mode } = parseGeo(req.query);
+    res.json(resolveHinduEra(date, geo, mode));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to resolve era' });
+  }
+});
+
+/** Classical source registry — the bibliography every calculation cites. */
+app.get('/api/sources', (req, res) => {
+  const domain = String(req.query.domain ?? '').trim();
+  const list = domain ? GRANTHAS.filter((g) => g.domain === domain) : GRANTHAS;
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.json({ count: list.length, domains: GRANTHA_DOMAINS, granthas: list });
+});
+
 // 1. Calculate Natal / Divisional Chart API
 app.post('/api/chart/calculate', (req, res) => {
   try {
@@ -129,6 +402,224 @@ app.post('/api/chart/synastry', (req, res) => {
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err?.message || 'Failed to compute synastry' });
+  }
+});
+
+// Versioned public API contract. Calculations remain stateless: birth inputs are
+// processed in memory and are not persisted by these endpoints.
+function v1Response(data: unknown, settings: Record<string, unknown>, warnings: string[] = []) {
+  return { apiVersion: '1.0', settings, data, warnings };
+}
+
+function normalizeV1BirthInput(input: any): BirthInput {
+  if (!input || typeof input !== 'object') throw new Error('birth input is required');
+  const datetime = String(input.datetime_local ?? '');
+  const [datetimeDate, datetimeTime] = datetime.includes('T') ? datetime.split('T') : ['', ''];
+  const date = String(input.date ?? datetimeDate ?? '');
+  const rawTime = String(input.time ?? datetimeTime ?? '');
+  const time = rawTime.slice(0, 8);
+  const zone = typeof input.timezone === 'string' ? input.timezone : typeof input.tz === 'string' && !Number.isFinite(Number(input.tz)) ? input.tz : undefined;
+  const tzOffsetHours = zone
+    ? resolveIanaOffsetHours(zone, date, time, Number.isFinite(Number(input.tzOffsetHours)) ? Number(input.tzOffsetHours) : undefined)
+    : Number(input.tzOffsetHours ?? (Number.isFinite(Number(input.tz)) ? input.tz : 5.5));
+  const rawSettings = input.settings ?? {};
+  const methodRaw = String(rawSettings.calculation_method ?? input.calculationMethod ?? 'geocentric').toLowerCase();
+  if (methodRaw !== 'geocentric' && methodRaw !== 'topocentric') {
+    throw new Error('settings.calculation_method must be geocentric or topocentric');
+  }
+  const ayanamshaRaw = String(rawSettings.ayanamsha ?? input.ayanamsa ?? 'lahiri').toLowerCase();
+  const ayanamshaAliases: Record<string, BirthInput['ayanamsa']> = {
+    lahiri: 'lahiri', krishnamurti: 'kp', kp: 'kp', raman: 'raman',
+    fagan_bradley: 'fagan_bradley', yukteshwar: 'yukteshwar', true_citra: 'true_citra', pushya: 'pushya',
+  };
+  const ayanamsa = ayanamshaAliases[ayanamshaRaw];
+  if (!ayanamsa) throw new Error(`Unsupported ayanamsha: ${ayanamshaRaw}`);
+  const nodeRaw = String(rawSettings.node_type ?? rawSettings.node ?? input.nodeConvention ?? 'mean').toLowerCase();
+  const nodeAliases: Record<string, 'mean' | 'true'> = {
+    mean: 'mean', mean_node: 'mean', true: 'true', true_node: 'true', 'true-node': 'true',
+  };
+  const nodeConvention = nodeAliases[nodeRaw];
+  if (!nodeConvention) throw new Error(`Unsupported node_type: ${nodeRaw}`);
+  const houseRaw = String(rawSettings.house_system ?? input.houseSystem ?? 'whole_sign').toLowerCase();
+  const allowedHouseSystems = ['placidus', 'whole_sign', 'equal', 'porphyry', 'koch', 'sripati'];
+  if (!allowedHouseSystems.includes(houseRaw)) throw new Error(`Unsupported house_system: ${houseRaw}`);
+  return {
+    ...input,
+    calculationMethod: methodRaw as BirthInput['calculationMethod'],
+    name: String(input.name ?? 'Chart'),
+    date,
+    time,
+    lat: Number(input.lat),
+    lng: Number(input.lng ?? input.lon),
+    tzOffsetHours,
+    timezone: zone,
+    city: String(input.city ?? input.placeName ?? '—'),
+    country: String(input.country ?? ''),
+    ayanamsa,
+    houseSystem: houseRaw as BirthInput['houseSystem'],
+    nodeConvention: nodeConvention as BirthInput['nodeConvention'],
+  } as BirthInput;
+}
+
+function normalizeV1Tradition(value: unknown): ZodiacTradition {
+  const tradition = String(value ?? 'vedic');
+  if (tradition !== 'vedic' && tradition !== 'western' && tradition !== 'hybrid') {
+    throw new Error('tradition must be vedic, western, or hybrid');
+  }
+  return tradition;
+}
+
+function v1Settings(input: any = {}, extra: Record<string, unknown> = {}) {
+  const settings = input.settings ?? {};
+  return {
+    ayanamsha: settings.ayanamsha ?? input.ayanamsa ?? 'lahiri',
+    nodeType: settings.node_type ?? settings.node ?? input.nodeConvention ?? 'mean',
+    houseSystem: settings.house_system ?? input.houseSystem ?? 'whole_sign',
+    sunriseConvention: settings.sunrise_convention ?? input.riseConvention ?? 'hindu',
+    monthSystem: settings.month_system ?? input.monthSystem ?? 'amanta',
+    timezone: input.timezone ?? input.tz ?? input.tzOffsetHours ?? null,
+    ...extra,
+  };
+}
+
+/** GET /v1/panchang?date=YYYY-MM-DD&lat=&lng=&tz= */
+app.get('/v1/panchang', (req, res) => {
+  try {
+    const date = String(req.query.date ?? '').trim();
+    if (!isValidISODate(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const { geo, mode, timezone } = parseGeo(req.query, date);
+    const rise = String(req.query.rise ?? 'hindu');
+    const allowedRiseConventions: RiseConvention[] = ['hindu', 'upper-limb', 'centre-refraction', 'app'];
+    if (!allowedRiseConventions.includes(rise as RiseConvention)) throw new Error(`Unsupported rise convention: ${rise}`);
+    const riseConvention = rise as RiseConvention;
+    const data = computeDayPanchanga(date, geo, { siderealMode: mode, riseConvention });
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(v1Response(data, v1Settings(req.query, {
+      ayanamsha: mode,
+      sunriseConvention: riseConvention,
+      timezone: timezone ?? geo.tzOffsetHours,
+      timezoneOffsetHours: geo.tzOffsetHours,
+      latitude: geo.lat,
+      longitude: geo.lng,
+      civilDate: date,
+    }), timezone ? ['A single fixed UTC offset is applied for this civil date; unusual DST transitions within the local day are not modeled dynamically.'] : []));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute panchang' });
+  }
+});
+
+/** GET /v1/panchang/month?year=&month=&lat=&lng=&tz= */
+app.get('/v1/panchang/month', (req, res) => {
+  try {
+    const year = Number(req.query.year);
+    const month = Number(req.query.month);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return res.status(400).json({ error: 'year out of range' });
+    if (!Number.isInteger(month) || month < 1 || month > 12) return res.status(400).json({ error: 'month must be 1-12' });
+    const monthAnchor = `${year}-${String(month).padStart(2, '0')}-15`;
+    const { geo, mode, timezone } = parseGeo(req.query, monthAnchor);
+    const data = getMonthCalendar(year, month, geo, { siderealMode: mode });
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(v1Response(data, v1Settings(req.query, {
+      ayanamsha: mode,
+      timezone: timezone ?? geo.tzOffsetHours,
+      timezoneOffsetHours: geo.tzOffsetHours,
+      latitude: geo.lat,
+      longitude: geo.lng,
+      year,
+      month,
+    }), timezone ? ['A single UTC offset anchored at the 15th of the month is used; DST transitions within the month need zone-aware event-time handling.'] : []));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute month calendar' });
+  }
+});
+
+/** GET /v1/festivals?year=&lat=&lng=&tz= */
+app.get('/v1/festivals', (req, res) => {
+  try {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return res.status(400).json({ error: 'year out of range' });
+    const tradition = String(req.query.tradition ?? 'drik').toLowerCase();
+    if (tradition !== 'drik') return res.status(400).json({ error: 'Only Drik festival observance is currently implemented in v1' });
+    const { geo, mode, timezone } = parseGeo(req.query, `${year}-07-01`);
+    const data = getYearOverview(year, geo, { siderealMode: mode });
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.json(v1Response(data, v1Settings(req.query, {
+      ayanamsha: mode,
+      timezone: timezone ?? geo.tzOffsetHours,
+      timezoneOffsetHours: geo.tzOffsetHours,
+      latitude: geo.lat,
+      longitude: geo.lng,
+      year,
+      tradition,
+    }), timezone ? ['A single UTC offset anchored at mid-year is used for this annual overview; dates spanning DST may differ by one civil hour.'] : []));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute festival calendar' });
+  }
+});
+
+/** GET /v1/eclipses?year=&lat=&lon=&timezone= */
+app.get('/v1/eclipses', (req, res) => {
+  try {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return res.status(400).json({ error: 'year out of range' });
+    const { geo, mode, timezone } = parseGeo(req.query, `${year}-07-01`);
+    const overview = getYearOverview(year, geo, { siderealMode: mode });
+    const data = { year, events: overview.eclipses };
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.json(v1Response(data, v1Settings(req.query, {
+      ayanamsha: mode,
+      timezone: timezone ?? geo.tzOffsetHours,
+      timezoneOffsetHours: geo.tzOffsetHours,
+      latitude: geo.lat,
+      longitude: geo.lng,
+      year,
+      locationVisibility: 'at-maximum-only',
+    }), timezone ? ['A single UTC offset anchored at mid-year is used; DST changes within the year are not modeled dynamically. Local eclipse contact times and tradition-specific Sutak windows are not yet calculated.'] : ['Local eclipse contact times and tradition-specific Sutak windows are not yet calculated.']));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to calculate eclipses' });
+  }
+});
+
+/** POST /v1/chart — accepts {input, tradition}; no birth details are stored. */
+app.post('/v1/chart', (req, res) => {
+  try {
+    const input = (req.body?.input ?? req.body) as BirthInput | undefined;
+    const dateTime = String((input as any)?.datetime_local ?? '');
+    const dateValue = String((input as any)?.date ?? dateTime.split('T')[0] ?? '');
+    const timeValue = String((input as any)?.time ?? dateTime.split('T')[1] ?? '');
+    if (!input || !isValidISODate(dateValue) || !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(timeValue)) {
+      return res.status(400).json({ error: 'input must include date/time or datetime_local as local YYYY-MM-DDTHH:mm[:ss]' });
+    }
+    const normalizedInput = normalizeV1BirthInput(input);
+    const tradition = normalizeV1Tradition(req.body?.tradition);
+    const chart = calculateChart(normalizedInput, tradition);
+    const warnings = Number(dateValue.slice(0, 4)) < 1947 && !(input as any).timezone
+      ? ['Historical local-time rules can differ from modern civil time; verify and supply an explicit UTC offset when the birth record is old or uncertain.']
+      : [];
+    res.json(v1Response(chart, v1Settings(input, {
+      tradition,
+      latitude: normalizedInput.lat,
+      longitude: normalizedInput.lng,
+      timezoneOffsetHours: normalizedInput.tzOffsetHours,
+      calculationMethod: normalizedInput.calculationMethod ?? 'geocentric',
+    }), warnings));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to calculate chart' });
+  }
+});
+
+/** POST /v1/match — full chart comparison and Ashtakoota result. */
+app.post('/v1/match', (req, res) => {
+  try {
+    const { inputA, inputB } = req.body ?? {};
+    if (!inputA || !inputB) return res.status(400).json({ error: 'inputA and inputB are required' });
+    const tradition = normalizeV1Tradition(req.body?.tradition);
+    const normalizedA = normalizeV1BirthInput(inputA);
+    const normalizedB = normalizeV1BirthInput(inputB);
+    const data = calculateSynastryComparison(normalizedA, normalizedB, tradition);
+    res.json(v1Response(data, v1Settings(inputA, { tradition })));
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Failed to compute matching' });
   }
 });
 
@@ -241,8 +732,7 @@ Detected Yogas: ${chart.vedicYogas.map((y) => `${y.name} (${y.citation})`).join(
 Planetary Positions:
 ${planetSummary}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+    const { text: rawJson, model } = await generateWithFallback(ai, {
       contents: promptText,
       config: {
         responseMimeType: 'application/json',
@@ -269,13 +759,14 @@ ${planetSummary}`;
       },
     });
 
-    const rawText = response.text?.trim();
+    const rawText = rawJson.trim();
     if (rawText) {
       const parsed = JSON.parse(rawText);
       return res.json({
         report: parsed,
         passages,
         engineMode: 'gemini-rag-synthesis',
+        model,
       });
     }
 
@@ -352,8 +843,7 @@ app.post('/api/ai/chat', async (req, res) => {
       )
       .join('; ');
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+    const { text: answerText, model: answerModel } = await generateWithFallback(ai, {
       contents: `Chart of ${chart.input.name}:
 Ascendant (లగ్నం): ${teJathakam.janmaLagnamTe} (${chart.ascendant.formattedDMS})
 Janma Rasi (జన్మ రాశి): ${teJathakam.janmaRasiTe}, Nakshatra: ${teJathakam.janmaNakshatramTe} Pada ${teJathakam.janmaPadam}
@@ -366,8 +856,9 @@ Respond in clear, scholarly TELUGU (తెలుగు భాషలో) citing s
     });
 
     return res.json({
-      answer: response.text || teJathakam.currentDashaPhalamTe.phalamTe,
+      answer: answerText || teJathakam.currentDashaPhalamTe.phalamTe,
       citations: passages.slice(0, 3).map((p) => p.reference),
+      model: answerModel,
     });
   } catch {
     const chart = calculateChart(input, tradition);
@@ -397,6 +888,7 @@ app.post('/api/profiles', (req, res) => {
   } else {
     savedProfiles.unshift(record);
   }
+  persistProfiles(savedProfiles);
   res.json({ profile: record, profiles: savedProfiles });
 });
 
@@ -405,16 +897,23 @@ app.delete('/api/profiles/:id', (req, res) => {
   const idx = savedProfiles.findIndex((p) => p.id === id);
   if (idx >= 0) {
     savedProfiles.splice(idx, 1);
+    persistProfiles(savedProfiles);
   }
   res.json({ profiles: savedProfiles });
 });
 
 async function startServer() {
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT ?? 3000);
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        // Allow the sandbox preview proxy host (and any host in dev) so the
+        // live preview can reach the Vite middleware.
+        allowedHosts: true,
+        host: '0.0.0.0',
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

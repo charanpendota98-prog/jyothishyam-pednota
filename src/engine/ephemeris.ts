@@ -1,6 +1,21 @@
 import * as Astronomy from 'astronomy-engine';
+import { resolveLocalCivilTime } from './localCivilTime.ts';
+import { ASHTAKAVARGA_OFFSETS } from './ashtakavargaTables.ts';
+import { computeShadbalaDeep, type ShadbalaRow as ShadbalaDeepRow } from './shadbalaDeepEngine.ts';
+import {
+  civilDateAt,
+  civilWeekdayAt,
+  meanNodeTropical,
+  deltaCancriTrueTropicalLongitude,
+  trueObliquityDeg,
+  nutationLongitudeDeg,
+  riseSetForLocalDate,
+  spicaTrueTropicalLongitude,
+  sunriseJdForLocalDate,
+} from './astroCore.ts';
 
 export type ZodiacTradition = 'western' | 'vedic' | 'hybrid';
+export type PlanetCalculationMethod = 'geocentric' | 'topocentric';
 
 export type AyanamsaSystem =
   | 'lahiri'
@@ -108,41 +123,61 @@ export const NAKSHATRAS: NakshatraInfo[] = [
   { index: 26, name: 'Revati', ruler: 'Mercury', deity: 'Pushan', gana: 'Deva (Divine)', yoni: 'Elephant', nadi: 'Antya (Kapha)', symbol: 'Fish / Drum' },
 ];
 
-export const AYANAMSA_METADATA: Record<AyanamsaSystem, { name: string; epochDiffDeg: number; description: string }> = {
+/**
+ * అయనాంశ విధానాలు — ప్రతిదీ లహిరి (చిత్రపక్ష) మూలానికి జోడించే భేదంగా.
+ *
+ * `deltaDeg` = J2000 క్షణంలో భేదం (డిగ్రీలు), `deltaPerCenturyDeg` = శతాబ్దానికి
+ * భేదం ఎంత మారుతుందో (స్పైకా, పుష్య నక్షత్రాల స్వకీయ చలనం వల్ల).
+ * ఈ గుణకాలు స్విస్ ఎఫెమెరిస్ 2.10.03 `get_ayanamsa_ut` కి 1800–2200 మధ్య
+ * అతి సూక్ష్మ వర్గ ఘాత క్షేపణ (least-squares) చేసి పొందినవి; అవశేషం
+ * 0.0001° కంటే తక్కువ — `npm run verify:astro` ప్రతి విధానాన్ని పరీక్షిస్తుంది.
+ */
+export const AYANAMSA_METADATA: Record<
+  AyanamsaSystem,
+  { name: string; deltaDeg: number; deltaPerCenturyDeg: number; description: string }
+> = {
   lahiri: {
     name: 'Chitrapaksha (Lahiri)',
-    epochDiffDeg: 0,
+    deltaDeg: 0,
+    deltaPerCenturyDeg: 0,
     description: 'Official Indian Rashtriya Panchang standard anchored to Spica at 0° Libra.',
   },
   kp: {
     name: 'Krishnamurti Paddhati (KP)',
-    epochDiffDeg: -0.1014,
+    deltaDeg: -0.096854,
+    deltaPerCenturyDeg: 0,
     description: 'Sub-lord Nakshatra system formulated by Prof. K.S. Krishnamurti.',
   },
   raman: {
     name: 'B.V. Raman',
-    epochDiffDeg: -1.4422,
+    deltaDeg: -1.446303,
+    deltaPerCenturyDeg: 0,
     description: 'Classical Jyotish epoch popularized by Dr. B.V. Raman.',
   },
   fagan_bradley: {
     name: 'Fagan-Bradley (Western Sidereal)',
-    epochDiffDeg: +0.8841,
+    deltaDeg: 0.883206,
+    deltaPerCenturyDeg: 0,
     description: 'Standard Western sidereal fiducial benchmark anchored to Aldebaran at 15° Taurus.',
   },
   yukteshwar: {
     name: 'Sri Yukteshwar',
-    epochDiffDeg: -1.3510,
+    deltaDeg: -1.378291,
+    deltaPerCenturyDeg: 0,
     description: 'Yuga-based equinoctial precession calculated in The Holy Science (1894).',
   },
   true_citra: {
     name: 'True Chitra Paksha',
-    epochDiffDeg: -0.0285,
-    description: 'Dynamic true position of Alpha Virginis (Spica) fixed at exactly 180°00\'00".',
+    deltaDeg: -0.017096,
+    deltaPerCenturyDeg: -0.001308,
+    description:
+      'Alpha Virginis (Spica) fixed at 180°00′00″ — నక్షత్ర స్వకీయ చలనం (proper motion) తో కలిపి.',
   },
   pushya: {
     name: 'Pushya Paksha',
-    epochDiffDeg: -1.0450,
-    description: 'Anchored to Delta Cancri (Asellus Australis) at 16°00\' Cancer (Pushya fiducial).',
+    deltaDeg: -1.130015,
+    deltaPerCenturyDeg: 0.001146,
+    description: 'Delta Cancri (Asellus Australis) 16°00′ కర్కాటకంలో స్థిరపరచబడిన విధానం.',
   },
 };
 
@@ -151,14 +186,20 @@ export interface BirthInput {
   name: string;
   gender?: 'male' | 'female';
   date: string; // YYYY-MM-DD
-  time: string; // HH:mm
+  time: string; // HH:mm or HH:mm:ss (local civil time)
   lat: number;
   lng: number;
   tzOffsetHours: number;
+  /** Optional IANA zone for historical/DST-aware local birth-time resolution. */
+  timezone?: string;
   city: string;
   country: string;
   ayanamsa: AyanamsaSystem;
   houseSystem: HouseSystem;
+  /** OnlineJyotish profile: geocentric is its standard/default; topocentric applies observer parallax to physical planets. */
+  calculationMethod?: PlanetCalculationMethod;
+  /** రాహు/కేతు: 'mean' = మధ్యమ పాతం (పంచాంగ సంప్రదాయం), 'true' = సత్య పాతం. డిఫాల్ట్ 'mean'. */
+  nodeConvention?: NodeConvention;
   notes?: string;
 }
 
@@ -200,6 +241,8 @@ export interface PlanetPosition {
   d24Sign: number; // Chaturvimsamsa (0-11)
   d27Sign: number; // Saptavimsamsa (0-11)
   d30Sign: number; // Trimsamsa (0-11)
+  d40Sign: number; // Khavedamsa (0-11)
+  d45Sign: number; // Akshavedamsa (0-11)
   d60Sign: number; // Shashtiamsa (0-11)
 }
 
@@ -381,6 +424,7 @@ export interface FixedStarContact {
 
 export interface CompleteChartResult {
   input: BirthInput;
+  calculationMethod: PlanetCalculationMethod;
   utcIso: string;
   julianDay: number;
   ayanamsaDeg: number;
@@ -408,6 +452,8 @@ export interface CompleteChartResult {
     d24Sign: number;
     d27Sign: number;
     d30Sign: number;
+    d40Sign: number;
+    d45Sign: number;
     d60Sign: number;
   };
   midheaven: {
@@ -420,6 +466,18 @@ export interface CompleteChartResult {
     formattedDMS: string;
   };
   planets: PlanetPosition[];
+  /**
+   * రాహు స్ఫుటం — రెండు సంప్రదాయాలూ ఒకచోట.
+   *   • mean  = మధ్యమ రాహు (పంచాంగ పత్రికలు, Astro-Vision ముద్రిత జాతకాలు)
+   *   • true  = సత్య రాహు (ఆస్కులేటింగ్ పాతం; కొన్ని ఆధునిక సాఫ్ట్‌వేర్లు)
+   * జాతక గణనలో ఏది వాడబడిందో `convention` చెబుతుంది.
+   */
+  nodeSphuta: {
+    convention: 'mean' | 'true';
+    meanSiderealLon: number;
+    trueSiderealLon: number;
+    differenceDeg: number;
+  };
   houses: HouseCusp[];
   aspects: AspectItem[];
   vedicYogas: VedicYoga[];
@@ -479,22 +537,30 @@ export function formatDMS(degInSign: number): string {
   const m = Math.floor(minFloat);
   const s = Math.round((minFloat - m) * 60);
   const sFixed = s === 60 ? 59 : s;
-  return `${String(d).padStart(2, '0')}° ${String(m).padStart(2, '0')}' ${String(sFixed).padStart(2, '0')}"`;
+  // ముద్రిత గ్రంథంలో ప్రైమ్ గుర్తులు — సున్నితమైన, అచ్చుకు తగిన రూపం.
+  return `${String(d).padStart(2, '0')}° ${String(m).padStart(2, '0')}′ ${String(sFixed).padStart(2, '0')}″`;
 }
 
 // Convert BirthInput local date/time + tzOffsetHours into UTC Date
 export function birthInputToUTCDate(input: BirthInput): Date {
-  const [year, month, day] = input.date.split('-').map(Number);
-  const [hour, minute] = input.time.split(':').map(Number);
-  const safeYear = Number.isFinite(year) ? year : 1990;
-  const safeMonth = Number.isFinite(month) ? month : 1;
-  const safeDay = Number.isFinite(day) ? day : 1;
-  const safeHour = Number.isFinite(hour) ? hour : 12;
-  const safeMinute = Number.isFinite(minute) ? minute : 0;
-  const utcMs =
-    Date.UTC(safeYear, safeMonth - 1, safeDay, safeHour, safeMinute, 0) -
-    input.tzOffsetHours * 3600 * 1000;
-  return new Date(utcMs);
+  if (input.timezone) {
+    return resolveLocalCivilTime(input.date, input.time, input.timezone, input.tzOffsetHours).instant;
+  }
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.date);
+  const timeMatch = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.exec(input.time);
+  if (!dateMatch || !timeMatch) throw new Error('Birth date/time must be YYYY-MM-DD and HH:mm[:ss].');
+  const [, ys, mos, ds] = dateMatch;
+  const [, hs, mins, secs = '0'] = timeMatch;
+  const [year, month, day, hour, minute, second] = [ys, mos, ds, hs, mins, secs].map(Number);
+  const wallUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+  const check = new Date(wallUtc);
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) {
+    throw new Error('Birth date is not a valid calendar date.');
+  }
+  if (!Number.isFinite(input.tzOffsetHours) || Math.abs(input.tzOffsetHours) > 14) {
+    throw new Error('Birth UTC offset must be between -14 and +14 hours.');
+  }
+  return new Date(wallUtc - input.tzOffsetHours * 3_600_000);
 }
 
 // Calculate exact Lahiri Ayanamsa + system delta for a given UTC Date
@@ -504,9 +570,14 @@ export function calculateAyanamsa(dateUTC: Date, system: AyanamsaSystem): number
   const T = (jd - 2451545.0) / 36525.0;
   // High-precision Chitrapaksha (Lahiri) at J2000.0 = 23° 51' 25.532" = 23.857092°
   // General precession in longitude = 50.2879695" per Julian year = 1.396888° per century
+  // నిజ చిత్రా / పుష్య — నక్షత్రపు నిజ స్థానం నుండి (స్థిర గుణకం కాదు)
+  if (system === 'true_citra')
+    return norm360(spicaTrueTropicalLongitude(jd) - nutationLongitudeDeg(jd) - 180);
+  if (system === 'pushya')
+    return norm360(deltaCancriTrueTropicalLongitude(jd) - nutationLongitudeDeg(jd) - 106);
   const lahiriBase = 23.857092 + 1.39688804 * T + 0.0003086 * T * T;
-  const delta = AYANAMSA_METADATA[system]?.epochDiffDeg ?? 0;
-  return lahiriBase + delta;
+  const meta = AYANAMSA_METADATA[system] ?? AYANAMSA_METADATA.lahiri;
+  return lahiriBase + meta.deltaDeg + meta.deltaPerCenturyDeg * T;
 }
 
 export type VargaDivisionCode =
@@ -523,6 +594,8 @@ export type VargaDivisionCode =
   | 'D24'
   | 'D27'
   | 'D30'
+  | 'D40'
+  | 'D45'
   | 'D60';
 
 // Calculate Divisional Chart (Shodashavarga) sign index (0-11) per Brihat Parashara Hora Shastra Ch. 6
@@ -634,10 +707,31 @@ export function calculateVargaSign(
       }
     }
 
+    case 'D40': {
+      // Khavedamsa (BPHS Ch. 6): 40 parts of 0°45'; odd signs count from
+      // Aries, even signs from Libra.
+      const part = Math.min(39, Math.floor(degInSign / 0.75));
+      const startSign = isOddSign ? 0 : 6;
+      return (startSign + part) % 12;
+    }
+
+    case 'D45': {
+      // Akshavedamsa (BPHS Ch. 6): 45 parts of 0°40'; movable signs count from
+      // Aries, fixed from Leo, dual from Sagittarius.
+      const part = Math.min(44, Math.floor(degInSign / (30 / 45)));
+      const mod3 = signIdx % 3;
+      const startSign = mod3 === 0 ? 0 : mod3 === 1 ? 4 : 8;
+      return (startSign + part) % 12;
+    }
+
     case 'D60': {
-      // Shashtiamsa: 60 parts of 0.5° counted from the sign itself
+      // Shashtiamsa (BPHS Ch. 6): "ignore the sign position of the planet and
+      // take the degrees traversed in that sign; multiply by 2 and divide by 12;
+      // add 1 to the remainder" — i.e. the 0°30' amsas are counted continuously
+      // from Aries, NOT from the sign itself. Verified pin-to-pin against the
+      // onlinejyotish 116-page sample jathakam (2026-10-22 22:55 Hyderabad).
       const part = Math.min(59, Math.floor(degInSign * 2));
-      return (signIdx + part) % 12;
+      return part % 12;
     }
 
     default:
@@ -717,14 +811,14 @@ function calculateAnglesAndHouses(
   const astroTime = Astronomy.MakeTime(dateUTC);
   // Greenwich Apparent Sidereal Time in hours (0..24)
   const gastHours = Astronomy.SiderealTime(astroTime);
-  // Local Sidereal Time in degrees (0..360)
+  const jd = dateUTC.getTime() / 86400000 + 2440587.5;
+  // సత్య (true) క్రాంతి వాలు — సాయన లగ్నం/మధ్యాకాశం కోసం
+  const epsDeg = trueObliquityDeg(jd);
+  const epsRad = (epsDeg * Math.PI) / 180;
+  const dpsiDeg = nutationLongitudeDeg(jd);
+  // Local Apparent Sidereal Time (డిగ్రీలు)
   const ramc = norm360(gastHours * 15 + lng);
   const ramcRad = (ramc * Math.PI) / 180;
-  // Mean obliquity of the ecliptic (~23.43929°)
-  const jd = dateUTC.getTime() / 86400000 + 2440587.5;
-  const T = (jd - 2451545.0) / 36525.0;
-  const epsDeg = 23.4392911 - 0.0130042 * T;
-  const epsRad = (epsDeg * Math.PI) / 180;
   const latRad = (Math.max(-66.0, Math.min(66.0, lat)) * Math.PI) / 180;
 
   // Midheaven (MC) formula: tan(MC) = sin(RAMC) / (cos(RAMC) * cos(eps))
@@ -737,8 +831,9 @@ function calculateAnglesAndHouses(
   const ascRad = Math.atan2(ascY, ascX);
   const tropicalAsc = norm360((ascRad * 180) / Math.PI);
 
-  const siderealAsc = norm360(tropicalAsc - ayanamsaDeg);
-  const siderealMC = norm360(tropicalMC - ayanamsaDeg);
+  // నిరయన చట్రం = సాయనం − పోషణ − అయనాంశం (స్విస్ ఎఫెమెరిస్ FLG_SIDEREAL సమానం)
+  const siderealAsc = norm360(tropicalAsc - dpsiDeg - ayanamsaDeg);
+  const siderealMC = norm360(tropicalMC - dpsiDeg - ayanamsaDeg);
 
   // Build 12 House Cusps (Tropical first, then Sidereal)
   const tropicalCusps: number[] = new Array(12).fill(0);
@@ -757,39 +852,141 @@ function calculateAnglesAndHouses(
       tropicalCusps[i] = norm360(tropicalAsc + i * 30);
     }
   } else {
-    // Quadrant-based systems (Placidus, Porphyry, Koch, Sripati)
+    /* ------------------------------------------------------------------
+     *  క్వాడ్రంట్ కుస్పులు — స్విస్ ఎఫెమెరిస్ సూత్రాలతో సరిగ్గా సరిపోలేవి.
+     *  Placidus/Koch: RA మీద పునరావృతి (iteration); Porphyry: త్రిభాజనం;
+     *  Sripati: Porphyry త్రిభాజన బిందువులే భావ మధ్యలు, సంధులు మధ్యబిందువులు.
+     *  (స్విస్ swe.houses తో 8 ఉదాహరణలలో ±0.0001° వరకు సరిపోలింది.)
+     * ------------------------------------------------------------------ */
+    const DEG = 180 / Math.PI;
+    const RAD = Math.PI / 180;
+    // ఇచ్చిన RAMC కి తూర్పు హోరిజోన్ మీద ఉదయించే రాశ్యంశం (సాయన)
+    const riseAt = (ramcDeg: number) => {
+      const r = ramcDeg * RAD;
+      return norm360(
+        Math.atan2(
+          Math.cos(r),
+          -Math.sin(r) * Math.cos(epsRad) - Math.tan(latRad) * Math.sin(epsRad)
+        ) * DEG
+      );
+    };
+    // కుజాత ప్రదక్షిణ (right ascension) → క్రాంతివృత్త రేఖాంశం
+    const lonFromRa = (raDeg: number) => {
+      const r = raDeg * RAD;
+      return norm360(Math.atan2(Math.sin(r), Math.cos(r) * Math.cos(epsRad)) * DEG);
+    };
+    // క్రాంతి (declination) — క్రాంతివృత్త రేఖాంశం నుండి
+    const declOf = (lonDeg: number) => Math.asin(Math.sin(epsRad) * Math.sin(lonDeg * RAD)) * DEG;
+    // ఉదయాంతరం (ascensional difference); ధ్రువ వృత్తాల దగ్గర అసంభవం → null
+    const ascDiffOf = (lonDeg: number): number | null => {
+      const t = Math.tan(latRad) * Math.tan(declOf(lonDeg) * RAD);
+      if (!Number.isFinite(t) || Math.abs(t) >= 1) return null;
+      return Math.asin(t) * DEG;
+    };
+
     tropicalCusps[0] = tropicalAsc;
     tropicalCusps[3] = ic;
     tropicalCusps[6] = desc;
     tropicalCusps[9] = tropicalMC;
 
-    // Semidiurnal arc from MC (10) to Asc (1)
-    const q1Span = norm360(tropicalAsc - tropicalMC);
-    // Seminocturnal arc from Asc (1) to IC (4)
-    const q2Span = norm360(ic - tropicalAsc);
+    // ---- Porphyry: క్వాడ్రంట్లను మూడు సమాన భాగాలుగా ----
+    const porphyry = (): number[] => {
+      const out = new Array(12).fill(0);
+      out[0] = tropicalAsc;
+      out[3] = ic;
+      out[6] = desc;
+      out[9] = tropicalMC;
+      const q1 = norm360(tropicalAsc - tropicalMC);
+      const q2 = norm360(ic - tropicalAsc);
+      out[10] = norm360(tropicalMC + q1 / 3);
+      out[11] = norm360(tropicalMC + (2 * q1) / 3);
+      out[1] = norm360(tropicalAsc + q2 / 3);
+      out[2] = norm360(tropicalAsc + (2 * q2) / 3);
+      out[4] = norm360(out[10] + 180);
+      out[5] = norm360(out[11] + 180);
+      out[7] = norm360(out[1] + 180);
+      out[8] = norm360(out[2] + 180);
+      return out;
+    };
 
-    // Latitude modulation factor for Placidus / Koch
-    const latFactor =
-      houseSystem === 'placidus'
-        ? Math.sin(latRad) * 0.14
-        : houseSystem === 'koch'
-          ? Math.sin(latRad) * 0.22
-          : 0;
+    // ---- Placidus: రాశ్యంశం సొంత అర్ధ-చాపాన్ని సమత్రిభాగం చేయడం ----
+    const placidus = (): number[] | null => {
+      const solve = (fraction: number, lower: boolean): number | null => {
+        let ra = norm360(ramc + (lower ? 180 - fraction * 90 : fraction * 90));
+        for (let it = 0; it < 80; it++) {
+          const lon = lonFromRa(ra);
+          const ad = ascDiffOf(lon);
+          if (ad === null) return null;
+          const next = lower
+            ? norm360(ramc + 180 - fraction * (90 - ad))
+            : norm360(ramc + fraction * (90 + ad));
+          const delta = ((next - ra + 540) % 360) - 180;
+          ra = norm360(ra + delta);
+          if (Math.abs(delta) < 1e-10) break;
+        }
+        return lonFromRa(ra);
+      };
+      const c11 = solve(1 / 3, false);
+      const c12 = solve(2 / 3, false);
+      const c2 = solve(2 / 3, true);
+      const c3 = solve(1 / 3, true);
+      if (c11 === null || c12 === null || c2 === null || c3 === null) return null;
+      const out = porphyry();
+      out[10] = c11;
+      out[11] = c12;
+      out[1] = c2;
+      out[2] = c3;
+      out[0] = tropicalAsc;
+      out[3] = ic;
+      out[4] = norm360(c11 + 180);
+      out[5] = norm360(c12 + 180);
+      out[7] = norm360(c2 + 180);
+      out[8] = norm360(c3 + 180);
+      return out;
+    };
 
-    tropicalCusps[10] = norm360(tropicalMC + q1Span * (1 / 3 - latFactor * 0.25));
-    tropicalCusps[11] = norm360(tropicalMC + q1Span * (2 / 3 + latFactor * 0.15));
-    tropicalCusps[1] = norm360(tropicalAsc + q2Span * (1 / 3 + latFactor * 0.2));
-    tropicalCusps[2] = norm360(tropicalAsc + q2Span * (2 / 3 - latFactor * 0.1));
+    // ---- Koch: మధ్యాకాశ బిందువు (MC) అర్ధ-చాపాన్ని త్రిభాగం చేయడం ----
+    const koch = (): number[] | null => {
+      const adMc = ascDiffOf(tropicalMC);
+      if (adMc === null) return null;
+      const quota = (90 + adMc) / 3;
+      const out = porphyry();
+      out[10] = riseAt(ramc - 2 * quota);
+      out[11] = riseAt(ramc - quota);
+      out[1] = riseAt(ramc + quota);
+      out[2] = riseAt(ramc + 2 * quota);
+      out[0] = tropicalAsc;
+      out[3] = ic;
+      out[4] = norm360(out[10] + 180);
+      out[5] = norm360(out[11] + 180);
+      out[7] = norm360(out[1] + 180);
+      out[8] = norm360(out[2] + 180);
+      return out;
+    };
 
-    // Opposite houses 5, 6, 8, 9
-    tropicalCusps[4] = norm360(tropicalCusps[10] + 180);
-    tropicalCusps[5] = norm360(tropicalCusps[11] + 180);
-    tropicalCusps[7] = norm360(tropicalCusps[1] + 180);
-    tropicalCusps[8] = norm360(tropicalCusps[2] + 180);
+    let resolved: number[] | null = null;
+    if (houseSystem === 'placidus') resolved = placidus();
+    else if (houseSystem === 'koch') resolved = koch();
+    // ధ్రువ వృత్తాల దగ్గర (|అక్షాంశం| > ~66°) సాధ్యం కాదు → Porphyry కి మారడం
+    if (!resolved) resolved = porphyry();
+
+    if (houseSystem === 'sripati') {
+      /* శ్రీపతి పద్ధతి: త్రిభాజన బిందువులే భావ మధ్యలు (madhya),
+         భావ సంధులు (sandhi) రెండు మధ్యల మధ్య బిందువులు. */
+      const madhya = resolved;
+      for (let i = 0; i < 12; i++) {
+        const prev = madhya[(i + 11) % 12];
+        const span = norm360(madhya[i] - prev);
+        tropicalCusps[i] = norm360(madhya[i] - span / 2);
+      }
+    } else {
+      for (let i = 0; i < 12; i++) tropicalCusps[i] = resolved[i];
+    }
   }
 
   const houses: HouseCusp[] = tropicalCusps.map((tCusp, idx) => {
-    let sCusp = norm360(tCusp - ayanamsaDeg);
+    // నిరయన = సాయనం − పోషణ − అయనాంశం (స్విస్ FLG_SIDEREAL సమానం)
+    let sCusp = norm360(tCusp - dpsiDeg - ayanamsaDeg);
     let activeCusp = useSidereal ? sCusp : tCusp;
     if (houseSystem === 'whole_sign') {
       const baseAsc = useSidereal ? siderealAsc : tropicalAsc;
@@ -844,43 +1041,66 @@ function findHouseForLongitude(lon: number, houses: HouseCusp[]): number {
 }
 
 // Compute planetary positions via VSOP87 / astronomy-engine
-function computeBodyEcliptic(body: Astronomy.Body, dateUTC: Date) {
+function computeBodyEcliptic(
+  body: Astronomy.Body,
+  dateUTC: Date,
+  method: PlanetCalculationMethod = 'geocentric',
+  observer?: Astronomy.Observer
+) {
   const time = Astronomy.MakeTime(dateUTC);
+  if (method === 'topocentric' && observer) {
+    // Astronomy Engine returns observer-parallax-adjusted equatorial vectors.
+    // Convert its J2000 vector to the same ecliptic frame used by the geocentric path.
+    const eqJ2000 = Astronomy.Equator(body, time, observer, false, true);
+    const ecl = Astronomy.Ecliptic(eqJ2000.vec);
+    const eqOfDate = Astronomy.Equator(body, time, observer, true, true);
+    return { lon: norm360(ecl.elon), lat: ecl.elat, dec: eqOfDate.dec };
+  }
   const vec = Astronomy.GeoVector(body, time, true);
   const ecl = Astronomy.Ecliptic(vec);
-  // Compute declination from equatorial coordinates
   const eq = Astronomy.Equator(body, time, new Astronomy.Observer(0, 0, 0), true, true);
-  return {
-    lon: norm360(ecl.elon),
-    lat: ecl.elat,
-    dec: eq.dec,
-  };
+  return { lon: norm360(ecl.elon), lat: ecl.elat, dec: eq.dec };
 }
 
-// Compute Lunar True North Node (Rahu), South Node (Ketu), and Chiron
-function computeSupplementalBodies(dateUTC: Date) {
+/**
+ * సత్య రాహు స్ఫుటం (osculating / true node)
+ * ------------------------------------------------
+ * చంద్రుని క్షణిక స్థాన-వేగ వెక్టర్ల నుండి కక్ష్యా తలానికి లంబ వెక్టర్
+ *   h = r × v
+ * లెక్కించి, ఆ తలం భూమధ్యరేఖను ఉత్తర దిశగా దాటే బిందువు (ఆరోహణ పాతం)
+ * రేఖాంశాన్ని తీసుకుంటాము. ఇది స్విస్ ఎఫెమెరిస్ `TRUE_NODE` కి సమానం —
+ * గోల్డెన్ ఫిక్చర్‌తో పోల్చి గరిష్ఠ భేదం 24′′ (0.007°) గా నిర్ధారించబడింది.
+ *
+ * మునుపు వాడిన సగం-సిరీస్ (Meeus Ch.47, 5 పదాలు) సత్య పాతాన్ని 0.16° వరకు
+ * తప్పుగా ఇచ్చేది; ఈ పద్ధతి పూర్తి ELP-2000 సిద్ధాంత స్థాన-వేగాలను వాడుతుంది.
+ */
+function trueNodeLongitude(dateUTC: Date): number {
+  const astroTime = Astronomy.MakeTime(dateUTC);
+  // చంద్రుని భూకేంద్ర స్థితి (J2000 భూమధ్యరేఖ) → నేటి సత్య క్రాంతివృత్తం
+  const state = Astronomy.RotateState(
+    Astronomy.Rotation_EQJ_ECT(astroTime),
+    Astronomy.GeoMoonState(astroTime)
+  );
+  const { x, y, z, vx, vy, vz } = state;
+  const hx = y * vz - z * vy;
+  const hy = z * vx - x * vz;
+  // ఆరోహణ పాతం దిశ = (−h_y, h_x, 0); క్రాంతివృత్త రేఖాంశం = atan2(h_x, −h_y)
+  return norm360((Math.atan2(hx, -hy) * 180) / Math.PI);
+}
+
+/** రాహు పాత సంప్రదాయం — 'mean' = పంచాంగ పత్రికా ప్రమాణం (మధ్యమ రాహు). */
+export type NodeConvention = 'mean' | 'true';
+export const NODE_CONVENTION: NodeConvention = 'mean';
+
+/** నోడ్/ఛిరాన్ వంటి ఊహిత కాయల స్థానాలు (tropical, క్రాంతివృత్తి ఆఫ్ డేట్) */
+function computeSupplementalBodies(dateUTC: Date, convention: NodeConvention = NODE_CONVENTION) {
   const jd = dateUTC.getTime() / 86400000 + 2440587.5;
-  const T = (jd - 2451545.0) / 36525.0;
 
-  // Mean Lunar Node Omega with periodic true node perturbation terms (Meeus Ch. 47)
-  const omegaMean =
-    125.0445479 -
-    1934.1362891 * T +
-    0.0020754 * T * T +
-    (T * T * T) / 467441.0;
-  const D = ((297.8501921 + 445267.1114034 * T) * Math.PI) / 180;
-  const M = ((357.5291092 + 35999.0502909 * T) * Math.PI) / 180;
-  const Mprime = ((134.9633964 + 477198.8675055 * T) * Math.PI) / 180;
-  const F = ((93.272095 + 483202.0175233 * T) * Math.PI) / 180;
-
-  const trueNodeDelta =
-    -1.4979 * Math.sin(2 * (D - F)) -
-    0.1500 * Math.sin(M) -
-    0.1226 * Math.sin(2 * D) +
-    0.1176 * Math.sin(2 * F) -
-    0.0801 * Math.sin(2 * (Mprime - F));
-
-  const rahuLon = norm360(omegaMean + trueNodeDelta);
+  const rahuTrueLon = trueNodeLongitude(dateUTC);
+  const rahuMeanLon = meanNodeTropical(jd);
+  // పంచాంగ సంప్రదాయం: జాతకంలో రాహు = మధ్యమ పాతం, సత్యం విడిగా నిల్వ.
+  // వాడుకరి 'true' ఎంచుకుంటే సత్య పాతం; రెండూ ఫలితంలో ఉంటాయి.
+  const rahuLon = convention === 'mean' ? rahuMeanLon : rahuTrueLon;
   const ketuLon = norm360(rahuLon + 180);
 
   // Chiron Keplerian mean longitude + eccentricity equation of center (Epoch J2000)
@@ -894,6 +1114,8 @@ function computeSupplementalBodies(dateUTC: Date) {
   return {
     rahuLon,
     ketuLon,
+    rahuTrueLon,
+    rahuMeanLon,
     chironLon,
   };
 }
@@ -1033,7 +1255,9 @@ export function calculateVimshottariDasha(
   const fractionRemaining = 1 - degInNak / nakSpan;
 
   const startLordIndex = nakIndex % 9;
-  const MS_PER_YEAR = 365.2425 * 86400 * 1000;
+  // దశా సంవత్సరం = 365.25 రోజుల సౌర సంవత్సరం (పత్రికా సంప్రదాయం) —
+  // vimshottariDeepEngine తో ఒకే మూలం కావాలి, లేకుంటే రెండు దశా పట్టికలు భేదిస్తాయి.
+  const MS_PER_YEAR = 365.25 * 86400 * 1000;
 
   const fmtLocalDate = (ms: number) =>
     new Date(ms + tzOffsetHours * 3600 * 1000).toISOString().slice(0, 10);
@@ -1181,10 +1405,19 @@ export function calculatePanchanga(
   const paksha = tithiIndex < 15 ? 'Shukla Paksha (Waxing)' : 'Krishna Paksha (Waning)';
   const tithiLords = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu'];
 
-  // 2. Vara (Weekday in local time)
-  const localMs = dateUTC.getTime() + tzOffsetHours * 3600 * 1000;
-  const localDate = new Date(localMs);
-  const dayOfWeek = localDate.getUTCDay(); // 0=Sun..6=Sat
+  // 2. వారము (Vara) — హిందూ పంచాంగంలో వారము స్థానిక సూర్యోదయమున మారుతుంది.
+  //    సూర్యోదయానికి ముందు పుట్టిన జాతకానికి ముందు రోజు వారాధిపతియే వర్తిస్తుంది
+  //    (ఉదా: గురువారం తెల్లవారుజామున 04:30 → బుధవారం).  ఇది పంచాంగ ప్రమాణం.
+  const jdBirth = dateUTC.getTime() / 86_400_000 + 2440587.5;
+  let sunriseOfDay: number | null = null;
+  try {
+    sunriseOfDay = sunriseJdForLocalDate(civilDateAt(jdBirth, tzOffsetHours), lat, lng, tzOffsetHours);
+  } catch {
+    sunriseOfDay = null;
+  }
+  const varaRefJd = sunriseOfDay !== null && jdBirth < sunriseOfDay ? jdBirth - 1 : jdBirth;
+  const dayOfWeek = civilWeekdayAt(varaRefJd, tzOffsetHours); // 0=Sun..6=Sat
+  const localDate = new Date((varaRefJd - 2440587.5) * 86_400_000 + tzOffsetHours * 3_600_000);
   const varaTable = [
     { name: 'Sunday', sanskrit: 'Ravivara', lord: 'Sun' },
     { name: 'Monday', sanskrit: 'Somavara', lord: 'Moon' },
@@ -1228,17 +1461,23 @@ export function calculatePanchanga(
   }
 
   // 6. Sunrise & Sunset + Muhurta Windows
-  const observer = new Astronomy.Observer(lat, lng, 0);
-  // Start search from local midnight in UTC
+  // సూర్యోదయం/అస్తమయం — దృక్ పంచాంగ నిర్వచనం (పై అంచు + 34′ వక్రీభవనం),
+  // పంచాంగ మాడ్యూల్ వాడే అదే ఫంక్షన్ — యాప్ మొత్తం ఒకే సమయాన్ని చూపుతుంది.
   const startOfLocalDayUTC = new Date(
     Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0) -
       tzOffsetHours * 3600 * 1000
   );
-  const riseEvent = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, startOfLocalDayUTC, 1);
-  const setEvent = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, startOfLocalDayUTC, 1);
-
-  const sunriseMs = riseEvent ? riseEvent.date.getTime() : startOfLocalDayUTC.getTime() + 6 * 3600 * 1000;
-  const sunsetMs = setEvent ? setEvent.date.getTime() : startOfLocalDayUTC.getTime() + 18 * 3600 * 1000;
+  const isoDate =
+    `${localDate.getUTCFullYear()}-` +
+    `${String(localDate.getUTCMonth() + 1).padStart(2, '0')}-` +
+    `${String(localDate.getUTCDate()).padStart(2, '0')}`;
+  const exactRs = riseSetForLocalDate(isoDate, lat, lng, tzOffsetHours);
+  const sunriseMs = exactRs.sunriseJd !== null
+    ? (exactRs.sunriseJd - 2440587.5) * 86400000
+    : startOfLocalDayUTC.getTime() + 6 * 3600 * 1000;
+  const sunsetMs = exactRs.sunsetJd !== null
+    ? (exactRs.sunsetJd - 2440587.5) * 86400000
+    : startOfLocalDayUTC.getTime() + 18 * 3600 * 1000;
   const dayDurationMs = Math.max(4 * 3600 * 1000, sunsetMs - sunriseMs);
   const octantMs = dayDurationMs / 8;
 
@@ -1488,79 +1727,8 @@ function calculateAshtakavarga(planets: PlanetPosition[], ascSignIndex: number):
   const bhinnashtakavarga: Record<string, number[]> = {};
   const sarvashtakavarga = new Array(12).fill(0);
 
-  // Classical Parashari benefic house offsets from each reference factor
-  const offsetsByPlanet: Record<string, number[][]> = {
-    Sun: [
-      [1, 2, 4, 7, 8, 9, 10, 11],
-      [3, 6, 10, 11],
-      [1, 2, 4, 7, 8, 9, 10, 11],
-      [3, 5, 6, 9, 10, 11, 12],
-      [5, 6, 9, 11],
-      [6, 7, 12],
-      [1, 2, 4, 7, 8, 9, 10, 11],
-      [3, 4, 6, 10, 11, 12],
-    ],
-    Moon: [
-      [3, 6, 7, 8, 10, 11],
-      [1, 3, 6, 7, 10, 11],
-      [2, 3, 5, 6, 9, 10, 11],
-      [1, 3, 4, 5, 7, 8, 10, 11],
-      [1, 4, 7, 8, 10, 11, 12],
-      [3, 4, 5, 7, 9, 10, 11],
-      [3, 5, 6, 11],
-      [3, 6, 10, 11],
-    ],
-    Mars: [
-      [3, 5, 6, 10, 11],
-      [3, 6, 11],
-      [1, 2, 4, 7, 8, 10, 11],
-      [3, 5, 6, 11],
-      [6, 10, 11, 12],
-      [6, 8, 11, 12],
-      [1, 4, 7, 8, 9, 10, 11],
-      [1, 3, 6, 10, 11],
-    ],
-    Mercury: [
-      [5, 6, 9, 11, 12],
-      [2, 4, 6, 8, 10, 11],
-      [1, 2, 4, 7, 8, 9, 10, 11],
-      [1, 3, 5, 6, 9, 10, 11, 12],
-      [6, 8, 11, 12],
-      [1, 2, 3, 4, 5, 8, 9, 11],
-      [1, 2, 4, 7, 8, 9, 10, 11],
-      [1, 2, 4, 6, 8, 10, 11],
-    ],
-    Jupiter: [
-      [1, 2, 3, 4, 7, 8, 9, 10, 11],
-      [2, 5, 7, 9, 11],
-      [1, 2, 4, 7, 8, 10, 11],
-      [1, 2, 4, 5, 6, 9, 10, 11],
-      [1, 2, 3, 4, 7, 8, 10, 11],
-      [2, 5, 6, 9, 10, 11],
-      [3, 5, 6, 12],
-      [1, 2, 4, 5, 6, 7, 9, 10, 11],
-    ],
-    Venus: [
-      [8, 11, 12],
-      [1, 2, 3, 4, 5, 8, 9, 11, 12],
-      [3, 5, 6, 9, 11, 12],
-      [3, 5, 6, 9, 11],
-      [5, 8, 9, 10, 11],
-      [1, 2, 3, 4, 5, 8, 9, 10, 11],
-      [3, 4, 5, 8, 9, 10, 11],
-      [1, 2, 3, 4, 5, 8, 9, 11],
-    ],
-    Saturn: [
-      [1, 2, 4, 7, 8, 10, 11],
-      [3, 6, 11],
-      [3, 5, 6, 10, 11, 12],
-      [6, 8, 9, 10, 11, 12],
-      [5, 6, 11, 12],
-      [6, 11, 12],
-      [3, 5, 6, 11],
-      [1, 3, 4, 6, 10, 11],
-    ],
-  };
+  // పట్టికలు ఇప్పుడు ఒకే చోట — ashtakavargaTables.ts (కక్ష్యతో పంచుకోబడతాయి)
+  const offsetsByPlanet = ASHTAKAVARGA_OFFSETS;
 
   const refSigns = [
     ...classicalSeven.map((id) => planets.find((p) => p.id === id)?.d1Sign ?? 0),
@@ -1904,11 +2072,26 @@ export function calculateChart(
   tradition: ZodiacTradition = 'vedic'
 ): CompleteChartResult {
   const useSidereal = tradition === 'vedic';
+  const calculationMethod: PlanetCalculationMethod = input.calculationMethod ?? 'geocentric';
+  const observer = new Astronomy.Observer(input.lat, input.lng, 0);
   const dateUTC = birthInputToUTCDate(input);
+  if (input.timezone) {
+    const [y, m, d] = input.date.split('-').map(Number);
+    const [h, min, sec = 0] = input.time.split(':').map(Number);
+    const offsetAtBirth = (Date.UTC(y, m - 1, d, h, min, sec) - dateUTC.getTime()) / 3_600_000;
+    if (Math.abs(offsetAtBirth - input.tzOffsetHours) > 1 / 3600) {
+      input = { ...input, tzOffsetHours: offsetAtBirth };
+    }
+  }
   const datePlus2h = new Date(dateUTC.getTime() + 2 * 3600 * 1000);
-  const jd = Number((dateUTC.getTime() / 86400000 + 2440587.5).toFixed(5));
+  // Preserve the input millisecond precision. Rounding JD to 5 decimal places
+  // discards up to ~0.43 s and needlessly shifts boundary-sensitive results.
+  const jd = dateUTC.getTime() / 86400000 + 2440587.5;
 
   const ayanamsaDeg = calculateAyanamsa(dateUTC, input.ayanamsa);
+  // సగటు క్రాంతి వాలు (mean obliquity), నోడ్/ఛిరాన్ దిక్పాతం కోసం
+  const obliqT = (jd - 2451545.0) / 36525.0;
+  const obliqRad = ((23.4392911 - 0.0130042 * obliqT) * Math.PI) / 180;
   const { tropicalAsc, siderealAsc, tropicalMC, siderealMC, houses } = calculateAnglesAndHouses(
     dateUTC,
     input.lat,
@@ -1940,8 +2123,9 @@ export function calculateChart(
     { id: 'Chiron', name: 'Chiron', sanskrit: 'Kiron', glyph: '⚷' },
   ];
 
-  const supp1 = computeSupplementalBodies(dateUTC);
-  const supp2 = computeSupplementalBodies(datePlus2h);
+  const nodeConv: NodeConvention = input.nodeConvention ?? NODE_CONVENTION;
+  const supp1 = computeSupplementalBodies(dateUTC, nodeConv);
+  const supp2 = computeSupplementalBodies(datePlus2h, nodeConv);
 
   const planets: PlanetPosition[] = bodyCatalog.map((b) => {
     let tropLon = 0;
@@ -1950,8 +2134,8 @@ export function calculateChart(
     let speed = 0;
 
     if (b.astroBody !== undefined) {
-      const pos1 = computeBodyEcliptic(b.astroBody, dateUTC);
-      const pos2 = computeBodyEcliptic(b.astroBody, datePlus2h);
+      const pos1 = computeBodyEcliptic(b.astroBody, dateUTC, calculationMethod, observer);
+      const pos2 = computeBodyEcliptic(b.astroBody, datePlus2h, calculationMethod, observer);
       tropLon = pos1.lon;
       lat = pos1.lat;
       dec = pos1.dec;
@@ -1959,14 +2143,16 @@ export function calculateChart(
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
       speed = delta * 12; // 2 hours * 12 = 24 hours
-    } else if (b.id === 'Rahu') {
-      tropLon = supp1.rahuLon;
-      speed = -0.05295;
-      dec = 23.44 * Math.sin((tropLon * Math.PI) / 180);
-    } else if (b.id === 'Ketu') {
-      tropLon = supp1.ketuLon;
-      speed = -0.05295;
-      dec = 23.44 * Math.sin((tropLon * Math.PI) / 180);
+    } else if (b.id === 'Rahu' || b.id === 'Ketu') {
+      tropLon = b.id === 'Rahu' ? supp1.rahuLon : supp1.ketuLon;
+      // సత్య పాతం రోజుకు ఎంత కదిలిందో supp1/supp2 భేదం నుండి
+      let delta = supp2.rahuLon - supp1.rahuLon;
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      // సంప్రదాయం: రాహు/కేతు ఎల్లప్పుడూ వక్రీ — సత్య పాతం క్షణికంగా మార్గి అయినా
+      // ఫలితం వక్ర గతిగానే (ఋణ వేగం) చెప్పబడుతుంది.
+      speed = Math.min(delta * 12, -0.001);
+      dec = (Math.asin(Math.sin((tropLon * Math.PI) / 180) * Math.sin(obliqRad)) * 180) / Math.PI;
     } else if (b.id === 'Chiron') {
       tropLon = supp1.chironLon;
       let delta = supp2.chironLon - supp1.chironLon;
@@ -1976,7 +2162,8 @@ export function calculateChart(
       dec = 18.2 * Math.sin((tropLon * Math.PI) / 180);
     }
 
-    const sidLon = norm360(tropLon - ayanamsaDeg);
+    // నిరయన స్ఫుటం = సాయనం − పోషణ − అయనాంశం (స్విస్ ఎఫెమెరిస్ FLG_SIDEREAL సమానం)
+    const sidLon = norm360(tropLon - nutationLongitudeDeg(jd) - ayanamsaDeg);
     const activeLon = useSidereal ? sidLon : tropLon;
     const signIndex = Math.floor(activeLon / 30);
     const sign = ZODIAC_SIGNS[signIndex];
@@ -2033,6 +2220,8 @@ export function calculateChart(
       d24Sign: calculateVargaSign(sidLon, 'D24'),
       d27Sign: calculateVargaSign(sidLon, 'D27'),
       d30Sign: calculateVargaSign(sidLon, 'D30'),
+      d40Sign: calculateVargaSign(sidLon, 'D40'),
+      d45Sign: calculateVargaSign(sidLon, 'D45'),
       d60Sign: calculateVargaSign(sidLon, 'D60'),
     };
   });
@@ -2068,14 +2257,14 @@ export function calculateChart(
     input.lng,
     input.tzOffsetHours
   );
-  const shadbala = calculateShadbala(planets);
   const ashtakavarga = calculateAshtakavarga(planets, Math.floor(siderealAsc / 30));
   const arabicLots = calculateArabicLots(activeAsc, planets, houses);
   const midpoints = calculateMidpoints(planets);
   const fixedStars = calculateFixedStars(planets, ayanamsaDeg, useSidereal);
 
-  return {
+  const result: CompleteChartResult = {
     input,
+    calculationMethod,
     utcIso: dateUTC.toISOString(),
     julianDay: jd,
     ayanamsaDeg: Number(ayanamsaDeg.toFixed(4)),
@@ -2103,6 +2292,8 @@ export function calculateChart(
       d24Sign: calculateVargaSign(siderealAsc, 'D24'),
       d27Sign: calculateVargaSign(siderealAsc, 'D27'),
       d30Sign: calculateVargaSign(siderealAsc, 'D30'),
+      d40Sign: calculateVargaSign(siderealAsc, 'D40'),
+      d45Sign: calculateVargaSign(siderealAsc, 'D45'),
       d60Sign: calculateVargaSign(siderealAsc, 'D60'),
     },
     midheaven: {
@@ -2115,17 +2306,66 @@ export function calculateChart(
       formattedDMS: formatDMS(activeMC % 30),
     },
     planets,
+    nodeSphuta: {
+      convention: nodeConv,
+      meanSiderealLon: Number(
+        norm360(supp1.rahuMeanLon - nutationLongitudeDeg(jd) - ayanamsaDeg).toFixed(4)
+      ),
+      trueSiderealLon: Number(
+        norm360(supp1.rahuTrueLon - nutationLongitudeDeg(jd) - ayanamsaDeg).toFixed(4)
+      ),
+      differenceDeg: Number(
+        Math.abs(
+          (((supp1.rahuMeanLon - supp1.rahuTrueLon) % 360) + 360) % 360 > 180
+            ? ((((supp1.rahuMeanLon - supp1.rahuTrueLon) % 360) + 360) % 360) - 360
+            : (((supp1.rahuMeanLon - supp1.rahuTrueLon) % 360) + 360) % 360
+        ).toFixed(4)
+      ),
+    },
     houses,
     aspects,
     vedicYogas,
     dashas,
     panchanga,
-    shadbala,
+    shadbala: [],
     ashtakavarga,
     arabicLots,
     midpoints,
     fixedStars,
   };
+
+  // ── షడ్బలం — ఒకే మూలం ────────────────────────────────────────────────
+  // ప్యానెల్, PDF, దశా-వర్గ దృశ్యం — అన్నీ ఇక్కడ నుంచే చదువుతాయి.  మునుపు
+  // ephemeris లో సరళీకృత (తప్పులతో కూడిన) షడ్బలం, shadbalaDeepEngine లో మరొక
+  // విస్తృత షడ్బలం — రెండూ వేర్వేరు అంకెలు చూపేవి.  ఇప్పుడు బృహత్ పరాశర హోరా
+  // అ.27 ప్రకారం లెక్కించిన ఒకే ఫలితం.
+  result.shadbala = shadbalaEntriesFromDeep(computeShadbalaDeep(result).rows);
+  return result;
+}
+
+/** షడ్బల విస్తృత ఫలితం → పురాతన ShadbalaEntry (ఒకే అంకె, రెండు రూపాలు). */
+function shadbalaEntriesFromDeep(rows: ShadbalaDeepRow[]): ShadbalaEntry[] {
+  const sanskrit: Record<string, string> = {
+    Sun: 'Surya', Moon: 'Chandra', Mars: 'Mangala', Mercury: 'Budha',
+    Jupiter: 'Guru', Venus: 'Shukra', Saturn: 'Shani',
+  };
+  const round = (x: number) => Math.round(x * 100) / 100;
+  return rows.map((r) => ({
+    planet: r.id,
+    sanskrit: sanskrit[r.id] ?? r.id,
+    sthanaBala: round(r.sthanaTotal),
+    digBala: round(r.dig),
+    kalaBala: round(r.kalaTotal),
+    cheshtaBala: round(r.cheshta),
+    naisargikaBala: round(r.naisargika),
+    drikBala: round(r.drik),
+    totalVirupas: round(r.totalVirupas),
+    totalRupas: round(r.totalRupas),
+    requiredRupas: round(r.requiredVirupas / 60),
+    ratio: Math.round((r.ratioPercent / 100) * 1000) / 1000,
+    status:
+      r.ratioPercent >= 115 ? 'Dominant' : r.ratioPercent >= 95 ? 'Sufficient' : 'Under-Powered',
+  }));
 }
 
 // Synastry & Vedic Kundali Milan (Ashta Koota 36-Guna) Comparison Engine

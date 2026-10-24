@@ -187,7 +187,7 @@ const NUMEROLOGY_PLANET_MAP: Record<
     luckyNums: '3, 1, 2, 9',
     friendlyNums: '1, 2, 9',
     avoidNums: '5, 6',
-    natureTe: 'ఉన్నత విద్యాబుద్ధులు, ధర్మ నిষ্ঠ, గురుత్వం మరియు ఆర్థిక క్రమశిక్షణ.',
+    natureTe: 'ఉన్నత విద్యాబుద్ధులు, ధర్మ నిష్ఠ, గురుత్వం మరియు ఆర్థిక క్రమశిక్షణ.',
   },
   4: {
     planetId: 'Rahu',
@@ -257,7 +257,7 @@ const PLANET_GEM_COLORS_DIRECTIONS: Record<
     metalTe: 'బంగారం / రాగి (Gold / Copper)',
   },
   Moon: {
-    gemTe: 'স্বచ్ఛమైన ముత్యం (Natural Pearl - 4–6 క్యారెట్లు)',
+    gemTe: 'స్వచ్ఛమైన ముత్యం (Natural Pearl - 4–6 క్యారెట్లు)',
     dayTe: 'సోమవారం',
     colorTe: 'తెలుపు, వెండి, లేత క్రీమ్ (White & Silver)',
     directionTe: 'వాయువ్యం (North-West)',
@@ -433,12 +433,8 @@ export function generateAstroVisionMasterReport(
   const venusSignIdx = venus.signIndex;
 
   // Birth Date UTC & Current Age
-  const [bY, bM, bD] = chart.input.date.split('-').map(Number);
-  const [bHr, bMin] = chart.input.time.split(':').map(Number);
-  const birthDateUTC = new Date(
-    Date.UTC(bY, (bM || 1) - 1, bD || 1, bHr || 0, bMin || 0) -
-      chart.input.tzOffsetHours * 3600 * 1000
-  );
+  const birthDateUTC = new Date(chart.utcIso);
+  const bD = Number(chart.input.date.split('-')[2]);
   const currentAgeYears = Math.max(
     0,
     (Date.now() - birthDateUTC.getTime()) / (365.2425 * 86400 * 1000)
@@ -1093,7 +1089,7 @@ export interface TransitIntensityHeatmapSlice {
 export function generateTransitIntensityHeatmap(
   chart: CompleteChartResult
 ): TransitIntensityHeatmapSlice[] {
-  const birthDateUTC = new Date(`${chart.input.date}T${chart.input.time}:00Z`);
+  const birthDateUTC = new Date(chart.utcIso);
   const birthYear = birthDateUTC.getUTCFullYear() || 1995;
 
   const saturn = chart.planets.find((p) => p.id === 'Saturn')!;
