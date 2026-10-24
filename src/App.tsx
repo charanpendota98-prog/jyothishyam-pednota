@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ACCURACY } from './engine/accuracySummary.ts';
 import {
   AYANAMSA_METADATA,
+  WORLD_CITIES,
   ZODIAC_SIGNS,
   calculateChart,
   type BirthInput,
@@ -35,6 +36,7 @@ import { NamakaranaShastraView } from './components/NamakaranaShastraView.tsx';
 import { TajikaVarshaphalaView } from './components/TajikaVarshaphalaView.tsx';
 import { VastuShastraView } from './components/VastuShastraView.tsx';
 import { HinduCalendarView } from './components/HinduCalendarView.tsx';
+import EclipsesView from './components/EclipsesView.tsx';
 import { GocharaView } from './components/GocharaView.tsx';
 import { JathakaDeepView } from './components/JathakaDeepView.tsx';
 import RashiPhalaStudioView from './components/RashiPhalaStudioView.tsx';
@@ -64,6 +66,8 @@ import {
   Star,
   BookOpen,
   Share2,
+  Search,
+  LayoutGrid,
 } from 'lucide-react';
 
 type ActiveWorkspaceTab =
@@ -78,10 +82,13 @@ type ActiveWorkspaceTab =
   | 'prashna'
   | 'vastu'
   | 'hindu_calendar'
+  | 'eclipses'
   | 'gochara'
   | 'jathaka_deep'
   | 'phala_studio'
   | 'granthas';
+
+const TIMEZONE_OPTIONS = [...new Set(WORLD_CITIES.map((city) => city.tzName))].sort();
 
 const INITIAL_PROFILES: BirthInput[] = [
   {
@@ -89,10 +96,11 @@ const INITIAL_PROFILES: BirthInput[] = [
     name: 'చరణ్ పెందోట (Charan Pendota)',
     gender: 'male',
     date: '1998-05-14',
-    time: '08:45',
+    time: '08:45:00',
     lat: 17.3850,
     lng: 78.4867,
     tzOffsetHours: 5.5,
+    timezone: 'Asia/Kolkata',
     city: 'హైదరాబాద్ (Hyderabad)',
     country: 'తెలంగాణ, భారతదేశం',
     ayanamsa: 'lahiri',
@@ -108,6 +116,7 @@ const INITIAL_PROFILES: BirthInput[] = [
     lat: 17.6868,
     lng: 83.2185,
     tzOffsetHours: 5.5,
+    timezone: 'Asia/Kolkata',
     city: 'విశాఖపట్నం (Visakhapatnam)',
     country: 'ఆంధ్రప్రదేశ్, భారతదేశం',
     ayanamsa: 'lahiri',
@@ -123,6 +132,7 @@ const INITIAL_PROFILES: BirthInput[] = [
     lat: 16.5062,
     lng: 80.6480,
     tzOffsetHours: 5.5,
+    timezone: 'Asia/Kolkata',
     city: 'ఎన్టీఆర్ జిల్లా (Vijayawada)',
     country: 'ఆంధ్రప్రదేశ్, భారతదేశం',
     ayanamsa: 'lahiri',
@@ -137,6 +147,8 @@ const INITIAL_PROFILES: BirthInput[] = [
     time: '06:33',
     lat: 22.5726,
     lng: 88.3639,
+    // Historical birth-time convention is unverified; keep the legacy offset
+    // rather than silently assuming IANA local-mean-time conversion.
     tzOffsetHours: 5.5,
     city: 'కోల్‌కతా (Kolkata)',
     country: 'భారతదేశం',
@@ -173,6 +185,8 @@ export default function App() {
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [externalPdfTrigger, setExternalPdfTrigger] = useState<number>(0);
   const [isRoyalCardOpen, setIsRoyalCardOpen] = useState<boolean>(false);
+  const [isToolDirectoryOpen, setIsToolDirectoryOpen] = useState<boolean>(false);
+  const [toolQuery, setToolQuery] = useState('');
 
   const handleTriggerFullPdfDownload = () => {
     setActiveTab('studio');
@@ -211,6 +225,7 @@ export default function App() {
         lat: firstDist.lat,
         lng: firstDist.lng,
         tzOffsetHours: firstDist.tzOffsetHours,
+        timezone: 'Asia/Kolkata',
       }));
     }
   };
@@ -226,14 +241,34 @@ export default function App() {
         lat: dist.lat,
         lng: dist.lng,
         tzOffsetHours: dist.tzOffsetHours,
+        timezone: 'Asia/Kolkata',
       }));
     }
   };
 
-  const chart = useMemo(
-    () => calculateChart(birthInput, tradition),
-    [birthInput, tradition]
-  );
+  const [lastValidChart, setLastValidChart] = useState(() => calculateChart(birthInput, tradition));
+  const chartCalculation = useMemo(() => {
+    try {
+      return { chart: calculateChart(birthInput, tradition), error: null as string | null };
+    } catch (error) {
+      return {
+        chart: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }, [birthInput, tradition]);
+  const chart = chartCalculation.chart ?? lastValidChart;
+  useEffect(() => {
+    if (chartCalculation.chart) setLastValidChart(chartCalculation.chart);
+  }, [chartCalculation.chart]);
+  useEffect(() => {
+    const resolvedOffset = chartCalculation.chart?.input.tzOffsetHours;
+    if (resolvedOffset !== undefined && birthInput.timezone && Math.abs(resolvedOffset - birthInput.tzOffsetHours) > 1 / 3600) {
+      setBirthInput((previous) => previous.timezone === birthInput.timezone
+        ? { ...previous, tzOffsetHours: resolvedOffset }
+        : previous);
+    }
+  }, [birthInput.timezone, birthInput.tzOffsetHours, chartCalculation.chart]);
 
   const teJathakam = useMemo(
     () => generateTeluguSampoornaJathakam(chart),
@@ -403,6 +438,13 @@ export default function App() {
       icon: <Calendar className="w-4 h-4" />,
     },
     {
+      id: 'eclipses',
+      labelTe: 'సూర్య & చంద్ర గ్రహణాలు',
+      shortTe: 'గ్రహణాలు',
+      labelEn: 'Eclipses',
+      icon: <Orbit className="w-4 h-4" />,
+    },
+    {
       id: 'vastu',
       labelTe: 'వాస్తు శాస్త్రం (నామ & గృహ)',
       shortTe: 'వాస్తు',
@@ -479,6 +521,15 @@ export default function App() {
           <button onClick={() => setIsRoyalCardOpen(true)} className="hidden sm:inline-flex ghost-btn cursor-pointer">
             <Share2 className="w-3.5 h-3.5" />
             <span>1-పేజీ కార్డు</span>
+          </button>
+
+          <button
+            onClick={() => setIsToolDirectoryOpen(true)}
+            className="ghost-btn cursor-pointer"
+            aria-label={lang === 'te' ? 'అన్ని జ్యోతిష్య సాధనాలు' : 'All astrology tools'}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{lang === 'te' ? 'అన్ని సాధనాలు' : 'All tools'}</span>
           </button>
 
           <button onClick={() => setIsDrawerOpen(true)} className="gold-btn cursor-pointer">
@@ -896,13 +947,14 @@ export default function App() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[#EDE8E0]/80 mb-1">
-                        పుట్టిన సమయం (24h Time)
+                        పుట్టిన సమయం (24h Time · seconds supported)
                       </label>
                       <input
                         type="time"
-                        value={birthInput.time}
+                        step={1}
+                        value={birthInput.time.length === 5 ? `${birthInput.time}:00` : birthInput.time}
                         onChange={(e) =>
-                          setBirthInput({ ...birthInput, time: e.target.value })
+                          setBirthInput({ ...birthInput, time: e.target.value.length === 5 ? `${e.target.value}:00` : e.target.value })
                         }
                         className="w-full bg-[#090C18] border border-white/15 rounded-lg px-3 py-2 text-xs font-mono-tabular text-[#EDE8E0] focus:outline-none focus:border-[#C9A96E]"
                       />
@@ -946,7 +998,7 @@ export default function App() {
                   </div>
 
                   {/* Custom Lat / Lng / Timezone Fine-Tuning */}
-                  <div className="grid grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                     <div>
                       <label className="block text-[11px] text-[#EDE8E0]/55 mb-1">
                         అక్షాంశం (Lat °N)
@@ -993,12 +1045,31 @@ export default function App() {
                           setBirthInput({
                             ...birthInput,
                             tzOffsetHours: parseFloat(e.target.value) || 0,
+                            timezone: undefined,
                           })
                         }
                         className="w-full bg-[#090C18] border border-white/15 rounded-lg px-2.5 py-1.5 text-xs font-mono-tabular text-[#EDE8E0]"
                       />
                     </div>
+                    <div>
+                      <label className="block text-[11px] text-[#EDE8E0]/55 mb-1">
+                        IANA Time Zone
+                      </label>
+                      <select
+                        value={birthInput.timezone ?? ''}
+                        onChange={(e) => setBirthInput({ ...birthInput, timezone: e.target.value || undefined })}
+                        className="w-full bg-[#090C18] border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-[#EDE8E0]"
+                      >
+                        <option value="">Manual UTC offset</option>
+                        {TIMEZONE_OPTIONS.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                      </select>
+                    </div>
                   </div>
+                  {chartCalculation.error && (
+                    <p role="alert" className="text-xs text-amber-300 bg-amber-950/30 border border-amber-400/30 rounded-lg px-3 py-2">
+                      జనన సమయాన్ని లెక్కించలేకపోయాం: {chartCalculation.error}. సరైన UTC offset ఎంచుకోండి లేదా స్థానిక సమయాన్ని సరిచేయండి.
+                    </p>
+                  )}
 
                   {/* Ayanamsa & House System */}
                   <div className="grid grid-cols-2 gap-3 pt-1">
@@ -1065,6 +1136,26 @@ export default function App() {
                         <option value="true">సత్య రాహు (True — ఖగోళ స్థితి)</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <label className="block text-xs text-[#EDE8E0]/60 mb-1">
+                      గణన కేంద్రం (Planet Calculation Method)
+                    </label>
+                    <select
+                      value={birthInput.calculationMethod ?? 'geocentric'}
+                      onChange={(e) => setBirthInput({
+                        ...birthInput,
+                        calculationMethod: e.target.value as BirthInput['calculationMethod'],
+                      })}
+                      className="w-full bg-[#090C18] border border-white/15 rounded-lg px-2.5 py-2 text-xs text-[#EDE8E0] focus:outline-none focus:border-[#C9A96E]"
+                    >
+                      <option value="geocentric">భూకేంద్రం — OnlineJyotish standard/default</option>
+                      <option value="topocentric">స్థానిక పరిశీలక కేంద్రం — Topocentric</option>
+                    </select>
+                    <p className="mt-1 text-[10px] leading-relaxed text-[#EDE8E0]/45">
+                      Topocentric ఎంపికలో గ్రహాల స్థానాలకు జన్మస్థల parallax వర్తిస్తుంది; రాహు/కేతు గణితం భూకేంద్రంగానే ఉంటుంది.
+                    </p>
                   </div>
                 </div>
               </aside>
@@ -1543,6 +1634,8 @@ export default function App() {
           <HinduCalendarView chart={chart} lang={lang} />
         )}
 
+        {activeTab === 'eclipses' && <EclipsesView chart={chart} lang={lang} />}
+
         {activeTab === 'gochara' && <GocharaView chart={chart} lang={lang} />}
 
         {activeTab === 'jathaka_book' && (
@@ -1620,6 +1713,7 @@ export default function App() {
                       lat: 16.5062,
                       lng: 80.6480,
                       tzOffsetHours: 5.5,
+    timezone: 'Asia/Kolkata',
                       city: 'ఎన్టీఆర్ జిల్లా (Vijayawada)',
                       country: 'ఆంధ్రప్రదేశ్, భారతదేశం',
                       ayanamsa: 'lahiri',
@@ -1759,6 +1853,96 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {isToolDirectoryOpen && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-6 no-print"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tool-directory-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsToolDirectoryOpen(false);
+          }}
+        >
+          <section className="w-full max-w-5xl max-h-[88vh] overflow-hidden rounded-2xl border border-[#C9A96E]/35 bg-[#0B0F1E] shadow-2xl">
+            <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#C9A96E]">
+                  {lang === 'te' ? 'జ్యోతిష్య వర్క్‌స్పేస్' : 'Jyotish workspace'}
+                </div>
+                <h2 id="tool-directory-title" className="mt-1 font-display text-xl font-bold text-[#F4F0E8]">
+                  {lang === 'te' ? 'అన్ని సాధనాలు ఒకేచోట' : 'All tools in one workspace'}
+                </h2>
+                <p className="mt-1 text-xs text-[#EDE8E0]/55">
+                  {lang === 'te'
+                    ? `${navItems.length} గణన విభాగాలు · తెలుగు / English`
+                    : `${navItems.length} calculation areas · Telugu / English`}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsToolDirectoryOpen(false)}
+                aria-label={lang === 'te' ? 'మూసివేయి' : 'Close'}
+                className="rounded-lg border border-white/10 p-2 text-[#EDE8E0]/65 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="border-b border-white/10 px-5 py-3 sm:px-7">
+              <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#070A14] px-3 py-2.5 focus-within:border-[#C9A96E]/60">
+                <Search className="h-4 w-4 shrink-0 text-[#C9A96E]" />
+                <input
+                  autoFocus
+                  value={toolQuery}
+                  onChange={(event) => setToolQuery(event.target.value)}
+                  placeholder={lang === 'te' ? 'జాతకం, పంచాంగం, వివాహం, వాస్తు… వెతకండి' : 'Search chart, panchanga, matching, vastu…'}
+                  className="w-full bg-transparent text-sm text-[#F4F0E8] outline-none placeholder:text-[#EDE8E0]/35"
+                />
+              </label>
+            </div>
+            <div className="grid max-h-[62vh] grid-cols-1 gap-2 overflow-y-auto p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
+              {navItems
+                .filter((item) => {
+                  const query = toolQuery.trim().toLocaleLowerCase();
+                  return !query || `${item.labelTe} ${item.shortTe} ${item.labelEn}`.toLocaleLowerCase().includes(query);
+                })
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsToolDirectoryOpen(false);
+                      setToolQuery('');
+                    }}
+                    className={`group flex min-h-24 items-start gap-3 rounded-xl border p-4 text-left transition-all ${
+                      activeTab === item.id
+                        ? 'border-[#C9A96E]/60 bg-[#C9A96E]/10'
+                        : 'border-white/10 bg-white/[0.025] hover:border-[#C9A96E]/40 hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/10 text-[#E4C68C]">
+                      {item.icon}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold leading-snug text-[#F4F0E8]">
+                        {lang === 'te' ? item.labelTe : item.labelEn}
+                      </span>
+                      <span className="mt-1 block text-[11px] text-[#EDE8E0]/45">
+                        {activeTab === item.id
+                          ? (lang === 'te' ? 'ప్రస్తుతం తెరిచి ఉంది' : 'Currently open')
+                          : (lang === 'te' ? 'విభాగాన్ని తెరవండి' : 'Open workspace')}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              {navItems.filter((item) => `${item.labelTe} ${item.shortTe} ${item.labelEn}`.toLocaleLowerCase().includes(toolQuery.trim().toLocaleLowerCase())).length === 0 && (
+                <div className="col-span-full py-10 text-center text-sm text-[#EDE8E0]/55">
+                  {lang === 'te' ? 'ఈ పేరుతో సాధనం కనిపించలేదు.' : 'No matching tool found.'}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Mobile Sticky Bottom Navigation Bar (Phone Ergonomic 6-Tab Bar) */}
       <nav

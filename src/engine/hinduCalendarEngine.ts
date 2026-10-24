@@ -100,7 +100,7 @@ export const YOGA_NAMES_EN = [
   'Vishkambha', 'Priti', 'Ayushman', 'Saubhagya', 'Shobhana', 'Atiganda', 'Sukarma', 'Dhriti',
   'Shula', 'Ganda', 'Vriddhi', 'Dhruva', 'Vyaghata', 'Harshana', 'Vajra', 'Siddhi', 'Vyatipata',
   'Variyana', 'Parigha', 'Shiva', 'Siddha', 'Sadhya', 'Shubha', 'Shukla', 'Brahma', 'Indra',
-  'Vaibhava',
+  'Vaidhriti',
 ];
 
 export const INAUSPICIOUS_YOGA_INDEXES = [0, 5, 8, 9, 12, 14, 16, 18, 26];

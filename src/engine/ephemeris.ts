@@ -1,4 +1,5 @@
 import * as Astronomy from 'astronomy-engine';
+import { resolveLocalCivilTime } from './localCivilTime.ts';
 import { ASHTAKAVARGA_OFFSETS } from './ashtakavargaTables.ts';
 import { computeShadbalaDeep, type ShadbalaRow as ShadbalaDeepRow } from './shadbalaDeepEngine.ts';
 import {
@@ -14,6 +15,7 @@ import {
 } from './astroCore.ts';
 
 export type ZodiacTradition = 'western' | 'vedic' | 'hybrid';
+export type PlanetCalculationMethod = 'geocentric' | 'topocentric';
 
 export type AyanamsaSystem =
   | 'lahiri'
@@ -184,14 +186,18 @@ export interface BirthInput {
   name: string;
   gender?: 'male' | 'female';
   date: string; // YYYY-MM-DD
-  time: string; // HH:mm
+  time: string; // HH:mm or HH:mm:ss (local civil time)
   lat: number;
   lng: number;
   tzOffsetHours: number;
+  /** Optional IANA zone for historical/DST-aware local birth-time resolution. */
+  timezone?: string;
   city: string;
   country: string;
   ayanamsa: AyanamsaSystem;
   houseSystem: HouseSystem;
+  /** OnlineJyotish profile: geocentric is its standard/default; topocentric applies observer parallax to physical planets. */
+  calculationMethod?: PlanetCalculationMethod;
   /** రాహు/కేతు: 'mean' = మధ్యమ పాతం (పంచాంగ సంప్రదాయం), 'true' = సత్య పాతం. డిఫాల్ట్ 'mean'. */
   nodeConvention?: NodeConvention;
   notes?: string;
@@ -418,6 +424,7 @@ export interface FixedStarContact {
 
 export interface CompleteChartResult {
   input: BirthInput;
+  calculationMethod: PlanetCalculationMethod;
   utcIso: string;
   julianDay: number;
   ayanamsaDeg: number;
@@ -536,17 +543,24 @@ export function formatDMS(degInSign: number): string {
 
 // Convert BirthInput local date/time + tzOffsetHours into UTC Date
 export function birthInputToUTCDate(input: BirthInput): Date {
-  const [year, month, day] = input.date.split('-').map(Number);
-  const [hour, minute] = input.time.split(':').map(Number);
-  const safeYear = Number.isFinite(year) ? year : 1990;
-  const safeMonth = Number.isFinite(month) ? month : 1;
-  const safeDay = Number.isFinite(day) ? day : 1;
-  const safeHour = Number.isFinite(hour) ? hour : 12;
-  const safeMinute = Number.isFinite(minute) ? minute : 0;
-  const utcMs =
-    Date.UTC(safeYear, safeMonth - 1, safeDay, safeHour, safeMinute, 0) -
-    input.tzOffsetHours * 3600 * 1000;
-  return new Date(utcMs);
+  if (input.timezone) {
+    return resolveLocalCivilTime(input.date, input.time, input.timezone, input.tzOffsetHours).instant;
+  }
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.date);
+  const timeMatch = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.exec(input.time);
+  if (!dateMatch || !timeMatch) throw new Error('Birth date/time must be YYYY-MM-DD and HH:mm[:ss].');
+  const [, ys, mos, ds] = dateMatch;
+  const [, hs, mins, secs = '0'] = timeMatch;
+  const [year, month, day, hour, minute, second] = [ys, mos, ds, hs, mins, secs].map(Number);
+  const wallUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+  const check = new Date(wallUtc);
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) {
+    throw new Error('Birth date is not a valid calendar date.');
+  }
+  if (!Number.isFinite(input.tzOffsetHours) || Math.abs(input.tzOffsetHours) > 14) {
+    throw new Error('Birth UTC offset must be between -14 and +14 hours.');
+  }
+  return new Date(wallUtc - input.tzOffsetHours * 3_600_000);
 }
 
 // Calculate exact Lahiri Ayanamsa + system delta for a given UTC Date
@@ -1027,17 +1041,25 @@ function findHouseForLongitude(lon: number, houses: HouseCusp[]): number {
 }
 
 // Compute planetary positions via VSOP87 / astronomy-engine
-function computeBodyEcliptic(body: Astronomy.Body, dateUTC: Date) {
+function computeBodyEcliptic(
+  body: Astronomy.Body,
+  dateUTC: Date,
+  method: PlanetCalculationMethod = 'geocentric',
+  observer?: Astronomy.Observer
+) {
   const time = Astronomy.MakeTime(dateUTC);
+  if (method === 'topocentric' && observer) {
+    // Astronomy Engine returns observer-parallax-adjusted equatorial vectors.
+    // Convert its J2000 vector to the same ecliptic frame used by the geocentric path.
+    const eqJ2000 = Astronomy.Equator(body, time, observer, false, true);
+    const ecl = Astronomy.Ecliptic(eqJ2000.vec);
+    const eqOfDate = Astronomy.Equator(body, time, observer, true, true);
+    return { lon: norm360(ecl.elon), lat: ecl.elat, dec: eqOfDate.dec };
+  }
   const vec = Astronomy.GeoVector(body, time, true);
   const ecl = Astronomy.Ecliptic(vec);
-  // Compute declination from equatorial coordinates
   const eq = Astronomy.Equator(body, time, new Astronomy.Observer(0, 0, 0), true, true);
-  return {
-    lon: norm360(ecl.elon),
-    lat: ecl.elat,
-    dec: eq.dec,
-  };
+  return { lon: norm360(ecl.elon), lat: ecl.elat, dec: eq.dec };
 }
 
 /**
@@ -2050,9 +2072,21 @@ export function calculateChart(
   tradition: ZodiacTradition = 'vedic'
 ): CompleteChartResult {
   const useSidereal = tradition === 'vedic';
+  const calculationMethod: PlanetCalculationMethod = input.calculationMethod ?? 'geocentric';
+  const observer = new Astronomy.Observer(input.lat, input.lng, 0);
   const dateUTC = birthInputToUTCDate(input);
+  if (input.timezone) {
+    const [y, m, d] = input.date.split('-').map(Number);
+    const [h, min, sec = 0] = input.time.split(':').map(Number);
+    const offsetAtBirth = (Date.UTC(y, m - 1, d, h, min, sec) - dateUTC.getTime()) / 3_600_000;
+    if (Math.abs(offsetAtBirth - input.tzOffsetHours) > 1 / 3600) {
+      input = { ...input, tzOffsetHours: offsetAtBirth };
+    }
+  }
   const datePlus2h = new Date(dateUTC.getTime() + 2 * 3600 * 1000);
-  const jd = Number((dateUTC.getTime() / 86400000 + 2440587.5).toFixed(5));
+  // Preserve the input millisecond precision. Rounding JD to 5 decimal places
+  // discards up to ~0.43 s and needlessly shifts boundary-sensitive results.
+  const jd = dateUTC.getTime() / 86400000 + 2440587.5;
 
   const ayanamsaDeg = calculateAyanamsa(dateUTC, input.ayanamsa);
   // సగటు క్రాంతి వాలు (mean obliquity), నోడ్/ఛిరాన్ దిక్పాతం కోసం
@@ -2100,8 +2134,8 @@ export function calculateChart(
     let speed = 0;
 
     if (b.astroBody !== undefined) {
-      const pos1 = computeBodyEcliptic(b.astroBody, dateUTC);
-      const pos2 = computeBodyEcliptic(b.astroBody, datePlus2h);
+      const pos1 = computeBodyEcliptic(b.astroBody, dateUTC, calculationMethod, observer);
+      const pos2 = computeBodyEcliptic(b.astroBody, datePlus2h, calculationMethod, observer);
       tropLon = pos1.lon;
       lat = pos1.lat;
       dec = pos1.dec;
@@ -2230,6 +2264,7 @@ export function calculateChart(
 
   const result: CompleteChartResult = {
     input,
+    calculationMethod,
     utcIso: dateUTC.toISOString(),
     julianDay: jd,
     ayanamsaDeg: Number(ayanamsaDeg.toFixed(4)),
@@ -2272,7 +2307,7 @@ export function calculateChart(
     },
     planets,
     nodeSphuta: {
-      convention: NODE_CONVENTION,
+      convention: nodeConv,
       meanSiderealLon: Number(
         norm360(supp1.rahuMeanLon - nutationLongitudeDeg(jd) - ayanamsaDeg).toFixed(4)
       ),
