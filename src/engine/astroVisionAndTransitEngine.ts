@@ -433,12 +433,8 @@ export function generateAstroVisionMasterReport(
   const venusSignIdx = venus.signIndex;
 
   // Birth Date UTC & Current Age
-  const [bY, bM, bD] = chart.input.date.split('-').map(Number);
-  const [bHr, bMin] = chart.input.time.split(':').map(Number);
-  const birthDateUTC = new Date(
-    Date.UTC(bY, (bM || 1) - 1, bD || 1, bHr || 0, bMin || 0) -
-      chart.input.tzOffsetHours * 3600 * 1000
-  );
+  const birthDateUTC = new Date(chart.utcIso);
+  const bD = Number(chart.input.date.split('-')[2]);
   const currentAgeYears = Math.max(
     0,
     (Date.now() - birthDateUTC.getTime()) / (365.2425 * 86400 * 1000)
@@ -1093,7 +1089,7 @@ export interface TransitIntensityHeatmapSlice {
 export function generateTransitIntensityHeatmap(
   chart: CompleteChartResult
 ): TransitIntensityHeatmapSlice[] {
-  const birthDateUTC = new Date(`${chart.input.date}T${chart.input.time}:00Z`);
+  const birthDateUTC = new Date(chart.utcIso);
   const birthYear = birthDateUTC.getUTCFullYear() || 1995;
 
   const saturn = chart.planets.find((p) => p.id === 'Saturn')!;

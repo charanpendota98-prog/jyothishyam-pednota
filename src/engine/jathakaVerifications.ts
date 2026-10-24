@@ -557,10 +557,10 @@ export function generateVerificationAndAnalysisReport(
   const absLmtSec = Math.round((Math.abs(lmtDiffMinFloat) - absLmtMin) * 60);
 
   // Day / Night & Suryodayadi Vara check
-  const [bHr, bMin] = chart.input.time.split(':').map(Number);
+  const [bHr, bMin, bSec] = chart.input.time.split(':').map(Number);
   const [srHr, srMin] = chart.panchanga.sunTimes.sunriseLocal.split(':').map(Number);
   const [ssHr, ssMin] = chart.panchanga.sunTimes.sunsetLocal.split(':').map(Number);
-  const birthMins = (bHr || 0) * 60 + (bMin || 0);
+  const birthMins = (bHr || 0) * 60 + (bMin || 0) + (bSec || 0) / 60;
   const sunriseMins = (srHr || 6) * 60 + (srMin || 0);
   const sunsetMins = (ssHr || 18) * 60 + (ssMin || 0);
   const isBeforeSunrise = birthMins < sunriseMins;

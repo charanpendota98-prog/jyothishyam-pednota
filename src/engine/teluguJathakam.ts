@@ -1090,9 +1090,9 @@ export function generateTeluguSampoornaJathakam(
   const dashaBalanceAtBirthTe = `${firstDashaLordTe} మహాదశ నిల్వ: ${bal.years} సం. ${bal.months} నెలలు ${bal.days} రోజులు (${firstDasha.endDate} వరకు)`;
 
   // Udayadi Ishta Ghatikalu - Vighatikalu (1 Ghati = 24 min, 1 Vighati = 24 sec)
-  const [bHr, bMin] = chart.input.time.split(':').map(Number);
+  const [bHr, bMin, bSec] = chart.input.time.split(':').map(Number);
   const [sHr, sMin] = chart.panchanga.sunTimes.sunriseLocal.split(':').map(Number);
-  const birthTotalMin = (Number.isFinite(bHr) ? bHr : 6) * 60 + (Number.isFinite(bMin) ? bMin : 0);
+  const birthTotalMin = (Number.isFinite(bHr) ? bHr : 6) * 60 + (Number.isFinite(bMin) ? bMin : 0) + (Number.isFinite(bSec) ? bSec / 60 : 0);
   const sunriseTotalMin = (Number.isFinite(sHr) ? sHr : 6) * 60 + (Number.isFinite(sMin) ? sMin : 0);
   const diffFromSunriseMin = (birthTotalMin - sunriseTotalMin + 1440) % 1440;
   const ishtaGhatis = Math.floor(diffFromSunriseMin / 24);
